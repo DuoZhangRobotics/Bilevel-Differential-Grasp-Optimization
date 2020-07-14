@@ -3,17 +3,17 @@ import cvxpy as cp
 from scipy.spatial import ConvexHull
 
 
-class Convex_Hull(object):
+class ConvexHulls(object):
     def __init__(self, points_cloud1: np.array):
-        self.points1 = points_cloud1
-        self.hull = self.__generate_convex_hulls()
+        self.points = points_cloud1
+        self.hull = self._generate_convex_hulls()
         self.A = self.hull.equations[:, :-1]
         self.b = -self.hull.equations[:, -1]
         self.simplices = self.hull.simplices
         self.vertices = self.hull.vertices
 
-    def __generate_convex_hulls(self):
-        return ConvexHull(self.points1)
+    def _generate_convex_hulls(self):
+        return ConvexHull(self.points)
 
     # distance between two convex hulls
     def distance_between_convex_hulls(self, target_hull):
