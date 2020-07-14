@@ -12,8 +12,8 @@ pi = torch.acos(torch.zeros(1)).item() * 2
 if __name__ == '__main__':
     points1 = np.random.rand(30, 3)
     points2 = np.random.rand(30, 3) + 3
-    hull1 = Convex_Hull(points1)
-    hull2 = Convex_Hull(points2)
+    hull1 = ConvexHulls(points1)
+    hull2 = ConvexHulls(points2)
 
     dist, x1, x2 = hull1.distance_between_convex_hulls(hull2)
     optimal_dots = np.array([x1, x2])

@@ -28,7 +28,7 @@ if __name__ == '__main__':
         return end
 
 
-    hull = Convex_Hull(cube)
+    hull = ConvexHulls(cube)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter3D(cube[:, 0], cube[:, 1], cube[:, 2], c='blue')
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         ax.plot3D(cube[simplex1, 0], cube[simplex1, 1], cube[simplex1, 2], 'orange')
 
     points2 = np.random.rand(30, 3) + 3
-    hull2 = Convex_Hull(points2)
+    hull2 = ConvexHulls(points2)
     ax.scatter3D(points2[:, 0], points2[:, 1], points2[:, 2], c='tomato')
     for simplex2 in hull2.simplices:
         ax.plot3D(points2[simplex2, 0], points2[simplex2, 1], points2[simplex2, 2], 'lightblue')
@@ -46,3 +46,4 @@ if __name__ == '__main__':
     result = optimizer.obj()
     result.backward()
     print(optimizer.beta.grad)
+    optimizer._reset_n()
