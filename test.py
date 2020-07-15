@@ -40,10 +40,7 @@ if __name__ == '__main__':
     ax.scatter3D(points2[:, 0], points2[:, 1], points2[:, 2], c='tomato')
     for simplex2 in hull2.simplices:
         ax.plot3D(points2[simplex2, 0], points2[simplex2, 1], points2[simplex2, 2], 'lightblue')
-    fig.show()
+    # fig.show()
 
     optimizer = BilevelOptimizer(hull, hull2)
-    result = optimizer.obj()
-    result.backward()
-    print(optimizer.beta.grad)
-    optimizer._reset_n()
+    optimizer.line_search()
