@@ -11,11 +11,11 @@ class BilevelOptimizer(object):
     def __init__(self, hull0: ConvexHulls, target: ConvexHulls):
         self.beta = torch.Tensor([0.0]).requires_grad_(True)
         self.phi = torch.Tensor([0.0]).requires_grad_(True)
-        self.theta = torch.Tensor([0.0, 0.0, 0.0]).requires_grad_(True)
+        self.theta = torch.Tensor([0.1, 0.1, 0.1]).requires_grad_(True)
         self.hull0 = hull0
         self.hull1 = target
         self.distance, self.closest_pos0, self.closest_pos1 = hull0.distance_between_convex_hulls(target)
-        self.d = torch.Tensor([self.distance / 10]).requires_grad_(True)
+        self.d = torch.Tensor([self.distance / 8]).requires_grad_(True)
         self.n = self._get_n()
         self.tmp_params = None
 
@@ -56,7 +56,7 @@ class BilevelOptimizer(object):
             objective *= -1
             return objective
 
-    def line_search(self, niters: int = 200, tol: float = 1e-4, scale=0.7, c1=0.7, c2=0.8):
+    def line_search(self, niters: int = 500, tol: float = 1e-4, scale=0.7, c1=0.7, c2=0.8):
         result = self.obj()
         result.backward()
         for i in range(niters):
@@ -108,7 +108,7 @@ class BilevelOptimizer(object):
         # rotation_matrix = torch.inverse(rot_z @ rot_y)
         # print(rotation_matrix @ n)
         self.beta.data.zero_()
-        self.phi.zero_()
+        self.phi.data.zero_()
         self.n = rot_z @ rot_y @ self._get_n()
 
     def _get_n(self) -> torch.Tensor:
@@ -123,15 +123,18 @@ class BilevelOptimizer(object):
         self.tmp_params = {'beta': beta_temp, 'phi': phi_temp, 'theta': theta_temp, 'd': d_temp}
 
     def _update_params(self, s):
-        self.beta = torch.remainder(self.beta - s * self.beta.grad, 2 * pi)
-        self.phi = torch.remainder(self.phi - s * self.phi.grad, 2 * pi)
-        self.theta = self.theta - s * self.theta.grad
-        self.d = self.d - s * self.d.grad
-        # self._set_grad_to_zero()
+        # self.beta = torch.remainder(self.beta - s * self.beta.grad, 2 * pi)
+        # self.phi = torch.remainder(self.phi - s * self.phi.grad, 2 * pi)
+        with torch.no_grad():
+            self.beta -= s * self.beta.grad
+            self.phi -= s * self.phi.grad
+            self.theta -= s * self.theta.grad
+            self.d -= s * self.d.grad
+
+            self._set_grad_to_zero()
 
     def _set_grad_to_zero(self):
         self.beta.grad.zero_()
         self.phi.grad.zero_()
         self.theta.grad.zero_()
-        self.n.grad.zero_()
         self.d.grad.zero_()

@@ -43,4 +43,19 @@ if __name__ == '__main__':
     # fig.show()
 
     optimizer = BilevelOptimizer(hull, hull2)
-    optimizer.line_search()
+    optimizer.line_search(niters=1500)
+
+    cube += optimizer.theta.detach().numpy()
+    hull = ConvexHulls(cube)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter3D(cube[:, 0], cube[:, 1], cube[:, 2], c='blue')
+    for simplex1 in hull.simplices:
+        ax.plot3D(cube[simplex1, 0], cube[simplex1, 1], cube[simplex1, 2], 'orange')
+
+    points2 = np.random.rand(30, 3) + 3
+    hull2 = ConvexHulls(points2)
+    ax.scatter3D(points2[:, 0], points2[:, 1], points2[:, 2], c='tomato')
+    for simplex2 in hull2.simplices:
+        ax.plot3D(points2[simplex2, 0], points2[simplex2, 1], points2[simplex2, 2], 'lightblue')
+    fig.show()
