@@ -26,7 +26,7 @@ class BilevelOptimizer(object):
         self.beta.requires_grad_(True)
         self.phi.requires_grad_(True)
         self.n = self._get_n()
-        print(self.beta, self.phi, self.n)
+
     # calculate the value of objective function
     def obj(self, mode="Normal"):
         # using the parameters from the optimizer
@@ -42,6 +42,7 @@ class BilevelOptimizer(object):
                 torch.log(self.d - torch.matmul(v1, self.n))) + torch.log(self.d)
             objective *= -1
             objective += torch.norm(self.centroid0 + self.theta - self.centroid1)
+            print(torch.norm(self.centroid0 + self.theta - self.centroid1))
             return objective
         # using the tmp variables during line search
         if mode == "Temp":
@@ -53,7 +54,8 @@ class BilevelOptimizer(object):
             phi.requires_grad_(True)
             theta.requires_grad_(True)
             d.requires_grad_(True)
-            n = torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi), torch.sin(phi)]).reshape(
+            n = torch.stack(
+                [torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi), torch.sin(phi)]).reshape(
                 (3, 1))
             points0 = torch.Tensor(self.hull0.points)
             #     ch1 = ConvexHull(points0 + theta)
@@ -80,7 +82,7 @@ class BilevelOptimizer(object):
             print(f'Round: {i + 1}')
             old_obj = result
             print('last obj', old_obj)
-            s = 10
+            s = 1
             self._get_tmp_params(s)
             result_temp, _, _, _, _ = self.obj(mode='Temp')
             print('finding feasible step size...')
@@ -168,9 +170,11 @@ class BilevelOptimizer(object):
     def _initialize_phi_beta(self):
         closest_vec = torch.Tensor(self.closest_pos1 - self.closest_pos0)
         closest_vec /= torch.norm(closest_vec)
-        print(closest_vec)
         sin_phi = closest_vec[2] / torch.sqrt(torch.square(closest_vec[0]) + torch.square(closest_vec[1]))
         phi = torch.asin(sin_phi)
         beta = torch.atan2(closest_vec[1], closest_vec[0])
         self.phi = phi.detach().clone()
         self.beta = beta.detach().clone()
+        self.n = self._get_n()
+        print(closest_vec)
+        print(self.n)
