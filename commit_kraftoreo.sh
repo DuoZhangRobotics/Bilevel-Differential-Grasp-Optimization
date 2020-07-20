@@ -10,6 +10,12 @@ if [ -d "./__pycache__" ]
 then
     rm -r ./__pycache__
 fi
+# check if dirctory ./.ipynb_checkpoints exists. if so, delete it
+if [ -d "./.ipynb_checkpoints" ]
+then 
+    rm -r ./.ipynb_checkpoints
+fi
+
 git add --all
 git commit -m "$1"
 git push -u origin master
