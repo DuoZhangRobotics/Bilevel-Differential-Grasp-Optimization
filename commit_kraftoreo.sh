@@ -1,12 +1,12 @@
 #! /bin/bash
 # check if directory ./limist exists. if so, delete it
-if [ -d "./limits"]
+if [ -d "./limits" ]
 then
     rm -r ./limits
 fi
 
 # check if directory ./__pycache exists. if so, delete it
-if [ -d "./__pycache__"]
+if [ -d "./__pycache__" ]
 then
     rm -r ./__pycache__
 fi
