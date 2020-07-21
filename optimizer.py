@@ -1,7 +1,7 @@
 import torch
 from convex_hulls import ConvexHulls
 import numpy as np
-from numpy.linalg import inv
+import matplotlib.pyplot as plt
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
@@ -14,7 +14,8 @@ class BilevelOptimizer(object):
         self.hull0 = hull0
         self.hull1 = target
         self.distance, self.closest_pos0, self.closest_pos1 = hull0.distance_between_convex_hulls(target)
-        self.d = torch.tensor([self.distance / 8], dtype=data_type).requires_grad_(True)
+        # TODO: Change the initialization method of d
+        # self.d = torch.tensor([self.distance / 8], dtype=data_type).requires_grad_(True)
         self.tmp_params = None
         self.centroid0 = torch.tensor([torch.mean(torch.tensor(self.hull0.points[self.hull0.vertices, 0])),
                                        torch.mean(torch.tensor(self.hull0.points[self.hull0.vertices, 1])),
@@ -28,23 +29,26 @@ class BilevelOptimizer(object):
         self.beta.requires_grad_(True)
         self.phi.requires_grad_(True)
         self.n = self._get_n()
+        self.d = self._initialize_d().requires_grad_(True)
+        self.objectives = []
 
     def reset_params(self):
         self.__init__(self.hull0, self.hull1)
 
+    # TODO: Simplify obj function
     # calculate the value of objective function
     def obj(self, mode="Normal"):
+        points0 = torch.tensor(self.hull0.points, dtype=data_type)
+        v0 = points0[self.hull0.vertices, :]
         # using the parameters from the optimizer
         if mode == "Normal":
-            points0 = torch.tensor(self.hull0.points, dtype=data_type)
-            points1 = points0 + self.theta
             points2 = torch.tensor(self.hull1.points, dtype=data_type)
             # vertices of two convex hulls
-            v1 = points1[self.hull0.vertices, :]
+            v1 = v0 + self.theta
             v2 = points2[self.hull1.vertices, :]
             # value of objective function
             objective = torch.sum(torch.log(torch.matmul(v2, self.n) - self.d)) + torch.sum(
-                torch.log(self.d - torch.matmul(v1, self.n))) + torch.log(self.d)
+                torch.log(self.d - torch.matmul(v1, self.n)))
             objective *= -1
             objective += torch.norm(self.centroid0 + self.theta - self.centroid1)
             return objective
@@ -61,42 +65,52 @@ class BilevelOptimizer(object):
             n = torch.stack(
                 [torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi), torch.sin(phi)]).reshape(
                 (3, 1))
-            points0 = torch.tensor(self.hull0.points, dtype=data_type)
             #     ch1 = ConvexHull(points0 + theta)
             #     points1 = torch.tensor(ch1.points)
             points1 = points0 + theta
             points2 = torch.tensor(self.hull1.points, dtype=data_type)
             # vertices of two convex hulls
             #     v1 = points1[ch1.vertices, :].T
-            v1 = points1[self.hull0.vertices, :]
+            v1 = v0 + theta
             v2 = points2[self.hull1.vertices, :]
             # value of objective function
             objective = torch.sum(torch.log(torch.matmul(v2, n) - d)) + torch.sum(
-                torch.log(d - torch.matmul(v1, n))) + torch.log(d)
+                torch.log(d - torch.matmul(v1, n)))
 
             objective *= -1
             objective += torch.norm(self.centroid0 + theta - self.centroid1)
             objective.backward()
             return objective, beta, phi, theta, d
 
-    def line_search(self, niters: int = 500, tol: float = 1e-10, scale=0.7, c1=1e-4, c2=0.8):
+    def line_search(self, niters: int = 500, tol: float = 1e-10, scale=0.9, c1=1e-4, c2=0.8):
         result = self.obj()
         result.backward()
 
         for i in range(niters):
-            print(f'Round: {i + 1}')
+            print(f'+++++++++++++++++++++++++++++++++++ The {i + 1}th iteration ++++++++++++++++++++++++++++++++++++++')
             old_obj = result
-
+            self.objectives.append(old_obj)
             print('last obj', old_obj)
+            self.print_grad()
             s = 1
             self._get_tmp_params(s)
             result_temp, _, _, _, _ = self.obj(mode='Temp')
             print('finding feasible step size...')
             # Armijo Condition
-            while result_temp > old_obj - c1 * s * torch.sum(
-                    torch.tensor(
-                        [self.beta.grad, self.phi.grad, self.d.grad, torch.sum(self.theta.grad)], dtype=data_type)) or torch.isnan(
-                result_temp):
+            # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
+            # direction
+            partial_objective = torch.tensor(
+                [self.beta.grad,
+                 self.phi.grad,
+                 self.d.grad,
+                 self.theta[0],
+                 self.theta[1],
+                 self.theta[2]],
+                dtype=data_type).reshape((1, -1))
+            line_searching_direction = partial_objective.T
+            # TODO: change Armijo condition
+            while result_temp > old_obj - c1 * s * partial_objective @ line_searching_direction or \
+                    torch.isnan(result_temp):
                 s *= scale
                 self._get_tmp_params(s)
                 result_temp, beta_temp, phi_temp, theta_temp, d_temp = self.obj(mode="Temp")
@@ -106,7 +120,7 @@ class BilevelOptimizer(object):
             if s <= tol:
                 print("step size is too small, line search terminated at armijo condition.")
                 break
-            print('s2 = ', s)
+            print('step size = ', s)
             # Curvature condition
             # while torch.sum(torch.tensor([beta_temp.grad, phi_temp.grad, d_temp.grad,
             #                               torch.sum(theta_temp.grad)])) < old_obj + c2 * s * torch.sum(torch.tensor(
@@ -125,10 +139,30 @@ class BilevelOptimizer(object):
             self._reset_n()
             result = self.obj()
             result.backward()
+            print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
             if torch.abs(result - old_obj) < tol:
                 print("Converged")
                 break
-            print('Next Round')
+
+    def find_jacobian(self):
+        beta, phi, theta, d, v0, v2, centroid0, centroid1 = self.get_params()
+        x = torch.tensor([beta.detach().clone(),
+                          phi.detach().clone(),
+                          theta[0].detach().clone(),
+                          theta[1].detach().clone(),
+                          theta[2].detach().clone(),
+                          d.detach().clone()], dtype=data_type).requires_grad_(True)
+        n = torch.stack([torch.cos(x[0]) * torch.cos(x[1]), torch.sin(x[0]) * torch.cos(x[1]),
+                         torch.sin(x[1])]).reshape(3, 1).requires_grad_(True)
+        v1 = v0 + torch.stack([x[2], x[3], x[4]])
+        objective = torch.sum(torch.log(torch.matmul(v2, n) - x[-1])) + torch.sum(
+            torch.log(x[-1] - torch.matmul(v1, n)))
+        objective *= -1
+        objective += torch.norm(centroid0 + torch.stack([x[2], x[3], x[4]]) - centroid1)
+        J = torch.autograd.grad(objective, x, retain_graph=True)
+        H = torch.autograd.grad(J, x)
+        print(f"J = {J}")
+        print(f'H = {H}')
 
     # reset beta and phi and n
     def _reset_n(self):
@@ -138,11 +172,11 @@ class BilevelOptimizer(object):
         rot_y = torch.tensor([[torch.cos(rot_y_angle), 0, torch.sin(rot_y_angle)],
                               [0, 1, 0],
                               [-torch.sin(rot_y_angle), 0, torch.cos(rot_y_angle)]
-                              ], dtype=data_type).requires_grad_(True)
+                              ], dtype=data_type)
         rot_z = torch.tensor([[torch.cos(rot_z_angle), -torch.sin(rot_z_angle), 0],
                               [torch.sin(rot_z_angle), torch.cos(rot_z_angle), 0],
                               [0, 0, 1]
-                              ], dtype=data_type).requires_grad_(True)
+                              ], dtype=data_type)
         self.beta.data.zero_()
         self.phi.data.zero_()
         self.n = rot_z @ rot_y @ self._get_n()
@@ -151,6 +185,7 @@ class BilevelOptimizer(object):
         return torch.stack([torch.cos(self.beta) * torch.cos(self.phi), torch.sin(self.beta) * torch.cos(self.phi),
                             torch.sin(self.phi)]).reshape(3, 1).requires_grad_(True)
 
+    # TODO: Use unified function
     def _get_tmp_params(self, s):
         beta_temp, phi_temp, theta_temp, d_temp = torch.remainder(self.beta - s * self.beta.grad,
                                                                   2 * pi).detach().clone(), \
@@ -185,39 +220,55 @@ class BilevelOptimizer(object):
         self.phi = phi.detach().clone()
         self.beta = beta.detach().clone()
 
-    def print_grad(self, n: int):
-        print(f'++++++++++++++++++++++++++++++++++++++++++++ The {n}th iteration +++++++++++++++++++++++++++++++++++++')
+    def _get_vertices(self):
+        points0 = torch.tensor(self.hull0.points, dtype=data_type)
+        points2 = torch.tensor(self.hull1.points, dtype=data_type)
+        v0 = points0[self.hull0.vertices, :]
+        v2 = points2[self.hull1.vertices, :]
+        return v0, v2
+
+    def _initialize_d(self):
+        v0, v2 = self._get_vertices()
+        lower_bound = torch.min(v2.mm(self.n))
+        upper_bound = torch.max(v0.mm(self.n))
+        d = torch.mean(torch.tensor([lower_bound, upper_bound]))
+        return d.detach().clone()
+
+    def print_grad(self):
         print(f'beta.grad = {self.beta.grad}')
         print(f'phi.grad = {self.phi.grad}')
         print(f'theta.grad = {self.theta.grad}')
         print(f'd.grad = {self.d.grad}')
-        print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 
     def get_params(self):
-        points0 = torch.tensor(self.hull0.points, dtype=data_type)
-        points1 = points0 + self.theta
-        points2 = torch.tensor(self.hull1.points, dtype=data_type)
-        v1 = points1[self.hull0.vertices, :]
-        v2 = points2[self.hull1.vertices, :]
-        return self.beta, self.phi, self.theta, self.d, v1, v2, self.centroid0, self.centroid1
+        v0, v2 = self._get_vertices()
+        return self.beta, self.phi, self.theta, self.d, v0, v2, self.centroid0, self.centroid1
 
-    def _obj_grad_check(self, beta, phi, theta, d, v1, v2, centroid0, centroid1):
+    def plot_objective(self):
+        fig = plt.figure()
+        plt.plot(self.objectives, marker='d')
+        fig.show()
+
+    @staticmethod
+    def _obj_grad_check(beta, phi, theta, d, v0, v2, centroid0, centroid1):
         n = torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                          torch.sin(phi)]).reshape(3, 1).requires_grad_(True)
+        v1 = v0 + theta
         # using the parameters from the optimizer
         objective = torch.sum(torch.log(torch.matmul(v2, n) - d)) + torch.sum(
-            torch.log(d - torch.matmul(v1, n))) + torch.log(d)
+            torch.log(d - torch.matmul(v1, n)))
         objective *= -1
         objective += torch.norm(centroid0 + theta - centroid1)
         return objective
 
-    def grad_check(self, eps=1e-10):
+    # TODO: Remove this function
+    def grad_check(self, eps=1e-4):
         # pytorch numerical gradient
         result = self.obj()
         result.backward()
         self.print_grad(1)
 
-        # pertubation of parameters
+        # perturbation of parameters
         _, _, _, _, v1, v2, centroid0, centroid1 = self.get_params()
         beta = self.beta.detach().clone() + eps
         phi = self.phi.detach().clone() + eps
@@ -234,4 +285,4 @@ class BilevelOptimizer(object):
         print(phi.grad)
         print(theta.grad)
         print(d.grad)
-
+        print()

@@ -22,24 +22,21 @@ if __name__ == '__main__':
 
     center = np.zeros((8, 3))
 
-
-    def control_cube(start: np.array, control_dict: {'d': 0, 'alpha': 0, 'beta': 0, 'gamma': 0}) -> np.array:
-        end = start + control_dict['d']
-        return end
-
-
     hull0 = ConvexHulls(cube)
     points2 = np.random.rand(30, 3) + 3
     hull2 = ConvexHulls(points2)
 
     optimizer = BilevelOptimizer(hull0, hull2)
-    optimizer.grad_check()
-    optimizer.reset_params()
+    # optimizer.grad_check()
+    # optimizer.reset_params()
     inputs = optimizer.get_params()
 
-    def obj(beta, phi, theta, d, v1, v2, centroid0, centroid1):
+    # optimizer.find_jacobian()
+
+    def obj(beta, phi, theta, d, v0, v2, centroid0, centroid1):
         n = torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                          torch.sin(phi)]).reshape(3, 1).requires_grad_(True)
+        v1 = v0 + theta
         # using the parameters from the optimizer
         objective = torch.sum(torch.log(torch.matmul(v2, n) - d)) + torch.sum(
             torch.log(d - torch.matmul(v1, n))) + torch.log(d)
@@ -49,9 +46,11 @@ if __name__ == '__main__':
         # using the tmp variables during line search
 
 
-    torch.autograd.gradcheck(obj, inputs)
-
+    check_result = torch.autograd.gradcheck(obj, inputs)
+    print(f'check result is {check_result}')
+    n = optimizer.n.detach().numpy()
     optimizer.line_search(niters=1500)
+    optimizer.plot_objective()
 
     cube += optimizer.theta.detach().numpy()
     hull = ConvexHulls(cube)
@@ -66,8 +65,7 @@ if __name__ == '__main__':
     ax.scatter3D(points2[:, 0], points2[:, 1], points2[:, 2], c='tomato')
     for simplex2 in hull2.simplices:
         ax.plot3D(points2[simplex2, 0], points2[simplex2, 1], points2[simplex2, 2], 'lightblue')
+
+    direction = np.concatenate((np.array([0, 0, 0]).reshape((3, 1)), n), axis=1)
+    ax.plot3D(direction[0, :], direction[1, :], direction[2, :], lw=5)
     fig.show()
-
-
-
-
