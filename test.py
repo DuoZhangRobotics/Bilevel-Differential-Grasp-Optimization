@@ -1,13 +1,12 @@
-import plotly.graph_objects as go
 import torch
 import torch.nn as nn
 from pprint import pprint
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from convex_hulls import ConvexHulls
-import numpy as np
 from optimizer import BilevelOptimizer
-from torch import cos, sin#, square
+from torch import cos, sin
+import numpy as np
 
 pi = torch.acos(torch.zeros(1, dtype=torch.double)) * 2
 
@@ -31,7 +30,7 @@ if __name__ == '__main__':
     inputs = optimizer.get_params()
 
     n = optimizer.get_n(optimizer.rotation_matrix, optimizer.beta, optimizer.phi).detach().numpy()
-    optimizer.optimize()
+    optimizer.optimize(niters = 10000)
     optimizer.plot_objective()
 
     cube += optimizer.theta.detach().numpy()
@@ -50,4 +49,5 @@ if __name__ == '__main__':
 
     direction = np.concatenate((np.array([0, 0, 0]).reshape((3, 1)), n), axis=1)
     ax.plot3D(direction[0, :], direction[1, :], direction[2, :], lw=5)
+    fig.savefig('plot.png')
     fig.show()

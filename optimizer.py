@@ -57,15 +57,15 @@ class BilevelOptimizer(object):
             objective.backward()
             return objective
 
-    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1):
+    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1, gamma=0.01):
         n = self.get_n(rotation_matrix, beta, phi)
         v1 = v0 + theta
         # using the parameters from the optimizer
-        objective = -torch.sum(torch.log(torch.matmul(v2, n) - d)) - torch.sum(torch.log(d - torch.matmul(v1, n)))
+        objective = -gamma*torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma*torch.sum(torch.log(d - torch.matmul(v1, n)))
         objective += torch.norm(centroid0 + theta - centroid1)
         return objective
 
-    def optimize(self, niters: int = 100000, tol: float = 1e-20, scale=0.9, invscale=2., c1=1e-4):
+    def optimize(self, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5, scale=0.9, invscale=2., c1=1e-4):
         result = self.obj()
         result.backward()
 
@@ -80,7 +80,7 @@ class BilevelOptimizer(object):
             
             # line search using Armijo Condition
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
-            partial_objective = torch.tensor(
+            grad = torch.tensor(
                 [self.beta.grad,
                  self.phi.grad,
                  self.d.grad,
@@ -88,8 +88,8 @@ class BilevelOptimizer(object):
                  self.theta.grad[1],
                  self.theta.grad[2]],
                 dtype=data_type).reshape((1, -1))
-            line_searching_direction = partial_objective.T
-            while result_temp > old_obj - c1 * self.s * partial_objective @ line_searching_direction or torch.isnan(result_temp):
+            line_searching_direction = grad.T
+            while result_temp > old_obj - c1 * self.s * grad @ line_searching_direction or torch.isnan(result_temp):
                 self.s *= scale
                 self._get_tmp_params(self.s)
                 result_temp = self.obj(mode="Temp")
@@ -107,7 +107,7 @@ class BilevelOptimizer(object):
             result = self.obj()
             result.backward()
             print(info)
-            if self._grad_norm() < tol:
+            if self._grad_norm() < tolg:
                 print("Converged")
                 break
             self.s*=invscale
