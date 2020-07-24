@@ -2,11 +2,11 @@ import torch
 from convex_hulls import ConvexHulls
 import numpy as np
 import matplotlib.pyplot as plt
-from pprint import pprint
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
+
 
 class BilevelOptimizer(object):
     def __init__(self, hull0: ConvexHulls, target: ConvexHulls):
@@ -30,6 +30,7 @@ class BilevelOptimizer(object):
         self._reset_rotation_matrix()
         self.d = self._initialize_d().requires_grad_(True)
         self.objectives = []
+        self.s = 1
 
     def reset_params(self):
         self.__init__(self.hull0, self.hull2)
@@ -61,7 +62,8 @@ class BilevelOptimizer(object):
         n = self.get_n(rotation_matrix, beta, phi)
         v1 = v0 + theta
         # using the parameters from the optimizer
-        objective = -gamma*torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma*torch.sum(torch.log(d - torch.matmul(v1, n)))
+        objective = -gamma * torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma * torch.sum(
+            torch.log(d - torch.matmul(v1, n)))
         objective += torch.norm(centroid0 + theta - centroid1)
         return objective
 
@@ -69,15 +71,15 @@ class BilevelOptimizer(object):
         result = self.obj()
         result.backward()
 
-        self.s=1.
+        self.s = 1.
         for i in range(niters):
             old_obj = result
             self.objectives.append(old_obj)
-            info='iter=%s obj0=%s '%(str(i+1),str(old_obj.detach().numpy()))
-            info+=self.print_grad()
+            info = 'iter=%s obj0=%s ' % (str(i + 1), str(old_obj.detach().numpy()))
+            # info += self.print_grad()
             self._get_tmp_params(self.s)
             result_temp = self.obj(mode='Temp')
-            
+
             # line search using Armijo Condition
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
             grad = torch.tensor(
@@ -88,6 +90,9 @@ class BilevelOptimizer(object):
                  self.theta.grad[1],
                  self.theta.grad[2]],
                 dtype=data_type).reshape((1, -1))
+            hessian = self.hessian()
+            print((hessian[1][0]))
+            break
             line_searching_direction = grad.T
             while result_temp > old_obj - c1 * self.s * grad @ line_searching_direction or torch.isnan(result_temp):
                 self.s *= scale
@@ -98,30 +103,64 @@ class BilevelOptimizer(object):
             if self.s <= tol:
                 print("Step size is too small, line search terminated at armijo condition.")
                 break
-            info+=' s=%s'%str(self.s)
-            
-            #adopt line search
+            info += ' s=%s' % str(self.s)
+
+            # adopt line search
             self._update_params(self.s)
-            info+=self.print_params()
-            info+=self._reset_rotation_matrix()
+            info += self.print_params()
+            info += self._reset_rotation_matrix()
             result = self.obj()
             result.backward()
-            print(info)
+            if i % 1000 == 0:
+                print(info)
             if self._grad_norm() < tolg:
                 print("Converged")
                 break
-            self.s*=invscale
+            self.s *= invscale
 
-    def _reset_rotation_matrix(self, showInfo=False):
+    @staticmethod
+    def obj_fun_hessian(beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1,
+                        gamma=torch.tensor(0.01, dtype=data_type)):
+        n = rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
+                                            torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
+        v1 = v0 + theta
+        # using the parameters from the optimizer
+        objective = -gamma * torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma * torch.sum(
+            torch.log(d - torch.matmul(v1, n)))
+        objective += torch.norm(centroid0 + theta - centroid1)
+        return objective
+
+    def hessian(self):
+        beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1 = self.get_params()
+        gamma = torch.tensor(0.01, dtype=data_type)
+        inputs = (beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1, gamma)
+        # v0, v2 = self._get_vertices()
+        # params = torch.cat([self.beta, self.phi, self.theta, self.d]).requires_grad_(True)
+        hessian_matrix = torch.autograd.functional.hessian(self.obj_fun_hessian, inputs)
+        temp_hessian = []
+        for i in range(4):
+            two = torch.stack(hessian_matrix[i][:2]).reshape((2, 1))
+            three = torch.cat((two, hessian_matrix[i][2].reshape((3, 1))))
+            print(torch.cat((three, hessian_matrix[i][3].reshape((1, 1)))))
+
+        # objective = self.obj_fun(self.beta, self.phi, self.theta, self.d, self.rotation_matrix, v0, v2, self.centroid0,
+        #                          self.centroid2)
+        # jacobian_matrix = torch.autograd.grad(objective, params, create_graph=True, retain_graph=True)
+        # print(jacobian_matrix)
+        # hessian_matrix = torch.autograd.grad(jacobian_matrix, params)
+
+        return hessian_matrix[:4]
+
+    def _reset_rotation_matrix(self, show_info=False):
         # reset beta and phi and n
-        info=''
+        info = ''
         n = self.get_n(self.rotation_matrix, self.beta, self.phi)
-        if showInfo:
-            info+=(' n0=%s'%str(n.detach().numpy().T))
-            info+=(' beta=%s, phi=%s'%(str(self.beta.detach().numpy()),str(self.phi.detach().numpy())))
+        if show_info:
+            info += (' n0=%s' % str(n.detach().numpy().T))
+            info += (' beta=%s, phi=%s' % (str(self.beta.detach().numpy()), str(self.phi.detach().numpy())))
         rot_y_angle = -self.phi.detach()
         rot_z_angle = self.beta.detach()
-        #print('rot_y_angle = %s, rot_z_angle = %s'%(rot_y_angle.detach().numpy(),rot_z_angle.detach().numpy()))
+        # print('rot_y_angle = %s, rot_z_angle = %s'%(rot_y_angle.detach().numpy(),rot_z_angle.detach().numpy()))
         rot_y = torch.tensor([[torch.cos(rot_y_angle), 0, torch.sin(rot_y_angle)],
                               [0, 1, 0],
                               [-torch.sin(rot_y_angle), 0, torch.cos(rot_y_angle)]
@@ -134,16 +173,13 @@ class BilevelOptimizer(object):
         self.phi.data.zero_()
         self.rotation_matrix @= rot_z @ rot_y
         n = self.get_n(self.rotation_matrix, self.beta, self.phi)
-        if showInfo:
-            info+=(' beta=%s, phi=%s'%(str(self.beta.detach().numpy()),str(self.phi.detach().numpy())))
-            info+=(' n1=%s'%str(n.detach().numpy().T))
-        # return rot_z @ rot_y
+        if show_info:
+            info += (' beta=%s, phi=%s' % (str(self.beta.detach().numpy()), str(self.phi.detach().numpy())))
+            info += (' n1=%s' % str(n.detach().numpy().T))
         return info
 
     @staticmethod
     def get_n(rotation_matrix, beta, phi) -> torch.tensor:
-        # print('N VALUE', torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
-        #                               torch.sin(phi)]).reshape(3, 1))
         return rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                                                torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
 
@@ -195,30 +231,30 @@ class BilevelOptimizer(object):
         return d.detach().clone()
 
     def _grad_norm(self):
-        ret=0.
-        ret+=np.linalg.norm(self.beta.grad.detach().numpy())
-        ret+=np.linalg.norm(self.phi.grad.detach().numpy())
-        ret+=np.linalg.norm(self.theta.grad.detach().numpy())
-        ret+=np.linalg.norm(self.d.grad.detach().numpy())
+        ret = 0.
+        ret += np.linalg.norm(self.beta.grad.detach().numpy())
+        ret += np.linalg.norm(self.phi.grad.detach().numpy())
+        ret += np.linalg.norm(self.theta.grad.detach().numpy())
+        ret += np.linalg.norm(self.d.grad.detach().numpy())
         return ret
 
     def print_grad(self):
-        info= (' beta.grad=%s'%str(self.beta.grad.detach().numpy()))
-        info+=(' phi.grad=%s'%str(self.phi.grad.detach().numpy()))
-        info+=(' theta.grad=%s'%str(self.theta.grad.detach().numpy()))
-        info+=(' d.grad=%s'%str(self.d.grad.detach().numpy()))
+        info = (' beta.grad=%s' % str(self.beta.grad.detach().numpy()))
+        info += (' phi.grad=%s' % str(self.phi.grad.detach().numpy()))
+        info += (' theta.grad=%s' % str(self.theta.grad.detach().numpy()))
+        info += (' d.grad=%s' % str(self.d.grad.detach().numpy()))
         return info
 
     def print_params(self):
-        info= (' beta=%s'%str(self.beta.detach().numpy()))
-        info+=(' phi=%s'%str(self.phi.detach().numpy()))
-        info+=(' theta=%s'%str(self.theta.detach().numpy()))
-        info+=(' d=%s'%str(self.d.detach().numpy()))
+        info = (' beta=%s' % str(self.beta.detach().numpy()))
+        info += (' phi=%s' % str(self.phi.detach().numpy()))
+        info += (' theta=%s' % str(self.theta.detach().numpy()))
+        info += (' d=%s' % str(self.d.detach().numpy()))
         return info
 
     def get_params(self):
         v0, v2 = self._get_vertices()
-        return self.beta, self.phi, self.theta, self.d, v0, v2, self.centroid0, self.centroid2
+        return self.beta, self.phi, self.theta, self.d, self.rotation_matrix, v0, v2, self.centroid0, self.centroid2
 
     def plot_objective(self):
         fig = plt.figure()
