@@ -8,7 +8,6 @@ from pprint import pprint
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
 
-
 class BilevelOptimizer(object):
     def __init__(self, hull0: ConvexHulls, target: ConvexHulls):
         self.theta = torch.tensor([0, 0, 0], dtype=data_type).requires_grad_(True)
@@ -35,9 +34,8 @@ class BilevelOptimizer(object):
     def reset_params(self):
         self.__init__(self.hull0, self.hull2)
 
-    # TODO: Simplify obj function
-    # calculate the value of objective function
     def obj(self, mode="Normal"):
+        # calculate the value of objective function
         v0, v2 = self._get_vertices()
         # using the parameters from the optimizer
         if mode == "Normal":
@@ -47,10 +45,10 @@ class BilevelOptimizer(object):
             return objective
         # using the tmp variables during line search
         if mode == "Temp":
-            beta: torch.tensor = self.tmp_params['beta']
-            phi: torch.tensor = self.tmp_params['phi']
-            theta: torch.tensor = self.tmp_params['theta']
-            d: torch.tensor = self.tmp_params['d']
+            beta = self.tmp_params['beta']
+            phi = self.tmp_params['phi']
+            theta = self.tmp_params['theta']
+            d = self.tmp_params['d']
             beta.requires_grad_(True)
             phi.requires_grad_(True)
             theta.requires_grad_(True)
@@ -59,107 +57,71 @@ class BilevelOptimizer(object):
             objective.backward()
             return objective
 
-    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1):
+    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1, gamma=0.01):
         n = self.get_n(rotation_matrix, beta, phi)
         v1 = v0 + theta
         # using the parameters from the optimizer
-        objective = torch.sum(torch.log(torch.matmul(v2, n) - d)) + torch.sum(
-            torch.log(d - torch.matmul(v1, n)))
-        objective *= -1
+        objective = -gamma*torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma*torch.sum(torch.log(d - torch.matmul(v1, n)))
         objective += torch.norm(centroid0 + theta - centroid1)
         return objective
 
-    def line_search(self, niters: int = 500, tol: float = 1e-10, scale=0.9, c1=1e-4, c2=0.8):
+    def optimize(self, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5, scale=0.9, invscale=2., c1=1e-4):
         result = self.obj()
         result.backward()
 
+        self.s=1.
         for i in range(niters):
-            print(f'+++++++++++++++++++++++++++++++++++ The {i + 1}th iteration ++++++++++++++++++++++++++++++++++++++')
             old_obj = result
             self.objectives.append(old_obj)
-            print('last obj', old_obj)
-            self.print_grad()
-            s = 1
-            self._get_tmp_params(s)
+            info='iter=%s obj0=%s '%(str(i+1),str(old_obj.detach().numpy()))
+            info+=self.print_grad()
+            self._get_tmp_params(self.s)
             result_temp = self.obj(mode='Temp')
-            print('finding feasible step size...')
-            # Armijo Condition
+            
+            # line search using Armijo Condition
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
-            # direction
-            partial_objective = torch.tensor(
+            grad = torch.tensor(
                 [self.beta.grad,
                  self.phi.grad,
                  self.d.grad,
-                 self.theta[0],
-                 self.theta[1],
-                 self.theta[2]],
+                 self.theta.grad[0],
+                 self.theta.grad[1],
+                 self.theta.grad[2]],
                 dtype=data_type).reshape((1, -1))
-            line_searching_direction = partial_objective.T
-            # TODO: change Armijo condition
-            while result_temp > old_obj - c1 * s * partial_objective @ line_searching_direction or \
-                    torch.isnan(result_temp):
-                s *= scale
-                self._get_tmp_params(s)
+            line_searching_direction = grad.T
+            while result_temp > old_obj - c1 * self.s * grad @ line_searching_direction or torch.isnan(result_temp):
+                self.s *= scale
+                self._get_tmp_params(self.s)
                 result_temp = self.obj(mode="Temp")
-                if s <= tol:
+                if self.s <= tol:
                     break
-            if s <= tol:
-                print("step size is too small, line search terminated at armijo condition.")
+            if self.s <= tol:
+                print("Step size is too small, line search terminated at armijo condition.")
                 break
-            print('step size = ', s)
-            # Curvature condition
-            # while torch.sum(torch.tensor([beta_temp.grad, phi_temp.grad, d_temp.grad,
-            #                               torch.sum(theta_temp.grad)])) < old_obj + c2 * s * torch.sum(torch.tensor(
-            #     [self.beta.grad, self.phi.grad, self.d.grad, torch.sum(self.theta.grad)])) or torch.isnan(
-            #     result_temp):
-            #     s *= scale
-            #     self._get_tmp_params(s)
-            #     result_temp, beta_temp, phi_temp, theta_temp, d_temp = self.obj(mode="Temp")
-            #     if s <= tol:
-            #         break
-            # if s <= tol:
-            #     print("step size is too small, line search terminated at curvature condition.")
-            #     break
-            # print("s3 = ", s)
-            self._update_params(s)
-            self.print_params()
-            self._reset_rotation_matrix()
+            info+=' s=%s'%str(self.s)
+            
+            #adopt line search
+            self._update_params(self.s)
+            info+=self.print_params()
+            info+=self._reset_rotation_matrix()
             result = self.obj()
             result.backward()
-            print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-            if torch.abs(result - old_obj) < tol:
+            print(info)
+            if self._grad_norm() < tolg:
                 print("Converged")
                 break
+            self.s*=invscale
 
-    def find_jacobian(self):
-        beta, phi, theta, d, v0, v2, centroid0, centroid1 = self.get_params()
-        x = torch.tensor([beta.detach().clone(),
-                          phi.detach().clone(),
-                          theta[0].detach().clone(),
-                          theta[1].detach().clone(),
-                          theta[2].detach().clone(),
-                          d.detach().clone()], dtype=data_type).requires_grad_(True)
-        n = torch.stack([torch.cos(x[0]) * torch.cos(x[1]), torch.sin(x[0]) * torch.cos(x[1]),
-                         torch.sin(x[1])]).reshape(3, 1).requires_grad_(True)
-        v1 = v0 + torch.stack([x[2], x[3], x[4]])
-        objective = torch.sum(torch.log(torch.matmul(v2, n) - x[-1])) + torch.sum(
-            torch.log(x[-1] - torch.matmul(v1, n)))
-        objective *= -1
-        objective += torch.norm(centroid0 + torch.stack([x[2], x[3], x[4]]) - centroid1)
-        J = torch.autograd.grad(objective, x, retain_graph=True)
-        H = torch.autograd.grad(J, x)
-        print(f"J = {J}")
-        print(f'H = {H}')
-
-    # reset beta and phi and n
-    def _reset_rotation_matrix(self):
+    def _reset_rotation_matrix(self, showInfo=False):
+        # reset beta and phi and n
+        info=''
         n = self.get_n(self.rotation_matrix, self.beta, self.phi)
-        print()
-        print(f'before rotation: n = {n}')
-        print(f'beta = {self.beta}, phi = {self.phi}')
+        if showInfo:
+            info+=(' n0=%s'%str(n.detach().numpy().T))
+            info+=(' beta=%s, phi=%s'%(str(self.beta.detach().numpy()),str(self.phi.detach().numpy())))
         rot_y_angle = -self.phi.detach()
         rot_z_angle = self.beta.detach()
-        print(f'rot_y_angle = {rot_y_angle}, rot_z_angle = {rot_z_angle}')
+        #print('rot_y_angle = %s, rot_z_angle = %s'%(rot_y_angle.detach().numpy(),rot_z_angle.detach().numpy()))
         rot_y = torch.tensor([[torch.cos(rot_y_angle), 0, torch.sin(rot_y_angle)],
                               [0, 1, 0],
                               [-torch.sin(rot_y_angle), 0, torch.cos(rot_y_angle)]
@@ -170,11 +132,13 @@ class BilevelOptimizer(object):
                               ], dtype=data_type)
         self.beta.data.zero_()
         self.phi.data.zero_()
-        print(f'beta = {self.beta}, phi = {self.phi}')
         self.rotation_matrix @= rot_z @ rot_y
         n = self.get_n(self.rotation_matrix, self.beta, self.phi)
-        print(f'after rotation, n = {n}')
+        if showInfo:
+            info+=(' beta=%s, phi=%s'%(str(self.beta.detach().numpy()),str(self.phi.detach().numpy())))
+            info+=(' n1=%s'%str(n.detach().numpy().T))
         # return rot_z @ rot_y
+        return info
 
     @staticmethod
     def get_n(rotation_matrix, beta, phi) -> torch.tensor:
@@ -183,7 +147,6 @@ class BilevelOptimizer(object):
         return rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                                                torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
 
-    # TODO: Use unified function
     def _get_tmp_params(self, s):
         beta_temp, phi_temp, theta_temp, d_temp = (self.beta - s * self.beta.grad).detach().clone(), \
                                                   (self.phi - s * self.phi.grad).detach().clone(), \
@@ -231,17 +194,27 @@ class BilevelOptimizer(object):
         d = torch.mean(torch.tensor([lower_bound, upper_bound]))
         return d.detach().clone()
 
+    def _grad_norm(self):
+        ret=0.
+        ret+=np.linalg.norm(self.beta.grad.detach().numpy())
+        ret+=np.linalg.norm(self.phi.grad.detach().numpy())
+        ret+=np.linalg.norm(self.theta.grad.detach().numpy())
+        ret+=np.linalg.norm(self.d.grad.detach().numpy())
+        return ret
+
     def print_grad(self):
-        print(f'beta.grad = {self.beta.grad}')
-        print(f'phi.grad = {self.phi.grad}')
-        print(f'theta.grad = {self.theta.grad}')
-        print(f'd.grad = {self.d.grad}')
+        info= (' beta.grad=%s'%str(self.beta.grad.detach().numpy()))
+        info+=(' phi.grad=%s'%str(self.phi.grad.detach().numpy()))
+        info+=(' theta.grad=%s'%str(self.theta.grad.detach().numpy()))
+        info+=(' d.grad=%s'%str(self.d.grad.detach().numpy()))
+        return info
 
     def print_params(self):
-        print(f'beta = {self.beta}')
-        print(f'phi = {self.phi}')
-        print(f'theta = {self.theta}')
-        print(f'd = {self.d}')
+        info= (' beta=%s'%str(self.beta.detach().numpy()))
+        info+=(' phi=%s'%str(self.phi.detach().numpy()))
+        info+=(' theta=%s'%str(self.theta.detach().numpy()))
+        info+=(' d=%s'%str(self.d.detach().numpy()))
+        return info
 
     def get_params(self):
         v0, v2 = self._get_vertices()
