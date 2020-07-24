@@ -250,4 +250,6 @@ class BilevelOptimizer(object):
     def plot_objective(self):
         fig = plt.figure()
         plt.plot(self.objectives, marker='d')
+        plt.xlabel("iterations")
+        plt.ylabel("value of objective function")
         fig.show()
