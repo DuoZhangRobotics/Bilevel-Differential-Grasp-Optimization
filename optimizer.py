@@ -77,7 +77,8 @@ class BilevelOptimizer(object):
             self.objectives.append(old_obj)
             info = 'iter=%s obj0=%s ' % (str(i + 1), str(old_obj.detach().numpy()))
             # info += self.print_grad()
-            self._get_tmp_params(self.s)
+            direction = torch.ones((6, 1))
+            self._get_tmp_params(self.s, direction)
             result_temp = self.obj(mode='Temp')
 
             # line search using Armijo Condition
@@ -85,17 +86,16 @@ class BilevelOptimizer(object):
             grad = torch.tensor(
                 [self.beta.grad,
                  self.phi.grad,
-                 self.d.grad,
                  self.theta.grad[0],
                  self.theta.grad[1],
-                 self.theta.grad[2]],
+                 self.theta.grad[2],
+                 self.d.grad],
                 dtype=data_type).reshape((1, -1))
             hessian = self.hessian()
-            break
-            line_searching_direction = grad.T
+            line_searching_direction = hessian @ grad.T
             while result_temp > old_obj - c1 * self.s * grad @ line_searching_direction or torch.isnan(result_temp):
                 self.s *= scale
-                self._get_tmp_params(self.s)
+                self._get_tmp_params(self.s, line_searching_direction)
                 result_temp = self.obj(mode="Temp")
                 if self.s <= tol:
                     break
@@ -105,12 +105,12 @@ class BilevelOptimizer(object):
             info += ' s=%s' % str(self.s)
 
             # adopt line search
-            self._update_params(self.s)
+            self._update_params(self.s, line_searching_direction)
             info += self.print_params()
             info += self._reset_rotation_matrix()
             result = self.obj()
             result.backward()
-            if i % 1000 == 0:
+            if i % 10 == 0:
                 print(info)
             if self._grad_norm() < tolg:
                 print("Converged")
@@ -131,10 +131,10 @@ class BilevelOptimizer(object):
 
     @staticmethod
     def obj_hessian(params, rotation_matrix, v0, v2, centroid0, centroid1, gamma):
-        beta =  params[0, 0]
-        phi =   params[0, 1]
+        beta = params[0, 0]
+        phi = params[0, 1]
         theta = params[0, 2:5]
-        d =     params[0, 5]
+        d = params[0, 5]
         n = rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                                             torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
         v1 = v0 + theta
@@ -145,35 +145,46 @@ class BilevelOptimizer(object):
         return objective
 
     def hessian(self):
-        beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1 = self.get_params()
-        gamma = torch.tensor(0.01, dtype=data_type)
+        # beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1 = self.get_params()
+        # beta = beta.detach().clone().requires_grad_(True)
+        # phi = phi.detach().clone().requires_grad_(True)
+        # theta = theta.detach().clone().requires_grad_(True)
+        # d = d.detach().clone().requires_grad_(True)
+        # gamma = torch.tensor(0.01, dtype=data_type)
         # inputs = (beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1, gamma)
-        # # v0, v2 = self._get_vertices()
-        params = torch.cat([self.beta.reshape((1, 1)), self.phi.reshape(1, 1), self.theta.reshape(1, 3), self.d.reshape((1, 1))], 1).requires_grad_(True)
         # hessian_matrix = torch.autograd.functional.hessian(self.obj_fun_hessian, inputs)
-        # print(hessian_matrix[2][2])
         # temp_hessian = []
         # for i in range(4):
         #     temp = []
         #     for j in range(4):
-        #         if j != 2:
-        #             temp.append(hessian_matrix[i][j].reshape((-1, 1)))
-        #         else:
-        #             temp.append(hessian_matrix[i][j].reshape(3, -1))
-        #     temp_hessian.append(torch.cat(temp))
-        # print(temp_hessian)
-        # hessian_matrix = torch.cat(temp_hessian, 1)
-        # print(hessian_matrix)
+        #         if hessian_matrix[i][j].shape == ():
+        #             temp.append(hessian_matrix[i][j].reshape((1, 1)))
+        #         if hessian_matrix[i][j].shape == torch.Size([3]):
+        #             if j == 2:
+        #                 temp.append(hessian_matrix[i][j].reshape((1, 3)))
+        #             if i == 2:
+        #                 temp.append(hessian_matrix[i][j].reshape((3, 1)))
+        #         if hessian_matrix[i][j].shape == torch.Size([3, 3]):
+        #             temp.append(hessian_matrix[i][j])
+        #     temp_hessian.append(torch.cat(temp, 1))
+        # hessian_matrix = torch.cat(temp_hessian)
 
         """ split line """
+        beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1 = self.get_params()
+        beta = beta.detach().clone().requires_grad_(True)
+        phi = phi.detach().clone().requires_grad_(True)
+        theta = theta.detach().clone().requires_grad_(True)
+        d = d.detach().clone().requires_grad_(True)
+        gamma = torch.tensor(0.01, dtype=data_type)
+        params = torch.cat([beta.reshape((1, 1)), phi.reshape(1, 1), theta.reshape(1, 3), d.reshape((1, 1))],
+                           1).requires_grad_(True)
         objective = self.obj_hessian(params, rotation_matrix, v0, v2, centroid0, centroid1, gamma)
         jacobian = torch.autograd.grad(objective, params, retain_graph=True, create_graph=True)[0]
-        l = jacobian.size(1)
-        hessian_matrix = torch.zeros((l, l))
-        for i in range(l):
+        length = jacobian.size(1)
+        hessian_matrix = torch.zeros((length, length), dtype=data_type)
+        for i in range(length):
             hessian_matrix[i, :] = torch.autograd.grad(jacobian[0, i], params, retain_graph=True)[0]
-
-        print(hessian_matrix)
+        return hessian_matrix
 
     def _reset_rotation_matrix(self, show_info=False):
         # reset beta and phi and n
@@ -207,21 +218,21 @@ class BilevelOptimizer(object):
         return rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
                                                torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
 
-    def _get_tmp_params(self, s):
-        beta_temp, phi_temp, theta_temp, d_temp = (self.beta - s * self.beta.grad).detach().clone(), \
-                                                  (self.phi - s * self.phi.grad).detach().clone(), \
-                                                  (self.theta - s * self.theta.grad).detach().clone(), \
-                                                  (self.d - s * self.d.grad).detach().clone()
+    def _get_tmp_params(self, s, direction):
+        beta_temp, phi_temp, theta_temp, d_temp = (self.beta - s * direction[0, 0] * self.beta.grad).detach().clone(), \
+                                                  (self.phi - s * direction[1, 0] * self.phi.grad).detach().clone(), \
+                                                  (self.theta - s * direction[2:5, 0] * self.theta.grad).detach().clone(), \
+                                                  (self.d - s * direction[5, 0] * self.d.grad).detach().clone()
         self.tmp_params = {'beta': beta_temp, 'phi': phi_temp, 'theta': theta_temp, 'd': d_temp}
 
-    def _update_params(self, s):
+    def _update_params(self, s, direction):
         with torch.no_grad():
-            self.beta -= s * self.beta.grad
+            self.beta -= s * direction[0, 0] * self.beta.grad
             # self.beta = torch.remainder(self.beta, 2 * pi).detach().clone().requires_grad_(True)
-            self.phi -= s * self.phi.grad
+            self.phi -= s * direction[1, 0] * self.phi.grad
             # self.phi = torch.remainder(self.phi, 2 * pi).detach().clone().requires_grad_(True)
-            self.theta -= s * self.theta.grad
-            self.d -= s * self.d.grad
+            self.theta -= s * direction[2:5, 0] * self.theta.grad
+            self.d -= s * direction[5, 0] * self.d.grad
             self._set_grad_to_zero()
 
     def _set_grad_to_zero(self):
