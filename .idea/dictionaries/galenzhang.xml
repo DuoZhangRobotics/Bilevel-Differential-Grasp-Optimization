@@ -2,6 +2,7 @@
   <dictionary name="galenzhang">
     <words>
       <w>bilevel</w>
+      <w>jacobian</w>
       <w>niters</w>
       <w>pytorch</w>
     </words>
