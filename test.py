@@ -54,4 +54,3 @@ if __name__ == '__main__':
     fig.show()
 
     # plotting(cube, hull2.points)
-

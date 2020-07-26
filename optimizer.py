@@ -46,6 +46,15 @@ class BilevelOptimizer(object):
             objective.backward()
             return objective
 
+    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid2, gamma=torch.tensor(0.01, dtype=data_type)):
+        n = self.get_n(rotation_matrix, beta, phi)
+        v1 = v0 + theta
+        # using the parameters from the optimizer
+        objective = -gamma * torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma * torch.sum(
+            torch.log(d - torch.matmul(v1, n)))
+        objective += torch.norm(centroid0 + theta - centroid2)
+        return objective
+
     def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, scale=0.9, invscale=2., c1=1e-4):
         result = self.obj()
         result.backward()
@@ -63,7 +72,7 @@ class BilevelOptimizer(object):
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
             grad = torch.tensor(
                 [self.beta.grad,
-                 self.phi.grad,,
+                 self.phi.grad,
                  self.theta.grad[0],
                  self.theta.grad[1],
                  self.theta.grad[2],
@@ -247,7 +256,7 @@ class BilevelOptimizer(object):
         points2 = torch.tensor(self.hull2.points, dtype=data_type)
         v0 = points0[self.hull0.vertices, :]
         v2 = points2[self.hull2.vertices, :]
-        return v0, v2,,
+        return v0, v2
 
     def _initialize_d(self):
         v0, v2 = self._get_vertices()
@@ -289,3 +298,18 @@ class BilevelOptimizer(object):
         plt.xlabel("iterations")
         plt.ylabel("value of objective function")
         fig.show()
+
+    def get_params1(self):
+        beta = self.beta.detach().clone().requires_grad_(True)
+        phi = self.phi.detach().clone().requires_grad_(True)
+        theta = self.theta.detach().clone().requires_grad_(True)
+        d = self.d.detach().clone().requires_grad_(True)
+        params = torch.cat([beta.reshape((1, 1)), phi.reshape(1, 1), theta.reshape(1, 3), d.reshape((1, 1))],
+                           1).requires_grad_(True)
+        v0, v2 = self._get_vertices()
+        return params, self.rotation_matrix, v0, v2, self.centroid0, self.centroid2
+
+    @staticmethod
+    def get_n(rotation_matrix, beta, phi) -> torch.tensor:
+        return rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
+                                               torch.sin(phi)]).reshape(3, 1).requires_grad_(True))

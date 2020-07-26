@@ -28,3 +28,16 @@ def obj_fun(input_tensor_tuple):
         torch.log(d - torch.matmul(v1, n)))
     objective += torch.norm(centroid0 + theta - centroid1)
     return objective
+
+
+def exp_reducer(x):
+    return x.exp().sum()
+
+
+input = torch.tensor([0, 0, 0, 1, 1, 1, 2, 2, 2], dtype=torch.double).requires_grad_(True)
+out = exp_reducer(input)
+j = torch.autograd.grad(out, input, retain_graph=True)
+print(j)
+print(input.grad)
+out.backward()
+print(input.grad)
