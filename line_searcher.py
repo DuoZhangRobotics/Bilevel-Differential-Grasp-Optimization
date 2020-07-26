@@ -17,4 +17,3 @@ class LineSearch(object):
         self.func = func
         self.mode = mode
         self.c1, self.c2 = c1, c2
-   
