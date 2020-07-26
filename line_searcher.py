@@ -3,7 +3,7 @@ import numpy as np
 from typing import Callable, Union, Sequence
 from function import obj_fun
 from optimizer import BilevelOptimizer
-
+from ConvexhullSettings import ConvexHullSettings
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
@@ -33,13 +33,13 @@ _TensorOrTensors = Union[torch.tensor, Sequence[torch.tensor]]
 
 
 class LineSearcher(object):
-    def __init__(self, bioptimizer: BilevelOptimizer, func: Callable, params: _TensorOrTensors, mode='Armijo', c1=1e-4,
+    def __init__(self, settings: ConvexHullSettings, func: Callable, params: _TensorOrTensors, mode='Armijo', c1=1e-4,
                  c2=0.9):
         """
 
         Parameters
         ----------
-        bioptimizer: the convex hull settings
+        settings: the convex hull settings
         func: the function going to be optimized
         params: the inputs of func, parmas[0] should be the arg tensor shaped in 1xn that needs to be optimized
         mode: including 'Armijo' or 'Wolfe', if mode is set to Armijo, then only Wolfe first condition is applied.
@@ -53,7 +53,7 @@ class LineSearcher(object):
         if not isinstance(params, tuple):
             raise TypeError("Input parameters shouble be a tuple.")
 
-        self.bioptimizer = bioptimizer
+        self.settings = settings
         self.func = func
         self.params, _ = _as_tuple(params, 'inputs', func.__name__)
         self.params_need_to_be_optimized: torch.tensor = self.params[0]
@@ -76,7 +76,8 @@ class LineSearcher(object):
         for i in range(niters):
             old_obj = result
             self.objective_values.append(old_obj)
-            result_temp = self.obj(mode='Temp')
+            temp_params = self.update_params(self.params - self.s * self.jacobian_matrix)
+            result_temp = self.func(*temp_params)
             # line search using Armijo Condition
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
             grad = self.params_need_to_be_optimized.grad.reshape((1, -1))
@@ -112,3 +113,9 @@ class LineSearcher(object):
         for i in range(length):
             hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[0, i], self.params, retain_graph=True)[0]
         return hessian_matrix
+
+    def update_params(self, param0):
+        params = self.params
+        #TODO: You can not assign a tuple like this
+        params[0] = params
+        return params
