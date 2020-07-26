@@ -15,25 +15,13 @@ class BilevelOptimizer(object):
         self.hull2 = target
         self.distance, self.closest_pos0, self.closest_pos1 = hull0.distance_between_convex_hulls(target)
         self.tmp_params = None
-        self.centroid0 = torch.tensor([torch.mean(torch.tensor(self.hull0.points[self.hull0.vertices, 0])),
-                                       torch.mean(torch.tensor(self.hull0.points[self.hull0.vertices, 1])),
-                                       torch.mean(torch.tensor(self.hull0.points[self.hull0.vertices, 2]))
-                                       ], dtype=data_type)
-        self.centroid2 = torch.tensor([torch.mean(torch.tensor(self.hull2.points[self.hull2.vertices, 0])),
-                                       torch.mean(torch.tensor(self.hull2.points[self.hull2.vertices, 1])),
-                                       torch.mean(torch.tensor(self.hull2.points[self.hull2.vertices, 2]))
-                                       ], dtype=data_type)
-        self._initialize_phi_beta()
-        self.beta.requires_grad_(True)
-        self.phi.requires_grad_(True)
+        self.centroid0, self.centroid2 = self._initialize_centroids()
+        self.beta, self.phi = self._initialize_phi_beta()
         self.rotation_matrix = torch.eye(3, dtype=data_type)
         self._reset_rotation_matrix()
         self.d = self._initialize_d().requires_grad_(True)
         self.objectives = []
         self.s = 1
-
-    def reset_params(self):
-        self.__init__(self.hull0, self.hull2)
 
     def obj(self, mode="Normal"):
         # calculate the value of objective function
@@ -58,15 +46,6 @@ class BilevelOptimizer(object):
             objective.backward()
             return objective
 
-    def obj_fun(self, beta, phi, theta, d, rotation_matrix, v0, v2, centroid0, centroid1, gamma=0.01):
-        n = self.get_n(rotation_matrix, beta, phi)
-        v1 = v0 + theta
-        # using the parameters from the optimizer
-        objective = -gamma * torch.sum(torch.log(torch.matmul(v2, n) - d)) - gamma * torch.sum(
-            torch.log(d - torch.matmul(v1, n)))
-        objective += torch.norm(centroid0 + theta - centroid1)
-        return objective
-
     def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, scale=0.9, invscale=2., c1=1e-4):
         result = self.obj()
         result.backward()
@@ -84,7 +63,7 @@ class BilevelOptimizer(object):
             # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
             grad = torch.tensor(
                 [self.beta.grad,
-                 self.phi.grad,
+                 self.phi.grad,,
                  self.theta.grad[0],
                  self.theta.grad[1],
                  self.theta.grad[2],
@@ -218,11 +197,6 @@ class BilevelOptimizer(object):
             info += (' n1=%s' % str(n.detach().numpy().T))
         return info
 
-    @staticmethod
-    def get_n(rotation_matrix, beta, phi) -> torch.tensor:
-        return rotation_matrix @ (torch.stack([torch.cos(beta) * torch.cos(phi), torch.sin(beta) * torch.cos(phi),
-                                               torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
-
     def _get_tmp_params(self, s):
         beta_temp, phi_temp, theta_temp, d_temp = (self.beta - s * self.beta.grad).detach().clone(), \
                                                   (self.phi - s * self.phi.grad).detach().clone(), \
@@ -254,15 +228,26 @@ class BilevelOptimizer(object):
         sin_phi = closest_vec[2]
         phi = torch.asin(sin_phi)
         beta = torch.atan2(closest_vec[1], closest_vec[0])
-        self.phi = phi.detach().clone()
-        self.beta = beta.detach().clone()
+        return phi.detach().clone().requires_grad_(True), beta.detach().clone().requires_grad_(True)
+
+    def _initialize_centroids(self):
+        centroid0 = self._get_centroid(self.hull0)
+        centroid2 = self._get_centroid(self.hull2)
+        return centroid0, centroid2
+
+    @staticmethod
+    def _get_centroid(hull):
+        return torch.tensor([torch.mean(torch.tensor(hull.points[hull.vertices, 0])),
+                             torch.mean(torch.tensor(hull.points[hull.vertices, 1])),
+                             torch.mean(torch.tensor(hull.points[hull.vertices, 2]))
+                             ], dtype=data_type)
 
     def _get_vertices(self):
         points0 = torch.tensor(self.hull0.points, dtype=data_type)
         points2 = torch.tensor(self.hull2.points, dtype=data_type)
         v0 = points0[self.hull0.vertices, :]
         v2 = points2[self.hull2.vertices, :]
-        return v0, v2
+        return v0, v2,,
 
     def _initialize_d(self):
         v0, v2 = self._get_vertices()
