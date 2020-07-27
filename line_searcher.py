@@ -35,7 +35,7 @@ _TensorOrTensors = Union[torch.tensor, Sequence[torch.tensor]]
 
 
 class LineSearcher(object):
-    def __init__(self, func: Callable, params: _TensorOrTensors, mode='Armijo', c1=1e-4, c2=0.9, s = 1):
+    def __init__(self, func: Callable, params: _TensorOrTensors, mode='Armijo', c1=1e-4, c2=0.9, s=1):
         """
 
         Parameters
