@@ -10,8 +10,8 @@ data_type = torch.double
 
 
 def _as_list(inputs, arg_name, fn_name):
-    # Ensures that inp is a tuple of Tensors
-    # Returns whether or not the original inp was a tuple and the tupled version of the input
+    # Ensures that inp is a list of Tensors
+    # Returns whether or not the original inp was a tuple and the listed version of the input
     is_input_list = True
     if not isinstance(inputs, list):
         inputs = (inputs,)
@@ -117,7 +117,6 @@ class LineSearcher(object):
         hessian_matrix = torch.zeros((length, length), dtype=data_type)
         for i in range(length):
             hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[0, i], self.params[0], retain_graph=True)[0]
-        jjt = torch.diag(self.jacobian_matrix.reshape((-1))) @ torch.diag(self.jacobian_matrix.reshape(-1))
         return hessian_matrix
 
     def update_params(self, param0):

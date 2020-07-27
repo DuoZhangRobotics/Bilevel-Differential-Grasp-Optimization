@@ -35,4 +35,4 @@ if __name__ == "__main__":
     bioptimizer.optimize(niters=10000)
     bioptimizer.plot_obj()
     bioptimizer.plot_convex_hulls()
-    bioptimizer.plot_high_quality()
+    # bioptimizer.plot_high_quality()
