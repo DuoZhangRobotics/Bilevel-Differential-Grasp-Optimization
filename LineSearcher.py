@@ -95,7 +95,7 @@ class LineSearcher(object):
             except LinAlgError:
                 # if the hessian matrix is not positive definite, then make it positive definite.
                 print("The Hessian matrix is not positive definite. Now trying to correct it...")
-                hessian = self.make_it_positive_definite(hessian)
+                hessian = self.make_it_positive_definite()
             line_searching_direction = torch.inverse(hessian) @ line_searching_direction
 
         tmp_output, _ = self.update_output(line_searching_direction)
@@ -117,6 +117,7 @@ class LineSearcher(object):
         hessian_matrix = torch.zeros((length, length), dtype=data_type)
         for i in range(length):
             hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[0, i], self.params[0], retain_graph=True)[0]
+        jjt = torch.diag(self.jacobian_matrix.reshape((-1))) @ torch.diag(self.jacobian_matrix.reshape(-1))
         return hessian_matrix
 
     def update_params(self, param0):
@@ -133,9 +134,15 @@ class LineSearcher(object):
         self.__init__(self.func, params, self.mode, self.method, self.c1, self.c2, self.s)
 
     # TODO: fix this function later
-    @staticmethod
-    def make_it_positive_definite(matrix: torch.tensor):
-        return matrix
+    def make_it_positive_definite(self):
+        self.hessian_matrix = torch.diag(self.jacobian_matrix.reshape((-1))) @ torch.diag(self.jacobian_matrix.reshape(-1))
+        try:
+            np.linalg.cholesky(self.hessian_matrix.detach().numpy())
+        except LinAlgError:
+            # if the hessian matrix is not positive definite, then make it positive definite.
+            print("The Hessian matrix is not positive definite. Now trying to correct it...")
+            self.hessian_matrix = self.make_it_positive_definite()
+        return self.hessian_matrix
 
     def grad_norm(self):
         return torch.norm(self.jacobian_matrix)

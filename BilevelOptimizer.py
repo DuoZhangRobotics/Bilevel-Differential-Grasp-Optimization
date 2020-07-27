@@ -26,6 +26,7 @@ class BilevelOptimizer(object):
             parameters = self.ch_settings.get_params()
             # parameters.append()
             self.line_searcher.reset_parameters(self.ch_settings.get_params())
+            print(f"iter {i + 1}", self.line_searcher.jacobian_matrix)
             if self.line_searcher.grad_norm() < tolg:
                 print("Converged!")
                 break
