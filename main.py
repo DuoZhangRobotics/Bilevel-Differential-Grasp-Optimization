@@ -1,10 +1,40 @@
-import plotly.graph_objects as go
 import torch
-import torch.nn as nn
-from pprint import pprint
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from convex_hulls import ConvexHulls
 import numpy as np
+from ConvexhullSettings import ConvexHullSettings
+from LineSearcher import LineSearcher
+from function import obj_fun
+from BilevelOptimizer import BilevelOptimizer
 
+
+# define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
+data_type = torch.double
+
+if __name__ == "__main__":
+    cube = np.array([[-0.5, -0.5, -0.5],
+                     [-0.5, 0.5, -0.5],
+                     [0.5, -0.5, -0.5],
+                     [0.5, 0.5, -0.5],
+                     [-0.5, 0.5, 0.5],
+                     [0.5, -0.5, 0.5],
+                     [-0.5, -0.5, 0.5],
+                     [0.5, 0.5, 0.5]])
+
+    hull0 = ConvexHulls(cube)
+
+    points2 = np.random.rand(30, 3) + 3
+    hull2 = ConvexHulls(points2)
+    gamma = torch.tensor(0.01, dtype=data_type)
+    ch_settings = ConvexHullSettings(hull0, hull2)
+    parameters = ch_settings.get_params()
+    parameters.append(gamma)
+    line_searcher = LineSearcher(obj_fun, parameters)
+    print(line_searcher.jacobian_matrix)
+
+    bioptimizer = BilevelOptimizer(ch_settings, line_searcher, obj_fun)
+    bioptimizer.optimize(niters=100)
+    bioptimizer.plot_obj()
+    bioptimizer.plot_convex_hulls()
+
