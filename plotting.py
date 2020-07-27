@@ -47,16 +47,6 @@ def plotting(points1, points2):
                                     name='Convex Hull2',
                                     showlegend=False))
 
-    # fig.add_trace(go.Scatter3d(x=optimal_dots[:, 0],
-    #                            y=optimal_dots[:, 1],
-    #                            z=optimal_dots[:, 2],
-    #                            marker=dict(size=4,
-    #                                        color='tomato',
-    #                                        symbol='diamond'),
-    #                            line=dict(color='tomato',
-    #                                      width=4),
-    #                            legendgroup="Smallest Distance",
-    #                            name="Smallest Distance"))
     fig.update_layout(scene_camera=dict(eye=dict(x=1.2, y=-1.6, z=1.0)),
                       margin=dict(t=0, r=10, l=10, b=10),
                       legend=dict(x=0.6, y=1),
