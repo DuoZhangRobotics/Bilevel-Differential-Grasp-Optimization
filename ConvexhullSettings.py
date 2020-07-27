@@ -1,7 +1,6 @@
 import torch
 from convex_hulls import ConvexHulls
-import numpy as np
-import matplotlib.pyplot as plt
+
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2

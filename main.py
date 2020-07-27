@@ -1,5 +1,4 @@
 import torch
-import matplotlib.pyplot as plt
 from convex_hulls import ConvexHulls
 import numpy as np
 from ConvexhullSettings import ConvexHullSettings

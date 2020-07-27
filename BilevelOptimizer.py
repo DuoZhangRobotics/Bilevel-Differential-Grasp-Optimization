@@ -2,7 +2,6 @@ import torch
 import numpy as np
 from LineSearcher import LineSearcher
 from ConvexhullSettings import ConvexHullSettings
-from function import obj_fun
 from typing import Callable
 import matplotlib.pyplot as plt
 from convex_hulls import ConvexHulls
@@ -56,7 +55,7 @@ class BilevelOptimizer(object):
         for simplex2 in hull2.simplices:
             ax.plot3D(hull2.points[simplex2, 0], hull2.points[simplex2, 1], hull2.points[simplex2, 2], 'lightblue')
 
-        n = self.ch_settings.get_n().detach().numpy()
-        direction = np.concatenate((np.array([0, 0, 0]).reshape((3, 1)), n), axis=1)
-        ax.plot3D(direction[0, :], direction[1, :], direction[2, :], lw=5)
+        # n = self.ch_settings.get_n().detach().numpy()
+        # direction = np.concatenate((np.array([0, 0, 0]).reshape((3, 1)), n), axis=1)
+        # ax.plot3D(direction[0, :], direction[1, :], direction[2, :], lw=5)
         fig.show()

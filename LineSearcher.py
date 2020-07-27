@@ -2,9 +2,7 @@ import torch
 import numpy as np
 from typing import Callable, Union, Sequence
 from numpy.linalg import LinAlgError
-from function import obj_fun
-from optimizer import BilevelOptimizer
-from ConvexhullSettings import ConvexHullSettings
+
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
