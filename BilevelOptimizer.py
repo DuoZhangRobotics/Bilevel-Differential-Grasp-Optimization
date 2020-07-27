@@ -37,6 +37,7 @@ class BilevelOptimizer(object):
         plt.xlabel("iterations")
         plt.ylabel("value of objective function")
         fig.show()
+        fig.savefig('Objective_function_values.')
 
     def plot_convex_hulls(self):
         hull, hull2 = self.ch_settings.get_hulls()
@@ -55,8 +56,5 @@ class BilevelOptimizer(object):
         ax.scatter3D(hull2.points[:, 0], hull2.points[:, 1], hull2.points[:, 2], c='tomato')
         for simplex2 in hull2.simplices:
             ax.plot3D(hull2.points[simplex2, 0], hull2.points[simplex2, 1], hull2.points[simplex2, 2], 'lightblue')
-
-        # n = self.ch_settings.get_n().detach().numpy()
-        # direction = np.concatenate((np.array([0, 0, 0]).reshape((3, 1)), n), axis=1)
-        # ax.plot3D(direction[0, :], direction[1, :], direction[2, :], lw=5)
         fig.show()
+        fig.savefig('Convex_hulls.png')

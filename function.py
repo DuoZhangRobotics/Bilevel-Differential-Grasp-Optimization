@@ -15,7 +15,7 @@ def get_n(rotation_matrix, beta, phi) -> torch.tensor:
                                            torch.sin(phi)]).reshape(3, 1).requires_grad_(True))
 
 
-def obj_fun(params, rotation_matrix, v0, v2, centroid0, centroid1, gamma=torch.tensor(0.01, dtype=torch.double)):
+def obj_fun(params, rotation_matrix, v0, v2, centroid0, centroid1, gamma=torch.tensor(0.001, dtype=torch.double)):
     # if isinstance(input_tensor_tuple, tuple):
     #     params, rotation_matrix, v0, v2, centroid0, centroid1, gamma = input_tensor_tuple
     # else:
