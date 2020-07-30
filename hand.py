@@ -146,7 +146,7 @@ def write_vtk(polydata, name):
 
 
 class Link:
-    def __init__(self, mesh, parent, transform, dhParams):
+    def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams):
         self.mesh = mesh
         self.parent = parent
         self.transform = transform
@@ -347,6 +347,7 @@ class Hand(torch.nn.Module):
         # build links
         transform = transforms3d.affines.compose(np.zeros(3), np.eye(3, 3), [1, 1, 1])
         self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None)
+        print(self.root)
         for i in range(len(self.contacts[-1, 0])):
             self.palm.add_end_effector(self.contacts[-1, 0][i][0], self.contacts[-1, 0][i][1])
         chain_index = 0
@@ -452,8 +453,8 @@ class Hand(torch.nn.Module):
                 root = ET.parse(self.hand_path + '/eigen' + '/' + f).getroot()
                 self.origin_eigen = np.zeros((self.nr_dof()), dtype=np.float64)
                 self.dir_eigen = np.zeros((self.nr_dof(), 2), dtype=np.float64)
-                self.lb_eigen = np.zeros((2), dtype=np.float64)
-                self.ub_eigen = np.zeros((2), dtype=np.float64)
+                self.lb_eigen = np.zeros(2, dtype=np.float64)
+                self.ub_eigen = np.zeros(2, dtype=np.float64)
                 self.eg_num = 0
                 # read origin
                 for ORIGIN in root.iter('ORIGIN'):
@@ -663,30 +664,30 @@ class Hand(torch.nn.Module):
         if os.path.exists('limits'):
             shutil.rmtree('limits')
         os.mkdir('limits')
-        lb, ub = hand.lb_ub()
+        lb, ub = self.lb_ub()
 
         for i in range(len(lb)):
-            dofs = np.asarray([0.0 for i in range(hand.nr_dof())])
+            dofs = np.asarray([0.0 for i in range(self.nr_dof())])
             self.use_eigen = False
             dofs[i] = lb[i]
-            hand.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
+            self.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
             mesh_vtk = trimesh_to_vtk(self.draw(1, False))
             write_vtk(mesh_vtk, 'limits/lower%d.vtk' % i)
 
             dofs[i] = ub[i]
-            hand.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
+            self.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
             mesh_vtk = trimesh_to_vtk(self.draw(1, False))
             write_vtk(mesh_vtk, 'limits/upper%d.vtk' % i)
 
         if hasattr(self, 'origin_eigen'):
             for d in range(self.lb_eigen.shape[0]):
                 dofs = self.origin_eigen + self.dir_eigen[:, d] * self.lb_eigen[d]
-                hand.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
+                self.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
                 mesh_vtk = trimesh_to_vtk(self.draw(1, False))
                 write_vtk(mesh_vtk, 'limits/lowerEigen%d.vtk' % d)
 
                 dofs = self.origin_eigen + self.dir_eigen[:, d] * self.ub_eigen[d]
-                hand.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
+                self.forward_kinematics(np.zeros(self.extrinsic_size), dofs)
                 mesh_vtk = trimesh_to_vtk(self.draw(1, False))
                 write_vtk(mesh_vtk, 'limits/upperEigen%d.vtk' % d)
 
@@ -860,7 +861,9 @@ def vtk_render(renderer, axes=True):
 
 
 if __name__ == '__main__':
-    hand_paths = ['hand/BarrettHand/', 'hand/ShadowHand/']
+    hand_paths = [
+        # 'hand/BarrettHand/',
+        'hand/ShadowHand/']
     scale = 0.01
     for path in hand_paths:
         use_eigen = True

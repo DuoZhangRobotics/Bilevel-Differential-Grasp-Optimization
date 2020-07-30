@@ -5,6 +5,7 @@ from ConvexhullSettings import ConvexHullSettings
 from LineSearcher import LineSearcher
 from function import obj_fun
 from BilevelOptimizer import BilevelOptimizer
+from Plot import Plot
 
 
 # define pi in torch
@@ -33,6 +34,7 @@ if __name__ == "__main__":
 
     bioptimizer = BilevelOptimizer(ch_settings, line_searcher, obj_fun)
     bioptimizer.optimize(niters=10000)
-    bioptimizer.plot_obj()
-    bioptimizer.plot_convex_hulls()
-    # bioptimizer.plot_high_quality()
+    plotter = Plot(bioptimizer)
+    plotter.plot_convex_hulls()
+    plotter.plot_obj()
+    plotter.plot_high_quality()

@@ -66,7 +66,7 @@ class LineSearcher(object):
                                                                  self.params_need_to_be_optimized,
                                                                  retain_graph=True,
                                                                  create_graph=True)[0]
-        self.hessian_matrix = self.hessian()
+        self.hessian_matrix = self.hessian().detach().numpy()
 
     def line_search(self, tol: float = 1e-10, scale=0.9, invscale=2.):
         """
@@ -88,14 +88,14 @@ class LineSearcher(object):
         grad = self.jacobian_matrix.reshape((1, -1))
         line_searching_direction = grad.T
         if self.method == 'Newton':
-            hessian = self.hessian_matrix
+            hessian = torch.tensor(self.hessian_matrix, dtype=data_type)
             # check if the hessian matrix is positive definite
             try:
                 np.linalg.cholesky(hessian.detach().numpy())
             except LinAlgError:
                 # if the hessian matrix is not positive definite, then make it positive definite.
                 print("The Hessian matrix is not positive definite. Now trying to correct it...")
-                hessian = self.make_it_positive_definite()
+                hessian = torch.tensor(self.make_it_positive_definite(), dtype=data_type)
             line_searching_direction = torch.inverse(hessian) @ line_searching_direction
 
         tmp_output, _ = self.update_output(line_searching_direction)
@@ -134,7 +134,7 @@ class LineSearcher(object):
 
     # TODO: fix this function later
     def make_it_positive_definite(self, scale=0.01):
-        eigenvalues, eigenvectors = np.linalg.eig(self.hessian_matrix.detach().numpy())
+        eigenvalues, eigenvectors = np.linalg.eig(self.hessian_matrix)
         l = np.linalg.norm(eigenvalues, ord=1)
         eigenvalues += scale * l
         self.hessian_matrix = eigenvectors @ np.diag(eigenvalues) @ np.linalg.inv(eigenvectors)
@@ -144,7 +144,7 @@ class LineSearcher(object):
             # if the hessian matrix is not positive definite, then make it positive definite.
             print("The Hessian matrix is not positive definite. Now trying to correct it...")
             self.hessian_matrix = self.make_it_positive_definite()
-        return torch.tensor(self.hessian_matrix, dtype=data_type)
+        return self.hessian_matrix
 
     def grad_norm(self):
         return torch.norm(self.jacobian_matrix)
