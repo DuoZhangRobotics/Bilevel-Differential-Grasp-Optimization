@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<robot type="Shadow">
+    <palm>cube.xml</palm>
+    <dof type="r">
+        <defaultVelocity>0.0</defaultVelocity>
+        <maxEffort>1.0e+8</maxEffort>
+        <Kp>1.0e+8</Kp>
+        <Kd>1.0e+11</Kd>
+        <draggerScale>20.0</draggerScale>
+    </dof>
+    <chain>
+        <transform>
+            <translation>0 0 0</translation>
+        </transform>
+    </chain>
+</robot>

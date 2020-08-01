@@ -13,7 +13,7 @@ class ConvexHullSettings(object):
         self.hull0 = hull0
         self.hull2 = target
         self.distance, self.closest_pos0, self.closest_pos1 = hull0.distance_between_convex_hulls(target)
-        self.centroid0, self.centroid2 = self._initialize_centroids()
+        self.centroid0, self.centroid2 = self.get_centroids()
         self.beta, self.phi = self._initialize_phi_beta()
         self.rotation_matrix = torch.eye(3, dtype=data_type)
         self.chart_reset()
@@ -54,13 +54,13 @@ class ConvexHullSettings(object):
         beta = torch.atan2(closest_vec[1], closest_vec[0])
         return phi.detach().clone().requires_grad_(True), beta.detach().clone().requires_grad_(True)
 
-    def _initialize_centroids(self):
-        centroid0 = self._get_centroid(self.hull0)
-        centroid2 = self._get_centroid(self.hull2)
+    def get_centroids(self):
+        centroid0 = self.get_centroid(self.hull0)
+        centroid2 = self.get_centroid(self.hull2)
         return centroid0, centroid2
 
     @staticmethod
-    def _get_centroid(hull):
+    def get_centroid(hull):
         return torch.tensor([torch.mean(torch.tensor(hull.points[hull.vertices, 0])),
                              torch.mean(torch.tensor(hull.points[hull.vertices, 1])),
                              torch.mean(torch.tensor(hull.points[hull.vertices, 2]))

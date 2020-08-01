@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
-from BilevelOptimizer import BilevelOptimizer
+from Optimizer import Optimizer
 from copy import deepcopy
 
 
 class Plot(object):
 
-    def __init__(self, biOptimizer: BilevelOptimizer):
+    def __init__(self, biOptimizer: Optimizer):
         self.biOptimizer = biOptimizer
         self.objectives = biOptimizer.objectives
         self.ch_settings = biOptimizer.ch_settings
