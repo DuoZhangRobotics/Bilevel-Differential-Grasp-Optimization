@@ -3,7 +3,7 @@ from LineSearcher import LineSearcher
 from typing import Callable
 import numpy as np
 from numpy.linalg import LinAlgError
-from Hand import HandTarget
+from HandTarget import HandTarget
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double

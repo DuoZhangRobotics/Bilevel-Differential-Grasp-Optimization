@@ -8,7 +8,7 @@ from Optimizer import Optimizer
 from Plot import Plot
 import trimesh
 from hand import Hand, Link
-from Hand import HandTarget
+from HandTarget import HandTarget
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
