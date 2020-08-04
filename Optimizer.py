@@ -7,6 +7,7 @@ from HandTarget import HandTarget
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
+torch.autograd.set_detect_anomaly(True)
 
 
 class Optimizer(object):
@@ -15,10 +16,10 @@ class Optimizer(object):
         self.hand_target = hand_target
         self.func = obj_func
         self.output = self.func(*params)
+        print(f"OUTPUT = {self.output}")
         self.params = params
         self.line_searcher = LineSearcher(self.func, self.params)
         self.params_need_to_be_optimized = self.params[0]
-        print(self.params_need_to_be_optimized)
         self.objectives = []
         self.method = method
         self.mode = mode
@@ -37,11 +38,13 @@ class Optimizer(object):
         for i in range(niters):
             self.objectives.append(self.output)
             grad = self.jacobian_matrix.reshape((1, -1))
+            line_searching_direction = grad.T
+            if self.method == 'Newton':
+                line_searching_direction = torch.inverse(self.hessian_matrix) @ line_searching_direction
             self.s = self.line_searcher.line_search(grad=grad,
-                                                    hessian_matrix=self.hessian_matrix,
+                                                    direction=line_searching_direction,
                                                     output=self.output,
                                                     mode=self.mode,
-                                                    method=self.method,
                                                     tol=tol,
                                                     scale=scale,
                                                     c1=self.c1,
@@ -95,9 +98,9 @@ class Optimizer(object):
 
     def reset_parameters(self):
         param0 = self.params_need_to_be_optimized - self.s * self.direction.T
-        self.params[0] = param0
-        self.hand_target.reset_parameters(self.params)
-        self.params = self.hand_target.params
+        # self.params[0] = param0
+        self.hand_target.reset_parameters(param0)
+        self.params[0] = self.hand_target.params
 
     def get_params(self):
         beta =  self.params_need_to_be_optimized[0, 0]

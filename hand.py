@@ -5,6 +5,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 # import kornia
 import torch.nn.functional as F
+import random
 
 torch.set_default_dtype(torch.float64)
 
@@ -147,17 +148,11 @@ def write_vtk(polydata, name):
 
 
 class Link:
-    def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams):
+    def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
         # print(mesh)
         self.mesh = self._initialize_convex_mesh(mesh)
         self.centroid = torch.tensor(self.mesh.centroid, dtype=torch.double)
         # print(self.mesh)
-        print(f'Link Mesh is watertight? {self.check_watertight()}')
-        self.beta = torch.tensor(0, dtype=torch.double)
-        self.phi = torch.tensor(0, dtype=torch.double)
-        self.rotation_matrix = torch.eye(3, dtype=torch.double)
-        self.d = torch.tensor(0, dtype=torch.double)
-
         # for facet in self.mesh.facets:
         #     self.mesh.visual.face_colors[facet] = trimesh.visual.random_color()
         # self.mesh.show()
@@ -167,7 +162,12 @@ class Link:
         self.dhParams = dhParams  # id, mul, trans, d, r, alpha, min, max
         self.joint_transform = None
         self.joint_transform_torch = None
-        self.end_effector = []
+        self.use_contacts = use_contacts
+        if not self.use_contacts:
+            self.end_effector = self.mesh.vertices
+
+        else:
+            self.end_effector = []
         self.children = []
         if parent is not None:
             parent.children.append(self)
@@ -264,43 +264,34 @@ class Link:
                 jr = torch.matmul(jr, dhr)
             self.joint_transform_torch = torch.cat([jr, jt], dim=2)
         # compute ret
-        if len(self.end_effector) == 0:
-            retv = None
-            retn = None
-        else:
-            eep = []
-            een = []
-            for ee in self.end_effector:
-                eep.append(ee[0].tolist())
-                een.append(ee[1].tolist())
-            eep = torch.transpose(torch.tensor(eep), 0, 1).type(jt.type())
-            een = torch.transpose(torch.tensor(een), 0, 1).type(jt.type())
-            retv = torch.matmul(jr, eep) + jt
-            retn = torch.matmul(jr, een)
+
+        eep = self.end_effector
+        # for ee in self.end_effector:
+        #     eep.append(ee.tolist())
+        eep = torch.transpose(torch.tensor(eep), 0, 1).type(jt.type())
+        retv = torch.matmul(jr, eep) + jt
         rett = [self.joint_transform_torch]
         # descend
         if self.children:
             for c in self.children:
-                cv, cn, ct = c.forward(root_trans, dofs)
+                cv, ct = c.forward(root_trans, dofs)
                 if retv is None:
                     retv = cv
-                    retn = cn
                 elif cv is not None:
                     retv = torch.cat([retv, cv], dim=2)
-                    retn = torch.cat([retn, cn], dim=2)
                 rett += ct
-        return retv, retn, rett
+        return retv, rett
 
     def draw(self, use_torch=False):
         if self.mesh:
             if use_torch:
                 jtt = torch.eye(4, dtype=torch.double)
                 jtt[:3, :] = self.joint_transform_torch.view((3, 4))
-                #TODO: apply transfrom implemented with torch
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
             else:
                 jtt = torch.eye(4, dtype=torch.double)
                 jtt[:3, :] = self.joint_transform_torch.view((3, 4))
+                # ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
 
         else:
@@ -370,9 +361,9 @@ class Hand(torch.nn.Module):
             self.extrinsic_size = 7
         else:
             self.extrinsic_size = 6
-
         if self.use_contacts:
             self.contacts = self.load_contacts(scale)
+
         self.tree = ET.parse(self.hand_path + 'hand.xml')
         self.root = self.tree.getroot()
         # load other mesh
@@ -383,7 +374,7 @@ class Hand(torch.nn.Module):
                 self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file).apply_scale(scale)
         # build links
         transform = transforms3d.affines.compose(np.zeros(3), np.eye(3, 3), [1, 1, 1])
-        self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None)
+        self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None, use_contacts=use_contacts)
         if self.use_contacts:
             for i in range(len(self.contacts[-1, 0])):
                 self.palm.add_end_effector(self.contacts[-1, 0][i][0], self.contacts[-1, 0][i][1])
@@ -458,7 +449,8 @@ class Hand(torch.nn.Module):
             for link in chain.iter('link'):
                 xml_name = re.split(r'[.]', link.text)
                 if link.attrib['dynamicJointType'] == 'Universal':
-                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i], joint_trans[i + 1]])
+                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i], joint_trans[i + 1]],
+                                  use_contacts=use_contacts)
                     if self.use_contacts:
                         if self.contacts[chain_index, link_index]:
                             for j in range(len(self.contacts[chain_index, link_index])):
@@ -481,10 +473,45 @@ class Hand(torch.nn.Module):
                 normal = [float(re.findall(r"\-*\d+\.?\d*", eef[1].text)[m]) for m in range(3)]
                 parent.add_end_effector(location, normal)
             chain_index += 1
+
+            if not self.use_contacts:
+                self.contacts = self.build_contacts(self.palm)
         # eigen grasp
         self.read_eigen_grasp()
         if self.eg_num == 0:
             self.use_eigen = False
+        self.is_watertight = self.watertight_check(self.palm)
+        print(f'All Link Meshes are watertight? {self.is_watertight}')
+        self.link_num = self.get_link_num(self.palm)
+
+    def build_contacts(self, link: Link):
+        contacts = []
+        contacts.extend(link.end_effector)
+        for child in link.children:
+            self.build_contacts(child)
+        return contacts
+
+    def get_link_num(self, link: Link):
+        num = 1
+        for child in link.children:
+            num += self.get_link_num(child)
+        return num
+
+    def watertight_check(self, link: Link):
+        """
+        To check if all the convex links are watertight
+        Parameters
+        ----------
+        link
+
+        Returns
+        -------
+
+        """
+        is_watertight = link.mesh.is_watertight and True
+        for child in link.children:
+            is_watertight = self.watertight_check(child) and True
+        return is_watertight
 
     def read_eigen_grasp(self):
         if os.path.exists(self.hand_path + '/eigen'):
@@ -552,13 +579,13 @@ class Hand(torch.nn.Module):
         return contacts
 
     def build_tensors(self):
-        self.crossx = torch.Tensor([[0.0, 0.0, 0.0],
+        self.crossx = torch.tensor([[0.0, 0.0, 0.0],
                                     [0.0, 0.0, -1.0],
                                     [0.0, 1.0, 0.0]]).view(3, 3)
-        self.crossy = torch.Tensor([[0.0, 0.0, 1.0],
+        self.crossy = torch.tensor([[0.0, 0.0, 1.0],
                                     [0.0, 0.0, 0.0],
                                     [-1.0, 0.0, 0.0]]).view(3, 3)
-        self.crossz = torch.Tensor([[0.0, -1.0, 0.0],
+        self.crossz = torch.tensor([[0.0, -1.0, 0.0],
                                     [1.0, 0.0, 0.0],
                                     [0.0, 0.0, 0.0]]).view(3, 3)
 
@@ -618,7 +645,6 @@ class Hand(torch.nn.Module):
         self.palm.forward_kinematics(root_transform, dofs)
 
     def forward(self, params):
-        print('WITH TORCH')
         # eigen grasp:
         if hasattr(self, 'origin_eigen') and self.use_eigen:
             assert params.shape[1] == self.extrinsic_size + self.eg_num, \
@@ -659,17 +685,14 @@ class Hand(torch.nn.Module):
             K = wx.view([-1, 1, 1]) * self.crossx.type(d.type())
             K += wy.view([-1, 1, 1]) * self.crossy.type(d.type())
             K += wz.view([-1, 1, 1]) * self.crossz.type(d.type())
-            # print(f'K = {K}')
             R = K * torch.sin(theta.view([-1, 1, 1])) + torch.matmul(K, K) * \
                 (1 - torch.cos(theta.view([-1, 1, 1]))) + torch.eye(3).type(d.type())
-            # R = R.view((3, 3))
-            # print(f'R = {R}')
         root_transform = torch.cat((R, t.view([-1, 3, 1])), dim=2)
         # root_transform = self.compose_torch_in_forward(t, R, torch.ones(3, dtype=torch.double))
         # print(f'root transform  with torch= {root_transform}')
-        retp, retn, rett = self.palm.forward(root_transform, d)
+        retp, rett = self.palm.forward(root_transform, d)
         rett = torch.cat(rett, dim=2)
-        return retp, retn, rett
+        return retp, rett
 
     @staticmethod
     def compose_torch_in_forward(T: torch.tensor, R: torch.tensor, Z: torch.tensor):
@@ -822,7 +845,7 @@ class Hand(torch.nn.Module):
         return res.x[0:7], res.x[7:]
 
 
-def vtk_add_from_hand(hand, renderer, scale, use_torch=False):
+def vtk_add_from_hand(hand: Hand, renderer, scale, use_torch=False):
     # palm and fingers
     mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=use_torch)
     vtk_mesh = trimesh_to_vtk(mesh)
@@ -833,84 +856,85 @@ def vtk_add_from_hand(hand, renderer, scale, use_torch=False):
     mesh_actor.GetProperty().SetOpacity(1)
     renderer.AddActor(mesh_actor)
 
-    # end effectors
-    end_effector = hand.get_end_effector()
-    for i in range(len(end_effector)):
-        # point
-        sphere = vtk.vtkSphereSource()
-        sphere.SetCenter(end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2])
-        sphere.SetRadius(3 * scale)
-        sphere.SetThetaResolution(24)
-        sphere.SetPhiResolution(24)
-        sphere_mapper = vtk.vtkPolyDataMapper()
-        sphere_mapper.SetInputConnection(sphere.GetOutputPort())
-        sphere_actor = vtk.vtkActor()
-        sphere_actor.SetMapper(sphere_mapper)
-        sphere_actor.GetProperty().SetColor(.0 / 255, .0 / 255, 255.0 / 255)
+    if hand.use_contacts:
+        # end effectors
+        end_effector = hand.get_end_effector()
+        for i in range(len(end_effector)):
+            # point
+            sphere = vtk.vtkSphereSource()
+            sphere.SetCenter(end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2])
+            sphere.SetRadius(3 * scale)
+            sphere.SetThetaResolution(24)
+            sphere.SetPhiResolution(24)
+            sphere_mapper = vtk.vtkPolyDataMapper()
+            sphere_mapper.SetInputConnection(sphere.GetOutputPort())
+            sphere_actor = vtk.vtkActor()
+            sphere_actor.SetMapper(sphere_mapper)
+            sphere_actor.GetProperty().SetColor(.0 / 255, .0 / 255, 255.0 / 255)
 
-        # normal
-        normal = vtk.vtkArrowSource()
-        normal.SetTipResolution(100)
-        normal.SetShaftResolution(100)
-        # Generate a random start and end point
-        startPoint = [end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2]]
-        endPoint = [0] * 3
-        rng = vtk.vtkMinimalStandardRandomSequence()
-        rng.SetSeed(8775070)  # For testing.
-        n = [end_effector[i][1][0], end_effector[i][1][1], end_effector[i][1][2]]
-        direction = [None, None, None]
-        direction[0] = n[0]
-        direction[1] = n[1]
-        direction[2] = n[2]
-        for j in range(0, 3):
-            endPoint[j] = startPoint[j] + direction[j] * 20 * scale
-        # Compute a basis
-        normalizedX = [0 for i in range(3)]
-        normalizedY = [0 for i in range(3)]
-        normalizedZ = [0 for i in range(3)]
-        # The X axis is a vector from start to end
-        vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
-        length = vtk.vtkMath.Norm(normalizedX)
-        vtk.vtkMath.Normalize(normalizedX)
-        # The Z axis is an arbitrary vector cross X
-        arbitrary = [0 for i in range(3)]
-        for j in range(0, 3):
-            rng.Next()
-            arbitrary[j] = rng.GetRangeValue(-10, 10)
-        vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
-        vtk.vtkMath.Normalize(normalizedZ)
-        # The Y axis is Z cross X
-        vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
-        matrix = vtk.vtkMatrix4x4()
-        # Create the direction cosine matrix
-        matrix.Identity()
-        for j in range(0, 3):
-            matrix.SetElement(j, 0, normalizedX[j])
-            matrix.SetElement(j, 1, normalizedY[j])
-            matrix.SetElement(j, 2, normalizedZ[j])
-        # Apply the transforms
-        transform = vtk.vtkTransform()
-        transform.Translate(startPoint)
-        transform.Concatenate(matrix)
-        transform.Scale(length, length, length)
-        # Transform the polydata
-        transformPD = vtk.vtkTransformPolyDataFilter()
-        transformPD.SetTransform(transform)
-        transformPD.SetInputConnection(normal.GetOutputPort())
-        # Create a mapper and actor for the arrow
-        normalMapper = vtk.vtkPolyDataMapper()
-        normalActor = vtk.vtkActor()
-        USER_MATRIX = True
-        if USER_MATRIX:
-            normalMapper.SetInputConnection(normal.GetOutputPort())
-            normalActor.SetUserMatrix(transform.GetMatrix())
-        else:
-            normalMapper.SetInputConnection(transformPD.GetOutputPort())
-        normalActor.SetMapper(normalMapper)
-        normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
+            # normal
+            normal = vtk.vtkArrowSource()
+            normal.SetTipResolution(100)
+            normal.SetShaftResolution(100)
+            # Generate a random start and end point
+            startPoint = [end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2]]
+            endPoint = [0] * 3
+            rng = vtk.vtkMinimalStandardRandomSequence()
+            rng.SetSeed(8775070)  # For testing.
+            n = [end_effector[i][1][0], end_effector[i][1][1], end_effector[i][1][2]]
+            direction = [None, None, None]
+            direction[0] = n[0]
+            direction[1] = n[1]
+            direction[2] = n[2]
+            for j in range(0, 3):
+                endPoint[j] = startPoint[j] + direction[j] * 20 * scale
+            # Compute a basis
+            normalizedX = [0 for i in range(3)]
+            normalizedY = [0 for i in range(3)]
+            normalizedZ = [0 for i in range(3)]
+            # The X axis is a vector from start to end
+            vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
+            length = vtk.vtkMath.Norm(normalizedX)
+            vtk.vtkMath.Normalize(normalizedX)
+            # The Z axis is an arbitrary vector cross X
+            arbitrary = [0 for i in range(3)]
+            for j in range(0, 3):
+                rng.Next()
+                arbitrary[j] = rng.GetRangeValue(-10, 10)
+            vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
+            vtk.vtkMath.Normalize(normalizedZ)
+            # The Y axis is Z cross X
+            vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
+            matrix = vtk.vtkMatrix4x4()
+            # Create the direction cosine matrix
+            matrix.Identity()
+            for j in range(0, 3):
+                matrix.SetElement(j, 0, normalizedX[j])
+                matrix.SetElement(j, 1, normalizedY[j])
+                matrix.SetElement(j, 2, normalizedZ[j])
+            # Apply the transforms
+            transform = vtk.vtkTransform()
+            transform.Translate(startPoint)
+            transform.Concatenate(matrix)
+            transform.Scale(length, length, length)
+            # Transform the polydata
+            transformPD = vtk.vtkTransformPolyDataFilter()
+            transformPD.SetTransform(transform)
+            transformPD.SetInputConnection(normal.GetOutputPort())
+            # Create a mapper and actor for the arrow
+            normalMapper = vtk.vtkPolyDataMapper()
+            normalActor = vtk.vtkActor()
+            USER_MATRIX = True
+            if USER_MATRIX:
+                normalMapper.SetInputConnection(normal.GetOutputPort())
+                normalActor.SetUserMatrix(transform.GetMatrix())
+            else:
+                normalMapper.SetInputConnection(transformPD.GetOutputPort())
+            normalActor.SetMapper(normalMapper)
+            normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
 
-        renderer.AddActor(normalActor)
-        renderer.AddActor(sphere_actor)
+            renderer.AddActor(normalActor)
+            renderer.AddActor(sphere_actor)
 
 
 def vtk_render(renderer, axes=True):
