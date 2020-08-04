@@ -165,7 +165,6 @@ class Link:
         self.use_contacts = use_contacts
         if not self.use_contacts:
             self.end_effector = self.mesh.vertices
-
         else:
             self.end_effector = []
         self.children = []

@@ -1,9 +1,8 @@
 import numpy as np
 import vtk
-from hand import Hand, vtk_render, vtk_add_from_hand, Link
+from Hand import Hand, vtk_render, vtk_add_from_hand, Link
 import torch
 import trimesh
-
 
 
 path = r'./cube/'
@@ -17,11 +16,7 @@ else:
     dofs = np.zeros(hand.nr_dof())
     params = 100 * torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
 p, t = hand.forward(params)
-print(hand.palm.mesh.vertices)
-print(p[:, :, :len(hand.palm.mesh.vertices)])
-print(p.shape)
-print('====')
-print(t.shape)
+
 # hand.forward_kinematics(np.zeros(hand.extrinsic_size), dofs)
 # hand.write_limits()
 renderer = vtk.vtkRenderer()

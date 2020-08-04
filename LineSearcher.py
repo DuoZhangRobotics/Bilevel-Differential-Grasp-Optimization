@@ -76,15 +76,13 @@ class LineSearcher(object):
 
         # line search using Armijo Condition
         # Pre-calculation for Armijo condition, namely, the product of first order derivative and line searching
-
-
         tmp_output, _ = self.update_output(s, direction)
         while tmp_output > output - c1 * s * grad @ direction or torch.isnan(tmp_output):
             s *= scale
             tmp_output, _ = self.update_output(s, direction)
             if s <= tol:
                 print("Step size is too small. Line search terminated when testing the armijo condition")
-                break
+                return None
         if mode == 'Wolfe':
             pass
         return s
@@ -98,3 +96,4 @@ class LineSearcher(object):
         params = self.params
         params[0] = param0
         return params
+

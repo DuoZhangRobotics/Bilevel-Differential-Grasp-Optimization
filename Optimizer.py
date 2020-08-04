@@ -4,6 +4,8 @@ from typing import Callable
 import numpy as np
 from numpy.linalg import LinAlgError
 from HandTarget import HandTarget
+from torchviz import make_dot, make_dot_from_trace
+
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
@@ -19,15 +21,16 @@ class Optimizer(object):
         print(f"OUTPUT = {self.output}")
         self.params = params
         self.line_searcher = LineSearcher(self.func, self.params)
-        self.params_need_to_be_optimized = self.params[0]
         self.objectives = []
         self.method = method
         self.mode = mode
         self.jacobian_matrix: torch.tensor = torch.autograd.grad(self.output,
-                                                                 self.params_need_to_be_optimized,
+                                                                 self.params[0],
                                                                  retain_graph=True,
                                                                  create_graph=True)[0]
-        self.hessian_matrix = self.hessian()
+        # self.grad_check()
+        if self.method == "Newton":
+            self.hessian_matrix = self.hessian()
         self.direction = self.find_direction()
         self.c1 = c1
         self.c2 = c2
@@ -38,11 +41,8 @@ class Optimizer(object):
         for i in range(niters):
             self.objectives.append(self.output)
             grad = self.jacobian_matrix.reshape((1, -1))
-            line_searching_direction = grad.T
-            if self.method == 'Newton':
-                line_searching_direction = torch.inverse(self.hessian_matrix) @ line_searching_direction
             self.s = self.line_searcher.line_search(grad=grad,
-                                                    direction=line_searching_direction,
+                                                    direction=self.direction,
                                                     output=self.output,
                                                     mode=self.mode,
                                                     tol=tol,
@@ -50,24 +50,30 @@ class Optimizer(object):
                                                     c1=self.c1,
                                                     c2=self.c2,
                                                     s=self.s)
-
-            self.reset_parameters()
-            self.s *= invscale
-            print(f"iter {i + 1}", self.jacobian_matrix)
-            if self.grad_norm() < tolg:
-                print("Converged!")
+            if self.s is not None:
+                self.reset_parameters()
+                self.s *= invscale
+                print(f"iter {i + 1}", self.jacobian_matrix)
+                if self.grad_norm() < tolg:
+                    print("Converged!")
+                    break
+            else:
                 break
 
     def hessian(self):
         length = self.jacobian_matrix.size(1)
         hessian_matrix = torch.zeros((length, length), dtype=data_type)
         for i in range(length):
-            hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[0, i], self.params[0], retain_graph=True)[0]
+            # with torch.autograd.detect_anomaly():
+            hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[0, i],
+                                                       self.params[0],
+                                                       retain_graph=True)[0]
+            print(hessian_matrix[i, :])
         # check if the hessian matrix is positive definite
         try:
             np.linalg.cholesky(hessian_matrix.detach().numpy())
         except LinAlgError:
-            # if the hessian matrix is not positive definite, then make it positive definite.
+            # if the hessian matrix is not positive definite, ¬then make it positive definite.
             print("The Hessian matrix is not positive definite. Now trying to correct it...")
             hessian_matrix = torch.tensor(self.make_it_positive_definite(), dtype=data_type)
         return hessian_matrix
@@ -97,16 +103,14 @@ class Optimizer(object):
         return direction
 
     def reset_parameters(self):
-        param0 = self.params_need_to_be_optimized - self.s * self.direction.T
-        # self.params[0] = param0
+        param0 = self.params[0] - self.s * self.direction.T
         self.hand_target.reset_parameters(param0)
         self.params[0] = self.hand_target.params
+        self._reinit()
 
-    def get_params(self):
-        beta =  self.params_need_to_be_optimized[0, 0]
-        phi =   self.params_need_to_be_optimized[0, 1]
-        theta = self.params_need_to_be_optimized[0, 2: 5]
-        d =     self.params_need_to_be_optimized[0, 5]
-        
+    def _reinit(self):
+        self.__init__(self.hand_target, self.func, self.params, self.method, self.mode, self.c1, self.c2,
+                      self.s, self.gamma)
 
-
+    def grad_check(self):
+        print(torch.autograd.gradcheck(self.func, self.params))

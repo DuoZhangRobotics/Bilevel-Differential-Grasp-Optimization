@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from hand import Link, Hand
+from Hand import Link, Hand
 import trimesh
 from ConvexhullSettings import ConvexHullSettings
 from HandTarget import HandTarget
@@ -35,38 +35,47 @@ def obj_fun(params, ch_settings: ConvexHullSettings, gamma=torch.tensor(0.001, d
 def hand_obj_fun(params, hand_target: HandTarget, gamma=torch.tensor(0.01, dtype=torch.double)):
     motion_params = params[:, :hand_target.front]
     p, t = hand_target.hand.forward(motion_params)
-    norm = get_norm(hand_target.hand.palm, hand_target.target, p, 0)
-    objective = gamma * get_constrain(hand_target.hand.palm, hand_target.target, hand_target, p, 0, 0)
-    print(objective)
-    print(norm)
-    objective += norm
-    return norm
+    norm, _ = get_norm(hand_target.hand.palm, hand_target.target, p, 0)
+    objective, _, _ = get_constrain(hand_target.hand.palm, hand_target.target, hand_target, p, 0, 0)
+    objective = objective * gamma
+    objective = objective + norm
+    return objective
 
 
 def get_norm(root: Link, target_link: trimesh.Trimesh, p, start=0):
     centroid1 = torch.tensor(target_link.centroid, dtype=torch.double)
     centroid0 = torch.mean(p[:, :, start: start + len(root.mesh.vertices)], dim=2)
-    print(centroid0, centroid1)
     norm = torch.norm(centroid0 - centroid1)
     start += len(root.mesh.vertices)
     if root.children:
         for child in root.children:
-            norm += get_norm(child, target_link, p, start)
-    return norm
+            tmp_norm, start = get_norm(child, target_link, p, start)
+            norm = norm + tmp_norm
+    return norm, start
 
 
 def get_constrain(root: Link, target_link: trimesh.Trimesh, hand_target: HandTarget, p, start, idx):
+    objective = None
     v1 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
     v2 = torch.tensor(target_link.vertices, dtype=torch.double)
     rotation_matrix = hand_target.get_rotation_matrix(idx)
     beta, phi = hand_target.get_beta_phi(idx)
     d = hand_target.get_d(idx)
     n = get_n(rotation_matrix, beta, phi)
-    objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v2 @ n))
+    lower_bound2 = torch.min(v2 @ n)
+    upper_bound2 = torch.max(v2 @ n)
+    upper_bound = torch.max(v1 @ n)
+    lower_bound = torch.min(v1 @ n)
+    if lower_bound > upper_bound2:
+        objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v2 @ n))
+    elif lower_bound2 > upper_bound:
+        objective = -torch.sum(torch.log(v2 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
+    else:
+        objective = -torch.sum(torch.log(v2 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
 
     start += len(root.mesh.vertices)
     idx += 1
     for child in root.children:
-        objective += get_constrain(child, target_link, hand_target, p, start, idx)
-
-    return objective
+        tmp_objective, start, idx = get_constrain(child, target_link, hand_target, p, start, idx)
+        objective = objective + tmp_objective
+    return objective, start, idx
