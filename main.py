@@ -16,11 +16,11 @@ data_type = torch.double
 
 
 if __name__ == "__main__":
-    path = r'./cube/'
+    # path = r'./cube/'
     path = 'hand/ShadowHand/'
     scale = 0.01
     use_eigen = True
-    hand = Hand(path, scale, use_joint_limit=True, use_quat=True, use_eigen=use_eigen)
+    hand = Hand(path, scale, use_joint_limit=True, use_quat=False, use_eigen=use_eigen)
     if hand.use_eigen:
         dofs = np.zeros(hand.eg_num)
         params = 100 * torch.zeros((1, hand.extrinsic_size + hand.eg_num))
@@ -37,18 +37,17 @@ if __name__ == "__main__":
                      [-0.5, -0.5, 0.5],
                      [0.5, 0.5, 0.5]])
 
-    points2 = np.random.rand(30, 3) + 10.
+    points2 = np.random.rand(30, 3) + 3.
     hull2 = ConvexHulls(points2)
     hull2 = ConvexHulls(hull2.points[hull2.vertices, :])
     target = trimesh.Trimesh(vertices=hull2.points[hull2.vertices, :], faces=hull2.simplices)
 
     gamma = torch.tensor(0.01, dtype=data_type)
     hand_target = HandTarget(hand, target)
-    optimizer = Optimizer(hand_target, hand_obj_fun, params=[hand_target.params, hand_target, gamma], mode='Armijo', method='SGD')
-    optimizer.optimize(niters=100)
-    print(params)
+    print("hand target rotation matrix: \n", hand_target.rotation_matrix)
+    optimizer = Optimizer(hand_obj_fun, params=[hand_target.params, hand_target, gamma], mode='Armijo', method='GD')
+    optimizer.optimize(niters=10000)
     params = optimizer.params[0][:, :hand_target.front].detach()
-    print('params = ', params)
     hand.forward(params)
     renderer = vtk.vtkRenderer()
     vtk_add_from_hand(hand, renderer, 1.0, use_torch=True)

@@ -4,7 +4,7 @@ from typing import Callable
 import numpy as np
 from numpy.linalg import LinAlgError
 from HandTarget import HandTarget
-from torchviz import make_dot, make_dot_from_trace
+import copy
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
@@ -13,13 +13,13 @@ torch.autograd.set_detect_anomaly(True)
 
 
 class Optimizer(object):
-    def __init__(self, hand_target: HandTarget, obj_func: Callable, params, method='SGD', mode='Armijo',
+    def __init__(self, obj_func: Callable, params, method='SGD', mode='Armijo',
                  c1=1e-4, c2=0.9, s=1, gamma=torch.tensor(0.01, dtype=data_type)):
-        self.hand_target = hand_target
         self.func = obj_func
-        self.output = self.func(*params)
-        print(f"OUTPUT = {self.output}")
         self.params = params
+        self.output = self.func(*self.params)
+        # self.hand_target_copy = copy.deepcopy(self.hand_target)
+        print(f"OUTPUT = {self.output}")
         self.line_searcher = LineSearcher(self.func, self.params)
         self.objectives = []
         self.method = method
@@ -103,14 +103,32 @@ class Optimizer(object):
         return direction
 
     def reset_parameters(self):
+        # print(f"Original Param0 = {self.params[0]}")
         param0 = self.params[0] - self.s * self.direction.T
-        self.hand_target.reset_parameters(param0)
-        self.params[0] = self.hand_target.params
+        # print(f"New Param0 = {param0}")
+        # print(f'hand params = {self.hand_target.params}')
+        print("================reset=================")
+        self.params[1].reset_parameters(param0, chart_reset=True)
+        print('==================reset end ================')
+        # print(f'hand params after reset = {self.hand_target.params}')
+        self.params[0] = self.params[1].params
+        # self.params[1] = self.hand_target
+        # print(f"Changed Param0 = {self.params[0]}")
         self._reinit()
 
     def _reinit(self):
-        self.__init__(self.hand_target, self.func, self.params, self.method, self.mode, self.c1, self.c2,
-                      self.s, self.gamma)
+        print('reinit')
+        self.output = self.func(*self.params)
+        print(f"OUTPUT = {self.output}")
+        self.line_searcher = LineSearcher(self.func, self.params)
+        self.objectives = []
+        self.jacobian_matrix: torch.tensor = torch.autograd.grad(self.output,
+                                                                 self.params[0],
+                                                                 retain_graph=True,
+                                                                 create_graph=True)[0]
+        if self.method == "Newton":
+            self.hessian_matrix = self.hessian()
+        self.direction = self.find_direction()
 
     def grad_check(self):
         print(torch.autograd.gradcheck(self.func, self.params))
