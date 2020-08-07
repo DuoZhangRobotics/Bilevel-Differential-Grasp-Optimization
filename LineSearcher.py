@@ -52,7 +52,7 @@ class LineSearcher(object):
         # self.params = _as_list(params, 'inputs', func.__name__)
         self.params = params
         self.hand_target: HandTarget = self.params[1]
-        print(f'Original Params in Line searcher = {self.params}')
+        # print(f'Original Params in Line searcher = {self.params}')
 
     def line_search(self, grad, direction, output, mode='Armijo', c1=1e-4, c2=0.9, s=1,
                     tol=1e-10, scale=0.9):

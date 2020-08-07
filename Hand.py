@@ -263,7 +263,6 @@ class Link:
                 jr = torch.matmul(jr, dhr)
             self.joint_transform_torch = torch.cat([jr, jt], dim=2)
         # compute ret
-
         eep = self.end_effector
         # for ee in self.end_effector:
         #     eep.append(ee.tolist())
@@ -677,15 +676,43 @@ class Hand(torch.nn.Module):
         if self.use_quat:
             R = Quat2mat(r)
         else:
-            theta = torch.norm(r, p=None, dim=1)
-            theta = torch.clamp(theta, min=1e-6)
-            w = r / theta.view([-1, 1])
-            wx, wy, wz = torch.split(w, [1, 1, 1], dim=1)
-            K = wx.view([-1, 1, 1]) * self.crossx.type(d.type())
-            K += wy.view([-1, 1, 1]) * self.crossy.type(d.type())
-            K += wz.view([-1, 1, 1]) * self.crossz.type(d.type())
-            R = K * torch.sin(theta.view([-1, 1, 1])) + torch.matmul(K, K) * \
-                (1 - torch.cos(theta.view([-1, 1, 1]))) + torch.eye(3).type(d.type())
+            # theta = torch.norm(r, p=None, dim=1)
+            # theta = torch.clamp(theta, min=1e-6)
+            # w = r / theta.view([-1, 1])
+            # print('w = ', w)
+            # print('r = ', r)
+            # # w = r / torch.ones((1, 1)).view([-1, 1])
+            # wx, wy, wz = torch.split(w, [1, 1, 1], dim=1)
+            # K = wx.view([-1, 1, 1]) * self.crossx.type(d.type())
+            # K += wy.view([-1, 1, 1]) * self.crossy.type(d.type())
+            # K += wz.view([-1, 1, 1]) * self.crossz.type(d.type())
+            # R = K * torch.sin(theta.view([-1, 1, 1])) + torch.matmul(K, K) * \
+            #     (1 - torch.cos(theta.view([-1, 1, 1]))) + torch.eye(3).type(d.type())
+            # print(R)
+            # print(R.size())
+            rx, ry, rz = torch.split(r, [1, 1, 1], dim=1)
+            rx = rx.view((1, 1, 1))
+            ry = ry.view((1, 1, 1))
+            rz = rz.view((1, 1, 1))
+
+            one = torch.ones((1, 1, 1), dtype=torch.double)
+            zero = torch.zeros((1, 1, 1), dtype=torch.double)
+            rot_x = torch.cat((
+                torch.cat((one, zero, zero), 1),
+                torch.cat((zero, rx.cos(), rx.sin()), 1),
+                torch.cat((zero, -rx.sin(), rx.cos()), 1),
+            ), 2)
+            rot_y = torch.cat((
+                torch.cat((ry.cos(), zero, -ry.sin()), 1),
+                torch.cat((zero, one, zero), 1),
+                torch.cat((ry.sin(), zero, ry.cos()), 1),
+            ), 2)
+            rot_z = torch.cat((
+                torch.cat((rz.cos(), -rz.sin(), zero), 1),
+                torch.cat((rz.sin(), rz.cos(), zero), 1),
+                torch.cat((zero, zero, one), 1)
+            ), 2)
+            R = rot_z @ rot_y @ rot_x
         root_transform = torch.cat((R, t.view([-1, 3, 1])), dim=2)
         # root_transform = self.compose_torch_in_forward(t, R, torch.ones(3, dtype=torch.double))
         # print(f'root transform  with torch= {root_transform}')

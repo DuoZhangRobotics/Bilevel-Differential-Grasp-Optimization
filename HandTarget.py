@@ -23,8 +23,6 @@ class HandTarget(object):
                                       dtype=data_type)
             self.front = self.hand.extrinsic_size + self.hand.nr_dof()
         self.rotation_matrix = torch.eye(3, dtype=data_type).repeat((self.hand.link_num, 1, 1))
-        print(self.rotation_matrix.size())
-        print("ROTATION MATRIX SELF", self.rotation_matrix)
         self._initialize_params(self.hand.palm, self.target, 0)
         self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)

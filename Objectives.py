@@ -34,6 +34,7 @@ def obj_fun(params, ch_settings: ConvexHullSettings, gamma=torch.tensor(0.001, d
 
 def hand_obj_fun(params, hand_target: HandTarget, gamma=torch.tensor(0.01, dtype=torch.double)):
     motion_params = params[:, :hand_target.front]
+    # objective = torch.square(params).sum()
     p, t = hand_target.hand.forward(motion_params)
     norm, _ = get_norm(hand_target.hand.palm, hand_target.target, p, 0)
     objective, _, _ = get_constrain(hand_target.hand.palm, hand_target.target, hand_target, params, p, 0, 0)
@@ -74,10 +75,15 @@ def get_constrain(root: Link, target_link: trimesh.Trimesh, hand_target: HandTar
     # print(f'd - v2 @ n = {torch.sum(torch.log(d - v2 @ n))}')
     if lower_bound > upper_bound2:
         objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v2 @ n))
+        # objective = -torch.sum(v1 @ n - d) - torch.sum(d - v2 @ n)
+
     elif lower_bound2 > upper_bound:
         objective = -torch.sum(torch.log(v2 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
+        # objective = -torch.sum(v2 @ n - d) - torch.sum(d - v1 @ n)
+
     else:
         objective = -torch.sum(torch.log(v2 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
+        # objective = -torch.sum(v2 @ n - d) - torch.sum(d - v1 @ n)
 
     start += len(root.mesh.vertices)
     idx += 1
