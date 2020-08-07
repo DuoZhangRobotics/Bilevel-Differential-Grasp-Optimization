@@ -68,12 +68,15 @@ class Optimizer(object):
     def hessian(self):
         length = self.jacobian_matrix.size(1)
         hessian_matrix = torch.zeros((length, length), dtype=data_type)
+        start = time.time()
         for i in range(length):
             # with torch.autograd.detect_anomaly():
             # print(self.jacobian_matrix[:, i])
             hessian_matrix[i, :] = torch.autograd.grad(self.jacobian_matrix[:, i],
                                                        self.params[0],
                                                        retain_graph=True)[0]
+        end = time.time()
+        print(f'Merely Hessian, no guarantee for positive definite. Time = {end - start}')
         # check if the hessian matrix is positive definite
         try:
             np.linalg.cholesky(hessian_matrix.detach().numpy())
