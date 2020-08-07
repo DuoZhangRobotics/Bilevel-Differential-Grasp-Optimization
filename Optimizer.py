@@ -4,7 +4,7 @@ from typing import Callable
 import numpy as np
 from numpy.linalg import LinAlgError
 from HandTarget import HandTarget
-import copy
+import time
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
@@ -31,7 +31,10 @@ class Optimizer(object):
         # print(self.jacobian_matrix.size())
         # self.grad_check()
         if self.method == "Newton":
+            start = time.time()
             self.hessian_matrix = self.hessian()
+            end = time.time()
+            print(f"Time to calculate hessian = {end - start}")
             print(self.hessian_matrix)
         self.direction = self.find_direction()
         self.c1 = c1
@@ -80,7 +83,7 @@ class Optimizer(object):
             hessian_matrix = torch.tensor(self.make_it_positive_definite(hessian_matrix), dtype=data_type)
         return hessian_matrix
 
-    def make_it_positive_definite(self, hessian_matrix, scale=0.01):
+    def make_it_positive_definite(self, hessian_matrix, scale=1.):
         eigenvalues, eigenvectors = np.linalg.eig(hessian_matrix)
         l = np.linalg.norm(eigenvalues, ord=1)
         eigenvalues += scale * l
@@ -100,8 +103,10 @@ class Optimizer(object):
         grad = self.jacobian_matrix.reshape((1, -1))
         direction = grad.T
         if self.method == 'Newton':
+            start = time.time()
             direction = torch.inverse(self.hessian_matrix) @ direction
-
+            end = time.time()
+            print(f'Time to calculate the inverse of hessian = {end - start}')
         return direction
 
     def reset_parameters(self):
@@ -129,7 +134,11 @@ class Optimizer(object):
                                                                  retain_graph=True,
                                                                  create_graph=True)[0]
         if self.method == "Newton":
+            start = time.time()
             self.hessian_matrix = self.hessian()
+            end = time.time()
+            print(f"Time to calculate hessian = {end - start}")
+            print(self.hessian_matrix)
         self.direction = self.find_direction()
 
     def grad_check(self):
