@@ -626,13 +626,30 @@ class Hand(torch.nn.Module):
             root_rotation = transforms3d.quaternions.quat2mat(root_quat)
         else:
             assert extrinsic.shape[0] == 6
-            theta = np.linalg.norm(extrinsic[3:6])
-            w = extrinsic[3:6] / max(theta, 1e-6)
-            K = np.array([[0, -w[2], w[1]],
-                          [w[2], 0, -w[0]],
-                          [-w[1], w[0], 0]])
-            # print(f'K = {K}')
-            root_rotation = np.eye(3) + K * math.sin(theta) + np.matmul(K, K) * (1 - math.cos(theta))
+            # theta = np.linalg.norm(extrinsic[3:6])
+            # w = extrinsic[3:6] / max(theta, 1e-6)
+            # K = np.array([[0, -w[2], w[1]],
+            #               [w[2], 0, -w[0]],
+            #               [-w[1], w[0], 0]])
+            # # print(f'K = {K}')
+            # root_rotation = np.eye(3) + K * math.sin(theta) + np.matmul(K, K) * (1 - math.cos(theta))
+            rx, ry, rz = np.split(extrinsic[3:6], [1, 1, 1])
+            rot_x = np.array(
+                [[1., 0., 0.],
+                [0., np.cos(rx), np.sin(rx)],
+                [0., -np.sin(rx), np.cos(rx)]])
+            rot_y = np.array((
+                [ry.cos(), 0., -ry.sin()],
+                [0., 1., 0.],
+                [ry.sin(), 0., ry.cos()],
+            ), 2)
+            rot_z = np.array((
+                [rz.cos(), -rz.sin(), 0.],
+                [rz.sin(), rz.cos(), 0.],
+                [0., 0., 1.]
+            ), 2)
+            root_rotation = rot_z @ rot_y @ rot_x
+
         # print(f'root rotation = {root_rotation}')
         root_translation = np.zeros(3)
         root_translation[0] = extrinsic[0]
@@ -871,7 +888,7 @@ class Hand(torch.nn.Module):
         return res.x[0:7], res.x[7:]
 
 
-def vtk_add_from_hand(hand: Hand, renderer, scale, use_torch=False):
+def vtk_add_from_hand(hand: Hand, target: trimesh.Trimesh, renderer, scale, use_torch=False):
     # palm and fingers
     mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=use_torch)
     vtk_mesh = trimesh_to_vtk(mesh)
@@ -880,6 +897,15 @@ def vtk_add_from_hand(hand: Hand, renderer, scale, use_torch=False):
     mesh_actor = vtk.vtkActor()
     mesh_actor.SetMapper(mesh_mapper)
     mesh_actor.GetProperty().SetOpacity(1)
+
+    target_mesh = trimesh_to_vtk(target)
+    mesh_mapper1 = vtk.vtkPolyDataMapper()
+    mesh_mapper1.SetInputData(target_mesh)
+    mesh_actor1 = vtk.vtkActor()
+    mesh_actor1.SetMapper(mesh_mapper1)
+    mesh_actor1.GetProperty().SetOpacity(1)
+
+    renderer.AddActor(mesh_actor1)
     renderer.AddActor(mesh_actor)
 
     if hand.use_contacts:

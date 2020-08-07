@@ -47,11 +47,11 @@ if __name__ == "__main__":
     hand_target = HandTarget(hand, target)
     optimizer = Optimizer(hand_obj_fun, params=[hand_target.params, hand_target, gamma], mode='Armijo', method='Newton')
     with torch.autograd.detect_anomaly():
-        optimizer.optimize(niters=10000)
+        optimizer.optimize(niters=10)
     params = optimizer.params[0][:, :hand_target.front].detach()
     hand.forward(params)
     renderer = vtk.vtkRenderer()
-    vtk_add_from_hand(hand, renderer, 1.0, use_torch=True)
+    vtk_add_from_hand(hand, target, renderer, 1.0, use_torch=True)
     vtk_render(renderer, axes=False)
     # plotter = Plot(bioptimizer)
     # plotter.plot_convex_hulls()
