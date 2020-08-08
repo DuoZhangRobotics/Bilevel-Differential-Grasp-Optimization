@@ -3,7 +3,7 @@ import vtk
 from Hand import Hand, vtk_render, vtk_add_from_hand, Link
 import torch
 import trimesh
-
+from ConvexhullSettings import ConvexHullSettings
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
@@ -26,11 +26,12 @@ class HandTarget(object):
         self._initialize_params(self.hand.palm, self.target, 0)
         self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
+        print(self.params)
 
     def _initialize_params(self, root: Link, target: trimesh.Trimesh, start):
-        centroid0 = root.centroid
-        centroid1 = torch.tensor(target.centroid, dtype=torch.double)
-        closest_vec = centroid1 - centroid0
+        chsettings = ConvexHullSettings(np.array(root.mesh.vertices), np.array(target.vertices))
+        closest_pos, closest_pos1 = chsettings.closest_pos0, chsettings.closest_pos1
+        closest_vec = torch.from_numpy(closest_pos - closest_pos1)
         closest_vec /= torch.norm(closest_vec)
         sin_phi = closest_vec[2]
 
@@ -79,10 +80,12 @@ class HandTarget(object):
         upper_bound2 = torch.max(v2 @ n)
         upper_bound = torch.max(v0 @ n)
         lower_bound = torch.min(v0 @ n)
+        print(lower_bound, upper_bound)
+        print(lower_bound2, upper_bound2)
         d = None
-        if lower_bound > upper_bound2:
+        if lower_bound >= upper_bound2:
             d = torch.mean(torch.tensor([lower_bound, upper_bound2]))
-        if lower_bound2 > upper_bound:
+        if lower_bound2 >= upper_bound:
             d = torch.mean(torch.tensor([lower_bound2, upper_bound]))
         return d.detach().clone()
 

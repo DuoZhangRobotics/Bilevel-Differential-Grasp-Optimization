@@ -16,7 +16,7 @@ class Plot(object):
         plt.xlabel("iterations")
         plt.ylabel("value of objective function")
         fig.show()
-        fig.savefig('Objective_function_values.')
+        fig.savefig('Objective_function_values.png')
 
     def plot_convex_hulls(self):
         hull, hull2 = self.ch_settings.get_hulls()

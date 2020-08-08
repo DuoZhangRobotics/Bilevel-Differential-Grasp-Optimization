@@ -16,14 +16,21 @@ data_type = torch.double
 
 class Optimizer(object):
     def __init__(self, obj_func: Callable, params, method='SGD', mode='Armijo',
-                 c1=1e-4, c2=0.9, s=1, gamma=torch.tensor(0.01, dtype=data_type)):
+                 c1=1e-4, c2=0.9, s=1., adaptive=True,
+                 gamma=torch.tensor(0.1, dtype=data_type)):
         self.func = obj_func
         self.params = params
+        self.adaptive = adaptive
+        self.gamma = gamma
+        if self.adaptive:
+            self.params[-1] = self.gamma
         self.output = self.func(*self.params)
+        self.last_output = torch.tensor(1e6, dtype=data_type)
         # self.hand_target_copy = copy.deepcopy(self.hand_target)
         print(f"OUTPUT = {self.output}")
         self.line_searcher = LineSearcher(self.func, self.params)
         self.objectives = []
+        self.grad_norms = []
         self.method = method
         self.mode = mode
         self.jacobian_matrix: torch.tensor = torch.autograd.grad(self.output,
@@ -43,10 +50,10 @@ class Optimizer(object):
         self.c1 = c1
         self.c2 = c2
         self.s = s
-        self.gamma = gamma
         self.meshes = [self.params[1].target, self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)]
 
-    def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, scale=0.9, invscale=2.):
+    def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, scale=0.9, invscale=2.,
+                 plot_interval=50):
         for i in range(niters):
             self.objectives.append(self.output)
             grad = self.jacobian_matrix.reshape((1, -1))
@@ -62,8 +69,9 @@ class Optimizer(object):
             if self.s is not None:
                 self.reset_parameters()
                 self.s *= invscale
+                # self.s = 1.
                 print(f"iter {i + 1}", self.jacobian_matrix)
-                if i % 3 == 0:
+                if i % plot_interval == 0:
                     self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
                 # torch.save(self.params[1].hand.state_dict(), rf'./Meshes/hand{i}.pth')
                 # renderer = vtk.vtkRenderer()
@@ -134,14 +142,21 @@ class Optimizer(object):
             print('==================reset end ================')
             # print(f'hand params after reset = {self.hand_target.params}')
         self.params[0] = self.params[1].params.requires_grad_(True)
-            # self.params[1] = self.hand_target
-            # print(f"Changed Param0 = {self.params[0]}")
+        if self.adaptive and torch.abs(self.output - self.last_output) < 10 * self.gamma and\
+                self.gamma > torch.tensor(1e-4, dtype=data_type):
+            self.gamma *= 0.1
+            self.params[-1] = self.gamma
         self._reinit()
 
     def _reinit(self):
         print('reinit')
+        self.last_output = self.output
         self.output = self.func(*self.params)
         print(f"OUTPUT = {self.output}")
+        print(f'grad norm = {self.grad_norm()}')
+        self.grad_norms.append(self.grad_norm())
+        print("gamma =", self.gamma)
+        print(f'step size = {self.s}')
         self.line_searcher = LineSearcher(self.func, self.params)
         self.jacobian_matrix: torch.tensor = torch.autograd.grad(self.output,
                                                                  self.params[0],

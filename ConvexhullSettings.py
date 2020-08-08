@@ -1,5 +1,5 @@
 import torch
-from convex_hulls import ConvexHulls
+from ConvexHulls import ConvexHulls
 
 
 # define pi in torch
@@ -8,11 +8,11 @@ data_type = torch.double
 
 
 class ConvexHullSettings(object):
-    def __init__(self, hull0: ConvexHulls, target: ConvexHulls):
+    def __init__(self, hull0, target):
         self.theta = torch.tensor([0, 0, 0], dtype=data_type).requires_grad_(True)
-        self.hull0 = hull0
-        self.hull2 = target
-        self.distance, self.closest_pos0, self.closest_pos1 = hull0.distance_between_convex_hulls(target)
+        self.hull0 = ConvexHulls(hull0)
+        self.hull2 = ConvexHulls(target)
+        self.distance, self.closest_pos0, self.closest_pos1 = self.hull0.distance_between_convex_hulls(self.hull2)
         self.centroid0, self.centroid2 = self.get_centroids()
         self.beta, self.phi = self._initialize_phi_beta()
         self.rotation_matrix = torch.eye(3, dtype=data_type)

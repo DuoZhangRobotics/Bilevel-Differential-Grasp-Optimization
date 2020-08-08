@@ -37,6 +37,7 @@ def hand_obj_fun(params, hand_target: HandTarget, gamma=torch.tensor(0.01, dtype
     # objective = torch.square(params).sum()
     p, t = hand_target.hand.forward(motion_params)
     norm, _ = get_norm(hand_target.hand.palm, hand_target.target, p, 0)
+    print(f'Norm = {norm}')
     objective, _, _ = get_constrain(hand_target.hand.palm, hand_target.target, hand_target, params, p, 0, 0)
     objective = objective * gamma
     objective = objective + norm
@@ -69,10 +70,10 @@ def get_constrain(root: Link, target_link: trimesh.Trimesh, hand_target: HandTar
     # print(f'idx, beta, phi, n, d = {idx} {beta} {phi} {n.T} {d}')
     # print(f'rotation matrix = \n{rotation_matrix}')
 
-    # print(f'v1 @ n - d = {torch.sum(torch.log(v1 @ n - d))}')
-    # print(f'v2 @ n - d = {torch.sum(torch.log(v2 @ n - d))}')
-    # print(f'd - v1 @ n = {torch.sum(torch.log(d - v1 @ n))}')
-    # print(f'd - v2 @ n = {torch.sum(torch.log(d - v2 @ n))}')
+    print(f'v1 @ n - d = {torch.sum(torch.log(v1 @ n - d))}')
+    print(f'v2 @ n - d = {torch.sum(torch.log(v2 @ n - d))}')
+    print(f'd - v1 @ n = {torch.sum(torch.log(d - v1 @ n))}')
+    print(f'd - v2 @ n = {torch.sum(torch.log(d - v2 @ n))}')
     if lower_bound > upper_bound2:
         objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v2 @ n))
         # objective = -torch.sum(v1 @ n - d) - torch.sum(d - v2 @ n)
