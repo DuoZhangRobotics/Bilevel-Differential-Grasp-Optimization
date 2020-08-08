@@ -10,10 +10,12 @@ import trimesh
 from Hand import Hand, Link, vtk_render, vtk_add_from_hand
 from HandTarget import HandTarget
 import vtk
+import matplotlib.pyplot as plt
+import os
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
-torch.autograd.set_detect_anomaly(True)
+
 
 if __name__ == "__main__":
     # path = r'./cube/'
@@ -21,14 +23,19 @@ if __name__ == "__main__":
     scale = 0.01
     use_eigen = True
     hand = Hand(path, scale, use_joint_limit=True, use_quat=False, use_eigen=use_eigen)
-    # if hand.use_eigen:
-    #     dofs = np.zeros(hand.eg_num)
-    #     params = torch.ones((1, hand.extrinsic_size + hand.eg_num))
-    # else:
-    #     dofs = np.zeros(hand.nr_dof())
-    #     params = torch.ones((1, hand.extrinsic_size + hand.nr_dof()))
+    if hand.use_eigen:
+        dofs = np.zeros(hand.eg_num)
+        params = torch.zeros((1, hand.extrinsic_size + hand.eg_num))
+    else:
+        dofs = np.zeros(hand.nr_dof())
+        params = torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
     # hand.forward(params)
-
+    # mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)
+    # meshes = [mesh]
+    # renderer = vtk.vtkRenderer()
+    # vtk_add_from_hand(meshes, renderer, 1.0, use_torch=True)
+    #
+    # vtk_render(renderer, axes=False)
     cube = np.array([[-0.5, -0.5, -0.5],
                      [-0.5, 0.5, -0.5],
                      [0.5, -0.5, -0.5],
@@ -46,13 +53,16 @@ if __name__ == "__main__":
     gamma = torch.tensor(0.01, dtype=data_type)
     hand_target = HandTarget(hand, target)
     optimizer = Optimizer(hand_obj_fun, params=[hand_target.params, hand_target, gamma], mode='Armijo', method='Newton')
-    with torch.autograd.detect_anomaly():
-        optimizer.optimize(niters=10)
-    params = optimizer.params[0][:, :hand_target.front].detach()
-    hand.forward(params)
+    optimizer.optimize(niters=10)
+    # params = optimizer.params[0][:, :hand_target.front].detach()
+    # hand.forward(params)
     renderer = vtk.vtkRenderer()
-    vtk_add_from_hand(hand, target, renderer, 1.0, use_torch=True)
+    vtk_add_from_hand(optimizer.meshes, renderer, 1.0, use_torch=True)
     vtk_render(renderer, axes=False)
+    meshes = [target]
+    fig = plt.figure()
+    plt.plot(optimizer.objectives)
+    fig.show()
     # plotter = Plot(bioptimizer)
     # plotter.plot_convex_hulls()
     # plotter.plot_obj()

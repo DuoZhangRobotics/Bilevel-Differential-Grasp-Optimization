@@ -97,6 +97,7 @@ class HandTarget(object):
         self.params = params
         if chart_reset:
             self.chart_reset(self.hand.palm, 0)
+        self.params = self.params.detach().clone().requires_grad_(True)
 
     def get_beta_phi(self, idx):
         beta = self.params[0, self.front + 3 * idx]

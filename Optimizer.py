@@ -5,6 +5,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 from HandTarget import HandTarget
 import time
+import copy
+import vtk
+from Hand import vtk_add_from_hand, vtk_render
 
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
@@ -41,6 +44,7 @@ class Optimizer(object):
         self.c2 = c2
         self.s = s
         self.gamma = gamma
+        self.meshes = [self.params[1].target, self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)]
 
     def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, scale=0.9, invscale=2.):
         for i in range(niters):
@@ -59,6 +63,13 @@ class Optimizer(object):
                 self.reset_parameters()
                 self.s *= invscale
                 print(f"iter {i + 1}", self.jacobian_matrix)
+                if i % 3 == 0:
+                    self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+                # torch.save(self.params[1].hand.state_dict(), rf'./Meshes/hand{i}.pth')
+                # renderer = vtk.vtkRenderer()
+                # vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
+                # vtk_render(renderer, axes=False)
+
                 if self.grad_norm() < tolg:
                     print("Converged!")
                     break
@@ -113,17 +124,18 @@ class Optimizer(object):
         return direction
 
     def reset_parameters(self):
-        # print(f"Original Param0 = {self.params[0]}")
-        param0 = self.params[0] - self.s * self.direction.T
-        # print(f"New Param0 = {param0}")
-        # print(f'hand params = {self.hand_target.params}')
-        print("================reset=================")
-        self.params[1].reset_parameters(param0, chart_reset=True)
-        print('==================reset end ================')
-        # print(f'hand params after reset = {self.hand_target.params}')
-        self.params[0] = self.params[1].params
-        # self.params[1] = self.hand_target
-        # print(f"Changed Param0 = {self.params[0]}")
+        with torch.no_grad():
+            # print(f"Original Param0 = {self.params[0]}")
+            param0 = self.params[0] - self.s * self.direction.T
+            # print(f"New Param0 = {param0}")
+            # print(f'hand params = {self.hand_target.params}')
+            print("================reset=================")
+            self.params[1].reset_parameters(param0, chart_reset=True)
+            print('==================reset end ================')
+            # print(f'hand params after reset = {self.hand_target.params}')
+        self.params[0] = self.params[1].params.requires_grad_(True)
+            # self.params[1] = self.hand_target
+            # print(f"Changed Param0 = {self.params[0]}")
         self._reinit()
 
     def _reinit(self):
@@ -131,7 +143,6 @@ class Optimizer(object):
         self.output = self.func(*self.params)
         print(f"OUTPUT = {self.output}")
         self.line_searcher = LineSearcher(self.func, self.params)
-        self.objectives = []
         self.jacobian_matrix: torch.tensor = torch.autograd.grad(self.output,
                                                                  self.params[0],
                                                                  retain_graph=True,

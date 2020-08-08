@@ -284,11 +284,11 @@ class Link:
         if self.mesh:
             if use_torch:
                 jtt = torch.eye(4, dtype=torch.double)
-                jtt[:3, :] = self.joint_transform_torch.view((3, 4))
+                jtt[:3, :] = self.joint_transform_torch.view((3, 4)).detach()
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
             else:
                 jtt = torch.eye(4, dtype=torch.double)
-                jtt[:3, :] = self.joint_transform_torch.view((3, 4))
+                jtt[:3, :] = self.joint_transform_torch.view((3, 4)).detach()
                 # ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
 
@@ -888,105 +888,107 @@ class Hand(torch.nn.Module):
         return res.x[0:7], res.x[7:]
 
 
-def vtk_add_from_hand(hand: Hand, target: trimesh.Trimesh, renderer, scale, use_torch=False):
+def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
     # palm and fingers
-    mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=use_torch)
-    vtk_mesh = trimesh_to_vtk(mesh)
-    mesh_mapper = vtk.vtkPolyDataMapper()
-    mesh_mapper.SetInputData(vtk_mesh)
-    mesh_actor = vtk.vtkActor()
-    mesh_actor.SetMapper(mesh_mapper)
-    mesh_actor.GetProperty().SetOpacity(1)
+    # target = meshes[0]
+    # target_mesh = trimesh_to_vtk(target)
+    # mesh_mapper1 = vtk.vtkPolyDataMapper()
+    # mesh_mapper1.SetInputData(target_mesh)
+    # mesh_actor1 = vtk.vtkActor()
+    # mesh_actor1.SetMapper(mesh_mapper1)
+    # mesh_actor1.GetProperty().SetOpacity(1)
+    # renderer.AddActor(mesh_actor1)
 
-    target_mesh = trimesh_to_vtk(target)
-    mesh_mapper1 = vtk.vtkPolyDataMapper()
-    mesh_mapper1.SetInputData(target_mesh)
-    mesh_actor1 = vtk.vtkActor()
-    mesh_actor1.SetMapper(mesh_mapper1)
-    mesh_actor1.GetProperty().SetOpacity(1)
+    for i in range(len(meshes)):
+        mesh = meshes[i]
+        # mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=use_torch)
+        vtk_mesh = trimesh_to_vtk(mesh)
+        mesh_mapper = vtk.vtkPolyDataMapper()
+        mesh_mapper.SetInputData(vtk_mesh)
+        mesh_actor = vtk.vtkActor()
+        mesh_actor.SetMapper(mesh_mapper)
+        mesh_actor.GetProperty().SetOpacity(1)
+        renderer.AddActor(mesh_actor)
 
-    renderer.AddActor(mesh_actor1)
-    renderer.AddActor(mesh_actor)
-
-    if hand.use_contacts:
-        # end effectors
-        end_effector = hand.get_end_effector()
-        for i in range(len(end_effector)):
-            # point
-            sphere = vtk.vtkSphereSource()
-            sphere.SetCenter(end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2])
-            sphere.SetRadius(3 * scale)
-            sphere.SetThetaResolution(24)
-            sphere.SetPhiResolution(24)
-            sphere_mapper = vtk.vtkPolyDataMapper()
-            sphere_mapper.SetInputConnection(sphere.GetOutputPort())
-            sphere_actor = vtk.vtkActor()
-            sphere_actor.SetMapper(sphere_mapper)
-            sphere_actor.GetProperty().SetColor(.0 / 255, .0 / 255, 255.0 / 255)
-
-            # normal
-            normal = vtk.vtkArrowSource()
-            normal.SetTipResolution(100)
-            normal.SetShaftResolution(100)
-            # Generate a random start and end point
-            startPoint = [end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2]]
-            endPoint = [0] * 3
-            rng = vtk.vtkMinimalStandardRandomSequence()
-            rng.SetSeed(8775070)  # For testing.
-            n = [end_effector[i][1][0], end_effector[i][1][1], end_effector[i][1][2]]
-            direction = [None, None, None]
-            direction[0] = n[0]
-            direction[1] = n[1]
-            direction[2] = n[2]
-            for j in range(0, 3):
-                endPoint[j] = startPoint[j] + direction[j] * 20 * scale
-            # Compute a basis
-            normalizedX = [0 for i in range(3)]
-            normalizedY = [0 for i in range(3)]
-            normalizedZ = [0 for i in range(3)]
-            # The X axis is a vector from start to end
-            vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
-            length = vtk.vtkMath.Norm(normalizedX)
-            vtk.vtkMath.Normalize(normalizedX)
-            # The Z axis is an arbitrary vector cross X
-            arbitrary = [0 for i in range(3)]
-            for j in range(0, 3):
-                rng.Next()
-                arbitrary[j] = rng.GetRangeValue(-10, 10)
-            vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
-            vtk.vtkMath.Normalize(normalizedZ)
-            # The Y axis is Z cross X
-            vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
-            matrix = vtk.vtkMatrix4x4()
-            # Create the direction cosine matrix
-            matrix.Identity()
-            for j in range(0, 3):
-                matrix.SetElement(j, 0, normalizedX[j])
-                matrix.SetElement(j, 1, normalizedY[j])
-                matrix.SetElement(j, 2, normalizedZ[j])
-            # Apply the transforms
-            transform = vtk.vtkTransform()
-            transform.Translate(startPoint)
-            transform.Concatenate(matrix)
-            transform.Scale(length, length, length)
-            # Transform the polydata
-            transformPD = vtk.vtkTransformPolyDataFilter()
-            transformPD.SetTransform(transform)
-            transformPD.SetInputConnection(normal.GetOutputPort())
-            # Create a mapper and actor for the arrow
-            normalMapper = vtk.vtkPolyDataMapper()
-            normalActor = vtk.vtkActor()
-            USER_MATRIX = True
-            if USER_MATRIX:
-                normalMapper.SetInputConnection(normal.GetOutputPort())
-                normalActor.SetUserMatrix(transform.GetMatrix())
-            else:
-                normalMapper.SetInputConnection(transformPD.GetOutputPort())
-            normalActor.SetMapper(normalMapper)
-            normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
-
-            renderer.AddActor(normalActor)
-            renderer.AddActor(sphere_actor)
+        # if hand.use_contacts:
+        #     # end effectors
+        #     end_effector = hand.get_end_effector()
+        #     for i in range(len(end_effector)):
+        #         # point
+        #         sphere = vtk.vtkSphereSource()
+        #         sphere.SetCenter(end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2])
+        #         sphere.SetRadius(3 * scale)
+        #         sphere.SetThetaResolution(24)
+        #         sphere.SetPhiResolution(24)
+        #         sphere_mapper = vtk.vtkPolyDataMapper()
+        #         sphere_mapper.SetInputConnection(sphere.GetOutputPort())
+        #         sphere_actor = vtk.vtkActor()
+        #         sphere_actor.SetMapper(sphere_mapper)
+        #         sphere_actor.GetProperty().SetColor(.0 / 255, .0 / 255, 255.0 / 255)
+        #
+        #         # normal
+        #         normal = vtk.vtkArrowSource()
+        #         normal.SetTipResolution(100)
+        #         normal.SetShaftResolution(100)
+        #         # Generate a random start and end point
+        #         startPoint = [end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2]]
+        #         endPoint = [0] * 3
+        #         rng = vtk.vtkMinimalStandardRandomSequence()
+        #         rng.SetSeed(8775070)  # For testing.
+        #         n = [end_effector[i][1][0], end_effector[i][1][1], end_effector[i][1][2]]
+        #         direction = [None, None, None]
+        #         direction[0] = n[0]
+        #         direction[1] = n[1]
+        #         direction[2] = n[2]
+        #         for j in range(0, 3):
+        #             endPoint[j] = startPoint[j] + direction[j] * 20 * scale
+        #         # Compute a basis
+        #         normalizedX = [0 for i in range(3)]
+        #         normalizedY = [0 for i in range(3)]
+        #         normalizedZ = [0 for i in range(3)]
+        #         # The X axis is a vector from start to end
+        #         vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
+        #         length = vtk.vtkMath.Norm(normalizedX)
+        #         vtk.vtkMath.Normalize(normalizedX)
+        #         # The Z axis is an arbitrary vector cross X
+        #         arbitrary = [0 for i in range(3)]
+        #         for j in range(0, 3):
+        #             rng.Next()
+        #             arbitrary[j] = rng.GetRangeValue(-10, 10)
+        #         vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
+        #         vtk.vtkMath.Normalize(normalizedZ)
+        #         # The Y axis is Z cross X
+        #         vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
+        #         matrix = vtk.vtkMatrix4x4()
+        #         # Create the direction cosine matrix
+        #         matrix.Identity()
+        #         for j in range(0, 3):
+        #             matrix.SetElement(j, 0, normalizedX[j])
+        #             matrix.SetElement(j, 1, normalizedY[j])
+        #             matrix.SetElement(j, 2, normalizedZ[j])
+        #         # Apply the transforms
+        #         transform = vtk.vtkTransform()
+        #         transform.Translate(startPoint)
+        #         transform.Concatenate(matrix)
+        #         transform.Scale(length, length, length)
+        #         # Transform the polydata
+        #         transformPD = vtk.vtkTransformPolyDataFilter()
+        #         transformPD.SetTransform(transform)
+        #         transformPD.SetInputConnection(normal.GetOutputPort())
+        #         # Create a mapper and actor for the arrow
+        #         normalMapper = vtk.vtkPolyDataMapper()
+        #         normalActor = vtk.vtkActor()
+        #         USER_MATRIX = True
+        #         if USER_MATRIX:
+        #             normalMapper.SetInputConnection(normal.GetOutputPort())
+        #             normalActor.SetUserMatrix(transform.GetMatrix())
+        #         else:
+        #             normalMapper.SetInputConnection(transformPD.GetOutputPort())
+        #         normalActor.SetMapper(normalMapper)
+        #         normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
+        #
+        #         renderer.AddActor(normalActor)
+        #         renderer.AddActor(sphere_actor)
 
 
 def vtk_render(renderer, axes=True):
