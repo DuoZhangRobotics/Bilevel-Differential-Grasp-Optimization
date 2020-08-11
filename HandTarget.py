@@ -22,30 +22,37 @@ class HandTarget(object):
             self.params = torch.zeros((1, self.hand.extrinsic_size + self.hand.nr_dof() + 3 * self.hand.link_num),
                                       dtype=data_type)
             self.front = self.hand.extrinsic_size + self.hand.nr_dof()
+
+        self.p, _ = self.hand.forward(torch.zeros((1, self.front)))
         self.rotation_matrix = torch.eye(3, dtype=data_type).repeat((self.hand.link_num, 1, 1))
-        self._initialize_params(self.hand.palm, self.target, 0)
+        self._initialize_params(self.hand.palm, self.target, 0, 0)
         self.chart_reset(self.hand.palm, 0)
+        self._initialize_d(self.hand.palm, self.target, 0, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
-        print(self.params)
 
-    def _initialize_params(self, root: Link, target: trimesh.Trimesh, start):
-        chsettings = ConvexHullSettings(np.array(root.mesh.vertices), np.array(target.vertices))
-        closest_pos, closest_pos1 = chsettings.closest_pos0, chsettings.closest_pos1
-        closest_vec = torch.from_numpy(closest_pos - closest_pos1)
-        closest_vec /= torch.norm(closest_vec)
-        sin_phi = closest_vec[2]
+    def _initialize_params(self, root: Link, target: trimesh.Trimesh, start, idx):
+        vertices = self.p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
+        chsettings = ConvexHullSettings(np.array(vertices), np.array(target.vertices), chart_reset=False)
+        # closest_pos, closest_pos1 = chsettings.closest_pos0, chsettings.closest_pos1
+        # closest_vec = torch.from_numpy(closest_pos1 - closest_pos)
+        # closest_vec /= torch.norm(closest_vec)
+        # sin_phi = closest_vec[2]
+        #
+        # phi = torch.asin(sin_phi)
+        # beta = torch.atan2(closest_vec[1], closest_vec[0])
 
-        phi = torch.asin(sin_phi)
-        beta = torch.atan2(closest_vec[1], closest_vec[0])
-        d = self._initialize_d(root, target, start)
+        # d = self._initialize_d(root, target, start)
+        beta = chsettings.beta
+        phi = chsettings.phi
 
-        self.params[0, self.front + 3 * start] = beta
-        self.params[0, self.front + 3 * start + 1] = phi
-        self.params[0, self.front + 3 * start + 2] = d
-        start += 1
+        self.params[0, self.front + 3 * idx] = beta.detach().clone()
+        self.params[0, self.front + 3 * idx + 1] = phi.detach().clone()
+        # self.params[0, self.front + 3 * start + 2] = d.detach().clone()
+        idx += 1
+        start += len(root.mesh.vertices)
         for child in root.children:
-            start = self._initialize_params(child, target, start)
-        return start
+            start, idx = self._initialize_params(child, target, start, idx)
+        return start, idx
 
     def chart_reset(self, root: Link, start):
         beta, phi = self.get_beta_phi(start)
@@ -72,22 +79,28 @@ class HandTarget(object):
             start = self.chart_reset(child, start)
         return start
 
-    def _initialize_d(self, root: Link, target: trimesh.Trimesh, start):
-        v0, v2 = torch.tensor(root.mesh.vertices, dtype=data_type), torch.tensor(target.vertices, dtype=data_type)
-        beta, phi = self.get_beta_phi(start)
-        n = self.get_n(self.get_rotation_matrix(start), beta, phi)
+    def _initialize_d(self, root: Link, target: trimesh.Trimesh, start, idx):
+        v0 = self.p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
+        v2 = torch.tensor(target.vertices, dtype=data_type)
+        beta, phi = self.get_beta_phi(idx)
+        n = self.get_n(self.get_rotation_matrix(idx), beta, phi)
         lower_bound2 = torch.min(v2 @ n)
         upper_bound2 = torch.max(v2 @ n)
         upper_bound = torch.max(v0 @ n)
         lower_bound = torch.min(v0 @ n)
-        print(lower_bound, upper_bound)
-        print(lower_bound2, upper_bound2)
+        # print(lower_bound, upper_bound)
+        # print(lower_bound2, upper_bound2)
         d = None
         if lower_bound >= upper_bound2:
             d = torch.mean(torch.tensor([lower_bound, upper_bound2]))
         if lower_bound2 >= upper_bound:
             d = torch.mean(torch.tensor([lower_bound2, upper_bound]))
-        return d.detach().clone()
+        self.params[0, self.front + 3 * idx + 2] = d.detach().clone()
+        idx += 1
+        start += len(root.mesh.vertices)
+        for child in root.children:
+            start, idx = self._initialize_d(child, target, start, idx)
+        return start, idx
 
     @staticmethod
     def get_n(rotation_matrix, beta, phi):
@@ -112,3 +125,5 @@ class HandTarget(object):
 
     def get_rotation_matrix(self, idx):
         return self.rotation_matrix[idx, :, :]
+
+

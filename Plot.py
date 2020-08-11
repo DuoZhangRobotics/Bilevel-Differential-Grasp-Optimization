@@ -1,22 +1,22 @@
 import matplotlib.pyplot as plt
 from Optimizer import Optimizer
 from copy import deepcopy
-
+from ConvexhullSettings import ConvexHullSettings
+import numpy as np
 
 class Plot(object):
-
-    def __init__(self, biOptimizer: Optimizer):
+    def __init__(self, ch_settings: ConvexHullSettings, biOptimizer: Optimizer = None):
         self.biOptimizer = biOptimizer
-        self.objectives = biOptimizer.objectives
-        self.ch_settings = biOptimizer.ch_settings
+        # self.objectives = biOptimizer.objectives
+        self.ch_settings = ch_settings
 
-    def plot_obj(self):
-        fig = plt.figure()
-        plt.plot(self.objectives, marker='d')
-        plt.xlabel("iterations")
-        plt.ylabel("value of objective function")
-        fig.show()
-        fig.savefig('Objective_function_values.png')
+    # def plot_obj(self):
+    #     fig = plt.figure()
+    #     plt.plot(self.objectives, marker='d')
+    #     plt.xlabel("iterations")
+    #     plt.ylabel("value of objective function")
+    #     fig.show()
+    #     fig.savefig('Objective_function_values.png')
 
     def plot_convex_hulls(self):
         hull, hull2 = self.ch_settings.get_hulls()
@@ -30,14 +30,30 @@ class Plot(object):
         for simplex1 in hull.simplices:
             ax.plot3D(points1[simplex1, 0], points1[simplex1, 1], points1[simplex1, 2], 'orange')
 
-        points1 += theta
-        ax.scatter3D(points1[:, 0], points1[:, 1], points1[:, 2], c='orchid')
-        for simplex1 in hull.simplices:
-            ax.plot3D(points1[simplex1, 0], points1[simplex1, 1], points1[simplex1, 2], 'dodgerblue')
+        # points1 += theta
+        # ax.scatter3D(points1[:, 0], points1[:, 1], points1[:, 2], c='orchid')
+        # for simplex1 in hull.simplices:
+        #     ax.plot3D(points1[simplex1, 0], points1[simplex1, 1], points1[simplex1, 2], 'dodgerblue')
 
         ax.scatter3D(points2[:, 0], points2[:, 1], points2[:, 2], c='tomato')
         for simplex2 in hull2.simplices:
             ax.plot3D(points2[simplex2, 0], points2[simplex2, 1], points2[simplex2, 2], 'lightblue')
+
+        x = [self.ch_settings.closest_pos0[0], self.ch_settings.closest_pos1[0]]
+        y = [self.ch_settings.closest_pos0[1], self.ch_settings.closest_pos1[1]]
+        z = [self.ch_settings.closest_pos0[2], self.ch_settings.closest_pos1[2]]
+        ax.plot3D(x, y, z)
+
+        n = self.ch_settings.get_n().detach().numpy()
+        a,b,c,d = n[0], n[1], n[2], -self.ch_settings.d.detach().numpy()
+
+        x = np.linspace(-1,1,10)
+        y = np.linspace(-1,1,10)
+
+        X,Y = np.meshgrid(x,y)
+        Z = (d - a*X - b*Y) / c
+        ax.plot_surface(X, Y, Z)
+
         fig.show()
         fig.savefig('Convex_hulls.png')
 
@@ -88,6 +104,16 @@ class Plot(object):
                                 name='Cube',
                                 alphahull=0,
                                 showlegend=True))
+
+        n = self.ch_settings.get_n().detach().numpy()
+        a, b, c, d = n[0], n[1], n[2], self.ch_settings.d.detach().numpy()
+
+        x = np.linspace(-1, 1, 10)
+        y = np.linspace(-1, 1, 10)
+
+        X, Y = np.meshgrid(x, y)
+        Z = (d - a * X - b * Y) / c
+        fig.add_trace(go.Surface(z=Z, x=X, y=Y))
 
         fig.update_layout(scene_camera=dict(eye=dict(x=1.2, y=-1.6, z=1.0)),
                           margin=dict(t=0, r=10, l=10, b=10),

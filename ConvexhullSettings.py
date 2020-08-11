@@ -1,5 +1,7 @@
 import torch
-from ConvexHulls import ConvexHulls
+import numpy as np
+import cvxpy as cp
+from scipy.spatial import ConvexHull
 
 
 # define pi in torch
@@ -7,16 +9,43 @@ pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
 
 
+class ConvexHulls(object):
+    def __init__(self, points_cloud1: np.array):
+        self.points = points_cloud1
+        self.hull = self._generate_convex_hulls()
+        self.A = self.hull.equations[:, :-1]
+        self.b = -self.hull.equations[:, -1]
+        self.simplices = self.hull.simplices
+        self.vertices = self.hull.vertices
+
+    def _generate_convex_hulls(self):
+        return ConvexHull(self.points)
+
+    # distance between two convex hulls
+    def distance_between_convex_hulls(self, target_hull):
+        A2, b2 = target_hull.A, target_hull.b
+
+        x1 = cp.Variable(3)
+        x2 = cp.Variable(3)
+
+        objective = cp.Minimize(cp.sum_squares(x1 - x2))
+        constraints = [self.A @ x1 <= self.b, A2 @ x2 <= b2]
+        prob = cp.Problem(objective, constraints)
+        min_dist = prob.solve()
+        return min_dist, x1.value, x2.value
+
+
 class ConvexHullSettings(object):
-    def __init__(self, hull0, target):
+    def __init__(self, hull0, target, chart_reset=True):
         self.theta = torch.tensor([0, 0, 0], dtype=data_type).requires_grad_(True)
         self.hull0 = ConvexHulls(hull0)
         self.hull2 = ConvexHulls(target)
         self.distance, self.closest_pos0, self.closest_pos1 = self.hull0.distance_between_convex_hulls(self.hull2)
         self.centroid0, self.centroid2 = self.get_centroids()
-        self.beta, self.phi = self._initialize_phi_beta()
+        self.phi, self.beta = self._initialize_phi_beta()
         self.rotation_matrix = torch.eye(3, dtype=data_type)
-        self.chart_reset()
+        if chart_reset:
+            self.chart_reset()
         self.d = self._initialize_d().requires_grad_(True)
 
     def chart_reset(self, show_info=False):
@@ -81,6 +110,8 @@ class ConvexHullSettings(object):
         n = self.get_n()
         lower_bound = torch.min(v2.mm(n))
         upper_bound = torch.max(v0.mm(n))
+        # print('chsettings', lower_bound, torch.max(v2 @ n))
+        # print('chsettings', torch.min(v0 @ n), upper_bound)
         d = torch.mean(torch.tensor([lower_bound, upper_bound]))
         return d.detach().clone()
 
