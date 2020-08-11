@@ -1,13 +1,11 @@
 import numpy as np
-import vtk
 from Hand import Hand, vtk_render, vtk_add_from_hand, Link
-import torch
-import trimesh
 from ConvexhullSettings import ConvexHullSettings
+import vtk,torch,trimesh
+
 # define pi in torch
 pi = torch.acos(torch.zeros(1)).item() * 2
 data_type = torch.double
-
 
 class HandTarget(object):
     def __init__(self, hand: Hand, target: trimesh.Trimesh):

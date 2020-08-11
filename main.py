@@ -4,7 +4,6 @@ from ConvexhullSettings import ConvexHullSettings, ConvexHulls
 from LineSearcher import LineSearcher
 from Objectives import obj_fun, hand_obj_fun
 from Optimizer import Optimizer
-from Plot import Plot
 import trimesh
 from Hand import Hand, Link, vtk_render, vtk_add_from_hand
 from HandTarget import HandTarget

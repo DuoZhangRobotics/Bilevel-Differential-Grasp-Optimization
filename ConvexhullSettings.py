@@ -31,7 +31,7 @@ class ConvexHulls(object):
         objective = cp.Minimize(cp.sum_squares(x1 - x2))
         constraints = [self.A @ x1 <= self.b, A2 @ x2 <= b2]
         prob = cp.Problem(objective, constraints)
-        min_dist = prob.solve()
+        min_dist = prob.solve(solver='SCS')
         return min_dist, x1.value, x2.value
 
 

@@ -37,9 +37,7 @@ def hand_obj_fun(params, hand_target: HandTarget, gamma=torch.tensor(0.01, dtype
     # objective = torch.square(params).sum()
     p, t = hand_target.hand.forward(motion_params)
     norm, _ = get_norm(hand_target.hand.palm, hand_target.target, p, 0)
-    print(f'Norm = {norm}')
     objective, _, _ = get_constrain(hand_target.hand.palm, hand_target.target, hand_target, params, p, 0, 0)
-    print(f'Constraint = {objective}')
     objective = objective * gamma
     objective = objective + norm
     return objective
