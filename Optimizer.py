@@ -1,7 +1,7 @@
 from LineSearcher import LineSearcher
 from typing import Callable
 import numpy as np
-import torch
+import torch,scipy
 data_type=torch.double
 
 class Optimizer(object):
@@ -29,16 +29,20 @@ class Optimizer(object):
             if self.method == "Newton":
                 hessian, L = self.hessian(jacobian)
                 jacobian = jacobian.detach().numpy()
-                direction = np.linalg.inv(hessian) @ jacobian.T
+                direction = scipy.linalg.cho_solve(L,jacobian.T)
             else: 
                 jacobian = jacobian.detach().numpy()
                 direction = jacobian.T
                 
             #line search
-            s, self.params, obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol, scale=scale)
+            s,new_params,obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol, scale=scale)
+            if s is None:
+                print("Line-Search failed!")
+                break
             
             #Riemann optimization: chart reset
-            self.params[1].reset_parameters(self.params[0], chart_reset=True)
+            with torch.no_grad():
+                self.params[1].reset_parameters(new_params[0], chart_reset=True)
             self.params[0] = self.params[1].params.requires_grad_(True)
             
             #adaptive scaling of search length
@@ -66,12 +70,12 @@ class Optimizer(object):
         try:    
             # check if the hessian matrix is positive definite
             hessian = hessian.detach().numpy()
-            return hessian,np.linalg.cholesky(hessian)
+            return hessian,scipy.linalg.cho_factor(hessian)
         except np.linalg.LinAlgError:
             # if the hessian matrix is not positive definite, then make it positive definite.
             hessian = torch.tensor(self.make_positive_definite(hessian), dtype=data_type)
             hessian = hessian.detach().numpy()
-            return hessian,np.linalg.cholesky(hessian)
+            return hessian,scipy.linalg.cho_factor(hessian)
 
     def make_positive_definite(self, hessian, scale=1., min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
