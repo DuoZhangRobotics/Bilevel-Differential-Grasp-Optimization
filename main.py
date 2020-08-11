@@ -26,5 +26,5 @@ if __name__ == "__main__":
         return hand_target.hand_target_objective(param, gamma)
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
     optimizer.optimize(niters=500, plot_interval=20)
-    optimizer.plot_history()
+    optimizer.plot_history().savefig("history.png")
     optimizer.plot_meshes()

@@ -17,7 +17,7 @@ class Optimizer(object):
         s=1.0
         self.objectives = []
         self.grad_norms = []
-        self.meshes = [self.params[1].target.mesh(), self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)]
+        self.meshes = [self.params[1].target.mesh()]
         line_searcher = LineSearcher(self.func, self.params)
         for i in range(niters):
             last_s = s

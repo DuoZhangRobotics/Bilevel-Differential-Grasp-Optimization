@@ -283,8 +283,8 @@ class Link:
         if self.children:
             for c in self.children:
                 if ret:
-                    ret += c.draw()
-                else: ret = c.draw()
+                    ret += c.draw(use_torch=use_torch)
+                else: ret = c.draw(use_torch=use_torch)
         return ret
 
     def Rx(self):
