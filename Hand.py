@@ -3,12 +3,9 @@ from collections import defaultdict
 import xml.etree.ElementTree as ET
 import numpy as np
 from scipy.spatial import ConvexHull
-# import kornia
 import torch.nn.functional as F
 import random
-
 torch.set_default_dtype(torch.float64)
-
 
 def normalize_quaternion(quaternion: torch.Tensor,
                          eps: float = 1e-12) -> torch.Tensor:
@@ -20,7 +17,6 @@ def normalize_quaternion(quaternion: torch.Tensor,
             "Input must be a tensor of shape (*, 4). Got {}".format(
                 quaternion.shape))
     return F.normalize(quaternion, p=2, dim=-1, eps=eps)
-
 
 def Quat2mat(quaternion):
     if not isinstance(quaternion, torch.Tensor):
@@ -57,7 +53,6 @@ def Quat2mat(quaternion):
         matrix = torch.squeeze(matrix, dim=0)
     return matrix
 
-
 def DH2trans(theta, d, r, alpha):
     Z = np.asarray([[math.cos(theta), -math.sin(theta), 0, 0],
                     [math.sin(theta), math.cos(theta), 0, 0],
@@ -69,7 +64,6 @@ def DH2trans(theta, d, r, alpha):
                     [0, 0, 0, 1]])
     tr = np.matmul(Z, X)
     return tr, Z, X
-
 
 def DH2trans_torch(theta, d, r, alpha):
     Zc = torch.tensor([[1., 0, 0, 0],
@@ -92,7 +86,6 @@ def DH2trans_torch(theta, d, r, alpha):
                       [0, math.sin(alpha), math.cos(alpha), 0],
                       [0, 0, 0, 1]]).type(theta.type())
     return torch.matmul(Z, X), Z, X
-
 
 def trimesh_to_vtk(trimesh):
     r"""Return a `vtkPolyData` representation of a :map:`TriMesh` instance
@@ -136,7 +129,6 @@ def trimesh_to_vtk(trimesh):
     mesh.SetPolys(cells)
     return mesh
 
-
 def write_vtk(polydata, name):
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(name)
@@ -145,7 +137,6 @@ def write_vtk(polydata, name):
     else:
         writer.SetInputData(polydata)
     writer.Write()
-
 
 class Link:
     def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
@@ -343,7 +334,6 @@ class Link:
             for c in self.children:
                 ret += c.get_end_effector_all()
         return ret
-
 
 class Hand(torch.nn.Module):
     def __init__(self, hand_path, scale, use_joint_limit=True, use_quat=True, use_eigen=False, use_contacts=False):
@@ -771,7 +761,7 @@ class Hand(torch.nn.Module):
             params = torch.randn(nr, self.extrinsic_size + self.eg_num)
         else:
             params = torch.randn(nr, self.extrinsic_size + self.nr_dof())
-        pss, nss, _ = self.forward(params)
+        pss, nss, = self.forward(params)
         for i in range(pss.shape[0]):
             extrinsic = params.numpy()[i, 0:self.extrinsic_size]
             dofs = params.numpy()[i, self.extrinsic_size:]
@@ -887,18 +877,7 @@ class Hand(torch.nn.Module):
         res = scipy.optimize.minimize(fun, x0, method='SLSQP', bounds=tuple(bnds))
         return res.x[0:7], res.x[7:]
 
-
 def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
-    # palm and fingers
-    # target = meshes[0]
-    # target_mesh = trimesh_to_vtk(target)
-    # mesh_mapper1 = vtk.vtkPolyDataMapper()
-    # mesh_mapper1.SetInputData(target_mesh)
-    # mesh_actor1 = vtk.vtkActor()
-    # mesh_actor1.SetMapper(mesh_mapper1)
-    # mesh_actor1.GetProperty().SetOpacity(1)
-    # renderer.AddActor(mesh_actor1)
-
     for i in range(len(meshes)):
         mesh = meshes[i]
         # mesh = hand.draw(scale_factor=1, show_to_screen=False, use_torch=use_torch)
@@ -909,87 +888,6 @@ def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
         mesh_actor.SetMapper(mesh_mapper)
         mesh_actor.GetProperty().SetOpacity(1)
         renderer.AddActor(mesh_actor)
-
-        # if hand.use_contacts:
-        #     # end effectors
-        #     end_effector = hand.get_end_effector()
-        #     for i in range(len(end_effector)):
-        #         # point
-        #         sphere = vtk.vtkSphereSource()
-        #         sphere.SetCenter(end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2])
-        #         sphere.SetRadius(3 * scale)
-        #         sphere.SetThetaResolution(24)
-        #         sphere.SetPhiResolution(24)
-        #         sphere_mapper = vtk.vtkPolyDataMapper()
-        #         sphere_mapper.SetInputConnection(sphere.GetOutputPort())
-        #         sphere_actor = vtk.vtkActor()
-        #         sphere_actor.SetMapper(sphere_mapper)
-        #         sphere_actor.GetProperty().SetColor(.0 / 255, .0 / 255, 255.0 / 255)
-        #
-        #         # normal
-        #         normal = vtk.vtkArrowSource()
-        #         normal.SetTipResolution(100)
-        #         normal.SetShaftResolution(100)
-        #         # Generate a random start and end point
-        #         startPoint = [end_effector[i][0][0], end_effector[i][0][1], end_effector[i][0][2]]
-        #         endPoint = [0] * 3
-        #         rng = vtk.vtkMinimalStandardRandomSequence()
-        #         rng.SetSeed(8775070)  # For testing.
-        #         n = [end_effector[i][1][0], end_effector[i][1][1], end_effector[i][1][2]]
-        #         direction = [None, None, None]
-        #         direction[0] = n[0]
-        #         direction[1] = n[1]
-        #         direction[2] = n[2]
-        #         for j in range(0, 3):
-        #             endPoint[j] = startPoint[j] + direction[j] * 20 * scale
-        #         # Compute a basis
-        #         normalizedX = [0 for i in range(3)]
-        #         normalizedY = [0 for i in range(3)]
-        #         normalizedZ = [0 for i in range(3)]
-        #         # The X axis is a vector from start to end
-        #         vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
-        #         length = vtk.vtkMath.Norm(normalizedX)
-        #         vtk.vtkMath.Normalize(normalizedX)
-        #         # The Z axis is an arbitrary vector cross X
-        #         arbitrary = [0 for i in range(3)]
-        #         for j in range(0, 3):
-        #             rng.Next()
-        #             arbitrary[j] = rng.GetRangeValue(-10, 10)
-        #         vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
-        #         vtk.vtkMath.Normalize(normalizedZ)
-        #         # The Y axis is Z cross X
-        #         vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
-        #         matrix = vtk.vtkMatrix4x4()
-        #         # Create the direction cosine matrix
-        #         matrix.Identity()
-        #         for j in range(0, 3):
-        #             matrix.SetElement(j, 0, normalizedX[j])
-        #             matrix.SetElement(j, 1, normalizedY[j])
-        #             matrix.SetElement(j, 2, normalizedZ[j])
-        #         # Apply the transforms
-        #         transform = vtk.vtkTransform()
-        #         transform.Translate(startPoint)
-        #         transform.Concatenate(matrix)
-        #         transform.Scale(length, length, length)
-        #         # Transform the polydata
-        #         transformPD = vtk.vtkTransformPolyDataFilter()
-        #         transformPD.SetTransform(transform)
-        #         transformPD.SetInputConnection(normal.GetOutputPort())
-        #         # Create a mapper and actor for the arrow
-        #         normalMapper = vtk.vtkPolyDataMapper()
-        #         normalActor = vtk.vtkActor()
-        #         USER_MATRIX = True
-        #         if USER_MATRIX:
-        #             normalMapper.SetInputConnection(normal.GetOutputPort())
-        #             normalActor.SetUserMatrix(transform.GetMatrix())
-        #         else:
-        #             normalMapper.SetInputConnection(transformPD.GetOutputPort())
-        #         normalActor.SetMapper(normalMapper)
-        #         normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
-        #
-        #         renderer.AddActor(normalActor)
-        #         renderer.AddActor(sphere_actor)
-
 
 def vtk_render(renderer, axes=True):
     if axes is True:
@@ -1014,7 +912,6 @@ def vtk_render(renderer, axes=True):
     # Begin Interaction
     renderWindow.Render()
     renderWindowInteractor.Start()
-
 
 if __name__ == '__main__':
     hand_paths = [

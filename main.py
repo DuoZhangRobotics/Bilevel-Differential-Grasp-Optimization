@@ -45,18 +45,11 @@ if __name__ == "__main__":
     target = trimesh.Trimesh(vertices=hull2.points[hull2.vertices, :], faces=hull2.simplices)
     meshes.append(target)
 
-    # renderer = vtk.vtkRenderer()
-    # vtk_add_from_hand(meshes, renderer, 1.0, use_torch=True)
-    #
-    # vtk_render(renderer, axes=True)
-    # exit(1)
     gamma = torch.tensor(0.001, dtype=data_type)
     hand_target = HandTarget(hand, target)
-    optimizer = Optimizer(hand_obj_fun, params=[hand_target.params, hand_target, gamma], mode='Armijo',
-                          method='Newton', adaptive=False, gamma=gamma)
+    optimizer = Optimizer(hand_obj_fun, params=[hand_target.params, hand_target, gamma], method='Newton', gamma=gamma)
     optimizer.optimize(niters=500, plot_interval=20)
-    # params = optimizer.params[0][:, :hand_target.front].detach()
-    # hand.forward(params)
+
     renderer = vtk.vtkRenderer()
     vtk_add_from_hand(optimizer.meshes, renderer, 1.0, use_torch=True)
     vtk_render(renderer, axes=True)
