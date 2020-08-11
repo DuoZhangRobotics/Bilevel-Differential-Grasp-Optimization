@@ -5,10 +5,9 @@ import torch,scipy
 data_type=torch.double
 
 class Optimizer(object):
-    def __init__(self, obj_func: Callable, params, method='Newton', gamma=torch.tensor(0.1, dtype=data_type)):
+    def __init__(self, obj_func: Callable, params, method='Newton'):
         self.func = obj_func
         self.params = params
-        self.gamma = gamma
         self.method = method
         self.line_searcher = LineSearcher(self.func, self.params)
 

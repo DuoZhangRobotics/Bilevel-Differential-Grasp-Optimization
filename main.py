@@ -22,9 +22,9 @@ if __name__ == "__main__":
     hull = ConvexHull(np.random.rand(30, 3) + np.array([0., -0.2, 1.3]))
     hand_target = HandTarget(hand, hull)
     gamma=torch.tensor(0.001, dtype=data_type)
-    def obj_func(param, hand_target, gamma):
+    def obj_func(param, hand_target):
         return hand_target.hand_target_objective(param, gamma)
-    optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target, gamma], method='Newton', gamma=gamma)
+    optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
     optimizer.optimize(niters=500, plot_interval=20)
     optimizer.plot_history()
     optimizer.plot_meshes()

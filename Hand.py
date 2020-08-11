@@ -278,19 +278,13 @@ class Link:
                 jtt[:3, :] = self.joint_transform_torch.view((3, 4)).detach()
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
             else:
-                jtt = torch.eye(4, dtype=torch.double)
-                jtt[:3, :] = self.joint_transform_torch.view((3, 4)).detach()
-                # ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
-                ret = copy.deepcopy(self.mesh).apply_transform(jtt)
-
-        else:
-            ret = None
+                ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
+        else: ret = None
         if self.children:
             for c in self.children:
                 if ret:
                     ret += c.draw()
-                else:
-                    ret = c.draw()
+                else: ret = c.draw()
         return ret
 
     def Rx(self):
@@ -326,10 +320,9 @@ class Link:
     def get_end_effector_all(self):
         ret = []
         for ee in self.end_effector:
-            loc = np.matmul(self.joint_transform[0:3, 0:3], ee[0])
+            loc = np.matmul(self.joint_transform[0:3, 0:3], ee)
             loc = np.add(loc, self.joint_transform[0:3, 3])
-            nor = np.matmul(self.joint_transform[0:3, 0:3], ee[1])
-            ret.append([loc.tolist(), nor.tolist()])
+            ret.append(loc)
         if self.children:
             for c in self.children:
                 ret += c.get_end_effector_all()
@@ -761,22 +754,15 @@ class Hand(torch.nn.Module):
             params = torch.randn(nr, self.extrinsic_size + self.eg_num)
         else:
             params = torch.randn(nr, self.extrinsic_size + self.nr_dof())
-        pss, nss, = self.forward(params)
+        pss, _ = self.forward(params)
         for i in range(pss.shape[0]):
             extrinsic = params.numpy()[i, 0:self.extrinsic_size]
             dofs = params.numpy()[i, self.extrinsic_size:]
             self.forward_kinematics(extrinsic, dofs)
-            pssi = []
-            nssi = []
-            for e in self.get_end_effector():
-                pssi.append(e[0])
-                nssi.append(e[1])
+            pssi = self.get_end_effector()
             pssi = torch.transpose(torch.tensor(pssi), 0, 1)
-            nssi = torch.transpose(torch.tensor(nssi), 0, 1)
             pssi_diff = pssi.numpy() - pss.numpy()[i,]
-            nssi_diff = nssi.numpy() - nss.numpy()[i,]
-            print('pssNorm=%f pssErr=%f nssNorm=%f nssErr=%f' %
-                  (np.linalg.norm(pssi), np.linalg.norm(pssi_diff), np.linalg.norm(nssi), np.linalg.norm(nssi_diff)))
+            print(f'pssNorm={np.linalg.norm(pssi)} pssErr={np.linalg.norm(pssi_diff)}')
 
     def grad_check(self, nr):
         if self.use_eigen:
@@ -784,8 +770,7 @@ class Hand(torch.nn.Module):
         else:
             params = torch.randn(nr, self.extrinsic_size + self.nr_dof())
         params.requires_grad_()
-        print('AutoGradCheck=',
-              torch.autograd.gradcheck(self, (params), eps=1e-6, atol=1e-6, rtol=1e-6, raise_exception=True))
+        print('AutoGradCheck=',torch.autograd.gradcheck(self, (params), eps=1e-6, atol=1e-6, rtol=1e-6, raise_exception=True))
 
     def draw(self, scale_factor=1, show_to_screen=True, use_torch=False):
         mesh = self.palm.draw(use_torch)
@@ -927,8 +912,8 @@ if __name__ == '__main__':
             dofs = np.zeros(hand.nr_dof())
         hand.forward_kinematics(np.zeros(hand.extrinsic_size), dofs)
         hand.value_check(10)
-        hand.grad_check(2)
+        #hand.grad_check(2)
         hand.write_limits()
         renderer = vtk.vtkRenderer()
-        vtk_add_from_hand(hand, renderer, scale)
+        vtk_add_from_hand([hand.draw(show_to_screen=False)], renderer, scale)
         vtk_render(renderer, axes=False)
