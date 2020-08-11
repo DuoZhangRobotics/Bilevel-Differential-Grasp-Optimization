@@ -18,8 +18,8 @@ class Optimizer(object):
         s=1.0
         self.objectives = []
         self.grad_norms = []
+        self.meshes = [self.params[1].target.mesh(), self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)]
         line_searcher = LineSearcher(self.func, self.params)
-        self.meshes = [self.params[1].target, self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True)]
         for i in range(niters):
             last_s = s
             
@@ -86,3 +86,24 @@ class Optimizer(object):
 
     def grad_check(self):
         print(torch.autograd.gradcheck(self.func, self.params))
+
+    def plot_meshes(self):
+        #show hand
+        import vtk
+        from Hand import vtk_add_from_hand,vtk_render
+        renderer = vtk.vtkRenderer()
+        vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
+        vtk_render(renderer, axes=True)
+    
+    def plot_history(self):
+        #show convergence
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        plt.plot(self.objectives, marker='d', label="Objective")
+        plt.plot(self.grad_norms, marker='d', label="Gradient")
+        plt.title("Convergence History")
+        plt.legend(loc="upper right")
+        plt.xlabel("#Iterations")
+        plt.ylabel("Value")
+        fig.show()
+        return fig
