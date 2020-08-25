@@ -16,12 +16,8 @@ class HandTarget(object):
             self.front = self.hand.extrinsic_size + self.hand.nr_dof()
         self.p, _ = self.hand.forward(torch.zeros((1, self.front)))
         self.rotation_matrix = torch.eye(3, dtype=data_type).repeat((self.hand.link_num * len(self.target), 1, 1))
-        print(f'rotation matrix = {self.rotation_matrix}')
         self._initialize_params(self.hand.palm, self.target, 0, 0)
-        print(f'params = {self.params}')
         self.chart_reset(self.hand.palm, 0)
-        print(f'rotation matrix = {self.rotation_matrix}')
-        print(f'params = {self.params}')
         self.params = self.params.detach().clone().requires_grad_(True)
 
     def _initialize_params(self, root: Link, target: list, start, idx):
