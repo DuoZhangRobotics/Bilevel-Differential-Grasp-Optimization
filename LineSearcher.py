@@ -29,16 +29,4 @@ class LineSearcher(object):
             if s <= tol:
                 return None, None, None
 
-        # Curvature condition
-        new_grad = torch.autograd.grad(new_obj, new_param[0])[0]
-        while - new_grad @ direction > - c2 * g_dot_d:
-            s *= scale
-            with torch.no_grad():
-                new_param = [param - s * torch.tensor(direction.T)] + self.params[1:3]
-            new_param[0].requires_grad_(True)
-            new_obj = self.func(*new_param)
-            new_grad = torch.autograd.grad(new_obj, new_param[0])[0]
-            if s <= tol:
-                return None, None, None
-
         return s, new_param, new_obj

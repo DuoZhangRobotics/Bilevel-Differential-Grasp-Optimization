@@ -5,7 +5,7 @@ rm -r ./__pycache__
 rm -r ./.ipynb_checkpoints
 rm ./.project
 rm ./.pydevproject
-rm -r ./log/
+rm ./log/*
 git add --all
 git commit -m "$1"
 git push -u origin "$2"
