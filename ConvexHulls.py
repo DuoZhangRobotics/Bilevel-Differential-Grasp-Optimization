@@ -3,6 +3,7 @@ import numpy as np
 import cvxpy as cp
 data_type = torch.double
 
+
 class ConvexHull(object):
     def __init__(self, points: np.array):
         self.points = points
@@ -30,7 +31,7 @@ class ConvexHull(object):
         return self.points[self.vertices, :]
 
     def surface_indices(self):
-        faces=[]
+        faces = []
         for f in self.simplices:
             if f[0] in self.vertices and f[1] in self.vertices and f[2] in self.vertices:
                 faces.append([self.vertices.tolist().index(f[0]),self.vertices.tolist().index(f[1]),self.vertices.tolist().index(f[2])])

@@ -2,6 +2,8 @@ from LineSearcher import LineSearcher
 from typing import Callable
 import numpy as np
 import torch,scipy
+import pickle
+
 data_type=torch.double
 
 class Optimizer(object):
@@ -30,13 +32,13 @@ class Optimizer(object):
             if self.method == "Newton":
                 hessian, L = self.hessian(jacobian)
                 jacobian = jacobian.detach().numpy()
-                direction = scipy.linalg.cho_solve(L,jacobian.T)
+                direction = scipy.linalg.cho_solve(L, jacobian.T)
             else: 
                 jacobian = jacobian.detach().numpy()
                 direction = jacobian.T
                 
             #line search
-            s,new_params,obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol, scale=scale)
+            s,new_params,obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol, scale=scale, s=last_s)
             if s is None:
                 print("Line-Search failed!")
                 break
@@ -51,7 +53,12 @@ class Optimizer(object):
                 s *= invscale
             if i % plot_interval == 0:
                 self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
-            
+                with open(rf'./log/Optimizer_{i}.pkl', 'wb') as output:
+                    pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+                with open(rf'./log/HandTarget_{i}.pkl', 'wb') as output:
+                    pickle.dump(self.params[1], output, pickle.HIGHEST_PROTOCOL)
+
             #record/print
             self.objectives.append(obj)
             self.grad_norms.append(np.max(np.abs(jacobian)))
