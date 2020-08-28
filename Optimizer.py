@@ -1,10 +1,10 @@
 from LineSearcher import LineSearcher
 from typing import Callable
 import numpy as np
-import torch,scipy
+import torch, scipy
 import pickle
 
-data_type=torch.double
+data_type = torch.double
 
 
 class Optimizer(object):
@@ -15,9 +15,9 @@ class Optimizer(object):
         self.line_searcher = LineSearcher(self.func, self.params)
 
     def optimize(self, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, plot_interval=50):
-        scale=0.9
-        invscale=2.
-        s=1.0
+        scale = 0.9
+        invscale = 2.
+        s = 1.0
         self.objectives = []
         self.grad_norms = []
         self.meshes = [i.mesh() for i in self.params[1].target]
@@ -26,30 +26,31 @@ class Optimizer(object):
         line_searcher = LineSearcher(self.func, self.params)
         for i in range(niters):
             last_s = s
-            
-            #find search direction
+
+            # find search direction
             obj = self.func(*self.params)
-            jacobian: torch.tensor = torch.autograd.grad(obj,self.params[0],retain_graph=True,create_graph=True)[0]
+            jacobian: torch.tensor = torch.autograd.grad(obj, self.params[0], retain_graph=True, create_graph=True)[0]
             if self.method == "Newton":
                 hessian, L = self.hessian(jacobian)
                 jacobian = jacobian.detach().numpy()
                 direction = scipy.linalg.cho_solve(L, jacobian.T)
-            else: 
+            else:
                 jacobian = jacobian.detach().numpy()
                 direction = jacobian.T
-                
-            #line search
-            s,new_params,obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol, scale=scale, s=last_s)
+
+            # line search
+            s, new_params, obj = line_searcher.line_search(grad=jacobian.T, direction=direction, obj=obj, tol=tol,
+                                                           scale=scale, s=last_s)
             if s is None:
                 print("Line-Search failed!")
                 break
-            
-            #Riemann optimization: chart reset
+
+            # Riemann optimization: chart reset
             with torch.no_grad():
                 self.params[1].reset_parameters(new_params[0], chart_reset=True)
             self.params[0] = self.params[1].params.requires_grad_(True)
-            
-            #adaptive scaling of search length
+
+            # adaptive scaling of search length
             if s == last_s:
                 s *= invscale
             if i % plot_interval == 0:
@@ -60,14 +61,19 @@ class Optimizer(object):
                 with open(rf'./log/HandTarget_{i}.pkl', 'wb') as output:
                     pickle.dump(self.params[1], output, pickle.HIGHEST_PROTOCOL)
 
-            #record/print
+            # record/print
             self.objectives.append(obj)
             self.grad_norms.append(np.max(np.abs(jacobian)))
             print(f"Iter{i:3d}: obj={self.objectives[-1]:3.6f} grad={self.grad_norms[-1]:3.6f} s={s:3.6f}")
-            
-            #convergence check
+
+            # convergence check
             if self.grad_norms[-1] < tolg:
                 print("Converged!")
+                with open(rf'./log/Optimizer_final.pkl', 'wb') as output:
+                    pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+                with open(rf'./log/HandTarget_final.pkl', 'wb') as output:
+                    pickle.dump(self.params[1], output, pickle.HIGHEST_PROTOCOL)
                 break
 
     def hessian(self, jacobian):
@@ -76,15 +82,15 @@ class Optimizer(object):
         for i in range(length):
             # with torch.autograd.detect_anomaly():
             hessian[i, :] = torch.autograd.grad(jacobian[:, i], self.params[0], retain_graph=True)[0]
-        try:    
+        try:
             # check if the hessian matrix is positive definite
             hessian = hessian.detach().numpy()
-            return hessian,scipy.linalg.cho_factor(hessian)
+            return hessian, scipy.linalg.cho_factor(hessian)
         except np.linalg.LinAlgError:
             # if the hessian matrix is not positive definite, then make it positive definite.
             hessian = torch.tensor(self.make_positive_definite(hessian), dtype=data_type)
             hessian = hessian.detach().numpy()
-            return hessian,scipy.linalg.cho_factor(hessian)
+            return hessian, scipy.linalg.cho_factor(hessian)
 
     def make_positive_definite(self, hessian, scale=1., min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
@@ -97,15 +103,15 @@ class Optimizer(object):
         print(torch.autograd.gradcheck(self.func, self.params))
 
     def plot_meshes(self):
-        #show hand
+        # show hand
         import vtk
-        from Hand import vtk_add_from_hand,vtk_render
+        from Hand import vtk_add_from_hand, vtk_render
         renderer = vtk.vtkRenderer()
         vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
         vtk_render(renderer, axes=True)
-    
+
     def plot_history(self):
-        #show convergence
+        # show convergence
         import matplotlib.pyplot as plt
         fig = plt.figure()
         plt.plot(self.objectives, marker='d', label="Objective")

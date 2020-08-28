@@ -5,7 +5,9 @@ import numpy as np
 from scipy.spatial import ConvexHull
 import torch.nn.functional as F
 import random
+
 torch.set_default_dtype(torch.float64)
+
 
 def normalize_quaternion(quaternion: torch.Tensor,
                          eps: float = 1e-12) -> torch.Tensor:
@@ -17,6 +19,7 @@ def normalize_quaternion(quaternion: torch.Tensor,
             "Input must be a tensor of shape (*, 4). Got {}".format(
                 quaternion.shape))
     return F.normalize(quaternion, p=2, dim=-1, eps=eps)
+
 
 def Quat2mat(quaternion):
     if not isinstance(quaternion, torch.Tensor):
@@ -53,6 +56,7 @@ def Quat2mat(quaternion):
         matrix = torch.squeeze(matrix, dim=0)
     return matrix
 
+
 def DH2trans(theta, d, r, alpha):
     Z = np.asarray([[math.cos(theta), -math.sin(theta), 0, 0],
                     [math.sin(theta), math.cos(theta), 0, 0],
@@ -64,6 +68,7 @@ def DH2trans(theta, d, r, alpha):
                     [0, 0, 0, 1]])
     tr = np.matmul(Z, X)
     return tr, Z, X
+
 
 def DH2trans_torch(theta, d, r, alpha):
     Zc = torch.tensor([[1., 0, 0, 0],
@@ -86,6 +91,7 @@ def DH2trans_torch(theta, d, r, alpha):
                       [0, math.sin(alpha), math.cos(alpha), 0],
                       [0, 0, 0, 1]]).type(theta.type())
     return torch.matmul(Z, X), Z, X
+
 
 def trimesh_to_vtk(trimesh):
     r"""Return a `vtkPolyData` representation of a :map:`TriMesh` instance
@@ -129,6 +135,7 @@ def trimesh_to_vtk(trimesh):
     mesh.SetPolys(cells)
     return mesh
 
+
 def write_vtk(polydata, name):
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(name)
@@ -137,6 +144,7 @@ def write_vtk(polydata, name):
     else:
         writer.SetInputData(polydata)
     writer.Write()
+
 
 class Link:
     def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
@@ -279,12 +287,14 @@ class Link:
                 ret = copy.deepcopy(self.mesh).apply_transform(jtt)
             else:
                 ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
-        else: ret = None
+        else:
+            ret = None
         if self.children:
             for c in self.children:
                 if ret:
                     ret += c.draw(use_torch=use_torch)
-                else: ret = c.draw(use_torch=use_torch)
+                else:
+                    ret = c.draw(use_torch=use_torch)
         return ret
 
     def Rx(self):
@@ -327,6 +337,7 @@ class Link:
             for c in self.children:
                 ret += c.get_end_effector_all()
         return ret
+
 
 class Hand(torch.nn.Module):
     def __init__(self, hand_path, scale, use_joint_limit=True, use_quat=True, use_eigen=False, use_contacts=False):
@@ -619,8 +630,8 @@ class Hand(torch.nn.Module):
             rx, ry, rz = np.split(extrinsic[3:6], [1, 1, 1])
             rot_x = np.array(
                 [[1., 0., 0.],
-                [0., np.cos(rx), np.sin(rx)],
-                [0., -np.sin(rx), np.cos(rx)]])
+                 [0., np.cos(rx), np.sin(rx)],
+                 [0., -np.sin(rx), np.cos(rx)]])
             rot_y = np.array((
                 [ry.cos(), 0., -ry.sin()],
                 [0., 1., 0.],
@@ -770,7 +781,8 @@ class Hand(torch.nn.Module):
         else:
             params = torch.randn(nr, self.extrinsic_size + self.nr_dof())
         params.requires_grad_()
-        print('AutoGradCheck=',torch.autograd.gradcheck(self, (params), eps=1e-6, atol=1e-6, rtol=1e-6, raise_exception=True))
+        print('AutoGradCheck=',
+              torch.autograd.gradcheck(self, (params), eps=1e-6, atol=1e-6, rtol=1e-6, raise_exception=True))
 
     def draw(self, scale_factor=1, show_to_screen=True, use_torch=False):
         mesh = self.palm.draw(use_torch)
@@ -862,6 +874,7 @@ class Hand(torch.nn.Module):
         res = scipy.optimize.minimize(fun, x0, method='SLSQP', bounds=tuple(bnds))
         return res.x[0:7], res.x[7:]
 
+
 def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
     for i in range(len(meshes)):
         mesh = meshes[i]
@@ -873,6 +886,7 @@ def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
         mesh_actor.SetMapper(mesh_mapper)
         mesh_actor.GetProperty().SetOpacity(1)
         renderer.AddActor(mesh_actor)
+
 
 def vtk_render(renderer, axes=True):
     if axes is True:
@@ -898,6 +912,7 @@ def vtk_render(renderer, axes=True):
     renderWindow.Render()
     renderWindowInteractor.Start()
 
+
 if __name__ == '__main__':
     hand_paths = [
         # 'hand/BarrettHand/',
@@ -912,7 +927,7 @@ if __name__ == '__main__':
             dofs = np.zeros(hand.nr_dof())
         hand.forward_kinematics(np.zeros(hand.extrinsic_size), dofs)
         hand.value_check(10)
-        #hand.grad_check(2)
+        # hand.grad_check(2)
         hand.write_limits()
         renderer = vtk.vtkRenderer()
         vtk_add_from_hand([hand.draw(show_to_screen=False)], renderer, scale)
