@@ -43,6 +43,13 @@ class QP(object):
         jacobian_constraints = torch.autograd.grad(self.constraints(xk), xk)[0]
         return jacobian_constraints.T * d + self.constraints(xk)
 
+    def get_derivatives(self, xk):
+        derivative = torch.autograd.grad(self.function(xk), xk)[0]
+        dLagrangian = torch.autograd.grad(self.lagrangian(xk), xk)[0]
+        bk = self.get_hessian(xk, dLagrangian)
+        dh = torch.autograd.grad(self.constraints(xk), xk)[0]
+        return derivative, bk, dh
+
     @staticmethod
     def make_positive_definite(hessian,  min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
@@ -80,5 +87,11 @@ class SQP(object):
         return s, new_x, new_obj
 
     def solve(self, x0, u0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, plot_interval=50):
-        pass
+        df, bk, dh = self.qp.get_derivatives(x0)
+        u = u0
+        x = x0
+        for i in range(niters):
+
+
+            if torch.norm
 
