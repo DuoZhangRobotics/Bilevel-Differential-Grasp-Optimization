@@ -28,5 +28,5 @@ class MeritFunction(object):
         if self.type == 'l1':
             return torch.autograd.grad(self.function, x) + self.eta * torch.norm(self.constraints_func(x), p=1)
         if self.type == 'alm':
-            return torch.autograd.grad(self.merit_function, x)
+            return torch.autograd.grad(self.merit_function(x), x)
 

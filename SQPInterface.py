@@ -5,13 +5,15 @@ from MeritFunction import MeritFunction
 
 data_type = torch.double
 
+
 class QP(object):
-    def __init__(self, function, constraints):
+    def __init__(self, function, constraints, u):
         self.function = function
         self.constraints = constraints
+        self.u = u
 
-    def get_derivative(self, x):
-        return torch.autograd.grad(self.function, x, retain_graph=True, create_graph=True)[0]
+    def lagrangian(self, x):
+        return self.function(x) + self.u * self.constraints(x)
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -29,37 +31,54 @@ class QP(object):
             hessian = hessian.detach().numpy()
             return hessian, scipy.linalg.cho_factor(hessian)
 
-    def get_qp_objective(self, x):
-        derivative = self.get_derivative(x)
-        hessian = self.get_hessian(x, derivative)
+    def get_qp_objective(self, x, xk):
+        d = x - xk
+        derivative = torch.autograd.grad(self.function(xk), xk)[0]
+        dLagrangian = torch.autograd.grad(self.lagrangian(xk), xk)[0]
+        hessian = self.get_hessian(xk, dLagrangian)
+        return derivative.T * d + 0.5 * d.T * hessian * d
 
-    def make_positive_definite(self, hessian,  min_cond=0.00001):
+    def get_qp_constraints(self, x, xk):
+        d = x - xk
+        jacobian_constraints = torch.autograd.grad(self.constraints(xk), xk)[0]
+        return jacobian_constraints.T * d + self.constraints(xk)
+
+    @staticmethod
+    def make_positive_definite(hessian,  min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
         l = np.max(np.abs(eigenvalues))
         for i in range(len(eigenvalues)):
             eigenvalues[i] = max(eigenvalues[i], l * min_cond)
         return eigenvectors @ np.diag(eigenvalues) @ np.linalg.inv(eigenvectors)
 
+
 class SQP(object):
-    def __init__(self, functions, constraints, merit_function: MeritFunction):
-        self.functions = functions
+    def __init__(self, function, constraints, mf: MeritFunction, u):
+        self.function = function
         self.constraints = constraints
-        self.merit_function = merit_function
+        self.merit_function = mf.merit_function
+        self.u = u
+        self.qp = QP(self.function, self.constraints, self.u)
 
-    def get_qp(self, x):
+    def lagrangian(self, x):
+        return self.function(x) + self.u * self.constraints(x)
 
+    def line_search(self, x, grad, direction, obj, c1=1e-4, s=1, tol=1e-20, scale=0.9):
+        g_dot_d = (grad.T @ direction)[0, 0]
 
-    def get_jacobian(self, x):
+        new_x = x - s * torch.tensor(direction.T)
+        new_obj = self.merit_function(new_x)
+        # Armijo condition
+        while new_obj > obj - c1 * s * g_dot_d or torch.isnan(new_obj) :
+            s *= scale
+            with torch.no_grad():
+                new_x = x - s * torch.tensor(direction.T)
+            new_x.requires_grad_(True)
+            new_obj = self.merit_function(new_x)
+            if s <= tol:
+                return None, None, None
+        return s, new_x, new_obj
+
+    def solve(self, x0, u0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, plot_interval=50):
         pass
 
-    def get_hessian(self, x):
-        pass
-
-    def make_hessian_positive_definite(self, x):
-        pass
-
-    def line_search(self, x, merit_func):
-        pass
-
-    def solve(self, x0, u0):
-        pass
