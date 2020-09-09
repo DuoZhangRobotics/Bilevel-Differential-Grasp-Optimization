@@ -29,6 +29,6 @@ if __name__ == "__main__":
 
 
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
-    optimizer.optimize(niters=100000, plot_interval=20)
+    optimizer.optimize(niters=20, plot_interval=2)
     optimizer.plot_history().savefig("history.png")
     optimizer.plot_meshes()

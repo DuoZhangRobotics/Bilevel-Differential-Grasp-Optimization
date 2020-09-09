@@ -6,6 +6,7 @@ from HandTarget import HandTarget
 from Optimizer import Optimizer
 from Directions import Directions
 
+
 data_type = torch.double
 
 
@@ -32,24 +33,27 @@ def load_optimizer(index: int = None):
 
 
 class QOptimizer(object):
-    def __init__(self, hand_target, sampled_directions, gamma=0.001, mu=0.1):
+    def __init__(self, hand_target, non_linear_optimizer, sampled_directions, gamma=0.001, mu=0.1):
         self.hand_target = hand_target
-        self.optimizer = optimizer
+        self.non_linear_optimizer = non_linear_optimizer
         self.sampled_directions = sampled_directions
         self.gamma = gamma
         self.mu = mu
 
-    def optimize(self):
+    def optimize(self, tol=1e-5):
         v_num = sum([len(t.vertices) for t in self.hand_target.target])
-        v = np.array([t.points[t.vertices] for t in self.hand_target.target]).reshape((-1, 3))
+        v = np.array([np.mean(np.array(t.points[t.vertices]), axis=0) for t in self.hand_target.target]).reshape((-1, 3))
         Q = cp.Variable(1)
-        f = cp.Variable((v_num, 3))
+        f = cp.Variable((1, 3))
         n, d, _ = self._get_n_d(self.hand_target.hand.palm, 0)
         n = np.array(n)
         d = np.array(d).reshape((-1, 1))
-        contraints = [Q <= cp.sum(self.sampled_directions @ f.T, axis=1),
-                      n @ f.T <= self.gamma * np.abs(d - n @ v.T),]
-        prob = cp.Problem(cp.Maximize(Q), contraints)
+
+        constraints = [Q <= cp.sum(self.sampled_directions @ f.T, axis=1),
+                       n @ f.T <= self.gamma * np.abs(d - n @ v.T),
+                       # cp.sum_squares(n @ f.T) * self.mu >=
+                       ]
+        prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve()
         print(f'The optimal value is: {prob.value}')
         print(f'The optimal value of Q is : {Q.value}')
@@ -72,15 +76,8 @@ class QOptimizer(object):
         return n, d, idx
 
 
-    # def get_log_barrier(self):
-    #     p, t = self.hand_target.hand.forward(self.optimizer.params[:, :self.hand_target.front])
-    #     log_barrier, _, _ = self.hand_target.get_log_barrier(self.hand_target.hand.palm, self.hand_target.target, self.optimizer.params, p, 0, 0)
-    #     log_barrier = log_barrier * -1
-    #     return self.gamma * log_barrier
-
-
 if __name__ == '__main__':
     hand_target, optimizer = load_optimizer()
     sampled_directions = np.array(Directions(res=2, dim=3).dirs)
-    qoptimizer = QOptimizer(hand_target, sampled_directions)
+    qoptimizer = QOptimizer(hand_target, optimizer, sampled_directions)
     qoptimizer.optimize()
