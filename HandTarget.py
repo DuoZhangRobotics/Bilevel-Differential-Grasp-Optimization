@@ -145,3 +145,33 @@ class HandTarget(object):
         objective = objective * gamma
         objective = objective + norm
         return objective
+
+    def alg2_objective(self, params, Q):
+        p, _ = self.hand.forward(params[:, :self.front])
+        objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
+        objective = objective - Q
+        return objective
+
+    def friction_cone_constraint(self, f, gamma):
+        v = np.array([np.array(t.points[t.vertices]) for t in self.target]).reshape((-1, 3))
+        n, d, _ = self.get_n_d(self.hand.palm, 0)
+        return n @ f.T - gamma * np.abs(d - n @ v.T)
+
+    def get_n_d(self, root, idx):
+        n = torch.zeros((1, 3))
+        d = torch.zeros((1, 1))
+        for i, t in enumerate(self.target):
+            beta = self.params[0, self.front + 3 * (idx * len(self.target) + i) + 0]
+            phi = self.params[0, self.front + 3 * (idx * len(self.target) + i) + 1]
+            rotation_matrix = self.rotation_matrix[idx * len(self.target) + i, :, :]
+            n = torch.cat((n, self.get_n(rotation_matrix, beta, phi).T), dim=0)
+            d = torch.cat((d.reshape((1, 1)), self.params[0, self.front + 3 * (idx * len(self.target) + i) + 2].reshape((1,1))), dim=0)
+        n = n[1:, :]
+        d = d[1:, :]
+
+        idx += 1
+        for child in root.children:
+            tmp_n, tmp_d, idx = self.get_n_d(child, idx)
+            n = torch.cat((n, tmp_n), dim=0)
+            d = torch.cat((d, tmp_d), dim=0)
+        return n, d, idx

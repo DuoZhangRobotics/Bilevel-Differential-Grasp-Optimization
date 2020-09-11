@@ -2,13 +2,13 @@ from ConvexHulls import ConvexHull
 from HandTarget import HandTarget
 from Optimizer import Optimizer
 from Hand import Hand
-import torch, trimesh
+import torch
 import numpy as np
 
 data_type = torch.double
 
 if __name__ == "__main__":
-    path = 'hand/ShadowHand/'
+    path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
         dofs = np.zeros(hand.eg_num)
@@ -29,6 +29,6 @@ if __name__ == "__main__":
 
 
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
-    optimizer.optimize(niters=20, plot_interval=2)
-    optimizer.plot_history().savefig("history.png")
+    optimizer.optimize(niters=10000, plot_interval=20)
     optimizer.plot_meshes()
+    optimizer.plot_history().savefig("history.png")
