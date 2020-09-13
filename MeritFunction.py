@@ -2,7 +2,7 @@ import torch
 
 
 class MeritFunction(object):
-    def __init__(self, function, eta, constraints_func, type='l1'):
+    def __init__(self, function, constraints_func, type='l1'):
         """
 
         Parameters
@@ -14,19 +14,22 @@ class MeritFunction(object):
                             function
         """
         self.function = function
-        self.eta = eta
+        self.eta = 10.
         self.constraints_func = constraints_func
         self.type = type
 
     def merit_function(self, x):
+        constraints = self.constraints_func(x)
+        inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         if self.type == 'l1':
-            return self.function(x) + self.eta * torch.norm(self.constraints_func(x), p=1)
+            return self.function(x) + self.eta * torch.norm(inequalities, p=1)
         if self.type == 'alm':
             return self.function(x) + 0.5 * self.eta * torch.norm(self.constraints_func(x), p=2)
 
-    def get_derivative(self, x):
+    def get_directional_derivative(self, x, dx):
+        constraints = self.constraints_func(x)
+        inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         if self.type == 'l1':
-            return torch.autograd.grad(self.function, x) + self.eta * torch.norm(self.constraints_func(x), p=1)
+            return torch.autograd.grad(self.function(x), x)[0] @ dx + self.eta * torch.norm(inequalities, p=1)
         if self.type == 'alm':
-            return torch.autograd.grad(self.merit_function(x), x)
-
+            return torch.autograd.grad(self.merit_function(x), x)[0] @ dx

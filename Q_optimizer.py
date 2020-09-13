@@ -44,7 +44,7 @@ class QOptimizer(object):
         v = np.array([np.array(t.points[t.vertices]) for t in self.hand_target.target]).reshape((-1, 3))
         Q = cp.Variable(1)
         f = cp.Variable((v_num, 3))
-        n, d, _ = self.hand_target.get_n_d(self.hand_target.hand.palm, 0)
+        n, d, _ = self.hand_target.get_n_d(self.hand_target.params, self.hand_target.hand.palm, 0)
         n = n.detach().numpy()
         d = d.detach().numpy().reshape((-1, 1))
 
@@ -54,9 +54,7 @@ class QOptimizer(object):
                        ]
         prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve()
-        print(f'The optimal value is: {prob.value}')
-        print(f'The optimal value of Q is : {Q.value}')
-        print(f'The optimal value of f is: {f.value}')
+
         return Q.value, f.value
 
 
