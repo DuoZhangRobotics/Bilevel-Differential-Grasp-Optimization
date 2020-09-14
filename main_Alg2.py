@@ -38,6 +38,9 @@ class Alg2Solver(object):
             hand_target.reset_parameters(x, True)
             p, _ = hand_target.hand.forward(x[:, :hand_target.front])
             self.Q, self.F = self.qf_solver()
+            if mf.converged:
+                print('Converged!')
+                break
         return x, u
 
 
@@ -57,6 +60,6 @@ if __name__ == "__main__":
     gamma = torch.tensor(0.001, dtype=torch.double)
     print('link num = ', hand_target.hand.link_num)
     alg2_solver = Alg2Solver(hand_target)
-    x_optimal, u_optimal = alg2_solver.solve(x0=hand_target.params, u0=torch.tensor(1, dtype=torch.double), niters=10)
+    x_optimal, u_optimal = alg2_solver.solve(x0=hand_target.params, u0=torch.tensor(1., dtype=torch.double), niters=10)
 
 

@@ -3,19 +3,20 @@ import scipy
 import numpy as np
 from MeritFunction import MeritFunction
 from LineSearcher import LineSearcher
+import cvxpy as cp
 
 data_type = torch.double
 
 
 class QP(object):
-    def __init__(self, function, constraints, eta):
+    def __init__(self, function, constraints, u):
         self.function = function
         self.constraints = constraints
-        self.eta = eta
+        self.u = u
 
     def lagrangian(self, x):
         # TODO: should be active sets or using slack variables
-        return self.function(x) + self.eta * torch.sum(self.constraints(x))
+        return self.function(x) + self.u * torch.sum(self.constraints(x))
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -33,38 +34,40 @@ class QP(object):
             hessian = hessian.detach().numpy()
             return torch.tensor(hessian, dtype=data_type), scipy.linalg.cho_factor(hessian)
 
-    def get_qp_objective(self, x, xk):
-        d = x - xk
-        df = torch.autograd.grad(self.function(xk), xk)[0]
-        dLagrangian = torch.autograd.grad(self.lagrangian(xk), xk)[0]
-        hessian, _ = self.get_hessian(xk, dLagrangian)
-        return df.T * d + 0.5 * d.T * hessian * d
-
-    def get_qp_constraints(self, x, xk):
-        d = x - xk
-        dh = torch.autograd.grad(self.constraints(xk), xk)[0]
-        return dh.T * d + self.constraints(xk)
-
     def get_derivatives(self, xk):
-        df: torch.tensor = torch.autograd.grad(self.function(xk), xk, retain_graph=True, create_graph=True)[0]
+        # df: torch.tensor = torch.autograd.grad(self.function(xk), xk, retain_graph=True, create_graph=True)[0]
         dLagrangian = torch.autograd.grad(self.lagrangian(xk), xk, retain_graph=True, create_graph=True)[0]
         bk, _ = self.get_hessian(xk, dLagrangian)
-        constraints = self.constraints(xk).view((-1, 1))
+        constraints = self.constraints(xk)
         dh: torch.tensor = torch.zeros((constraints.size(0), xk.size(1)))
         for i in range(constraints.size(0)):
             dh[i, :] = torch.autograd.grad(constraints[i], xk, retain_graph=True)[0]
-
-        return df, bk, dh
+        return dLagrangian, bk, dh
 
     def solve(self, xk):
-        df, hl, dh = self.get_derivatives(xk)
-        A = torch.cat((torch.cat((hl, -dh.T), dim=1),
-                       torch.cat((dh, torch.zeros((dh.size(0), dh.size(0)))), dim=1)), dim=0)
-        B = torch.cat((df.T, self.constraints(xk).view(-1, 1)))
-        d, _ = torch.solve(-B, A)
-        dx = d[:dh.size(1), :]
-        du = d[dh.size(1):, :]
-        return dx, du, df
+        dl, hl, dh = self.get_derivatives(xk)
+        # A = torch.cat((torch.cat((hl, dh.T), dim=1),
+        #                torch.cat((dh, torch.zeros((dh.size(0), dh.size(0)))), dim=1)), dim=0)
+        # B = torch.cat((dl.T, self.constraints(xk)))
+        # d, _ = torch.solve(-B, A)
+        # dx = d[:dh.size(1), :]
+        # du = d[dh.size(1):, :]
+        # print('dx = ', dx)
+
+        dl = dl.detach().numpy()
+        hl = hl.detach().numpy()
+        dh = dh.detach().numpy()
+        dx = cp.Variable(xk.detach().numpy().T.shape)
+        c = self.constraints(xk).detach().numpy()
+        z = cp.Variable(c.shape)
+        constraints = [dh @ dx + c + z <= 0,
+                       z >= 0]
+        prob = cp.Problem(cp.Minimize(dl @ dx + 1 / 2 * cp.quad_form(dx, hl)), constraints=constraints)
+        prob.solve(solver='SCS')
+        du = constraints[0].dual_value
+        # print('dx value = ', dx.value)
+        # print('du value = ', du)
+        return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
     @staticmethod
     def make_positive_definite(hessian, min_cond=0.00001):
@@ -93,7 +96,8 @@ class SQP(object):
         self.mf_values = []
         self.grad_norms = []
         self.objectives = []
-        dx, du, _ = self.qp.solve(x0)
+
+        dx, du = self.qp.solve(x0)
         x: torch.tensor = x0
         u: torch.tensor = self.u.detach().clone()
         mf_val = self.mf.merit_function(x)
@@ -119,11 +123,11 @@ class SQP(object):
                 s *= invscale
 
             self.qp.u = u
-            dx, du, df = self.qp.solve(x)
-            self.grad_norms.append(torch.max(torch.abs(df)).detach().numpy())
+            dx, du = self.qp.solve(x)
+            # self.grad_norms.append(torch.max(torch.abs(df)).detach().numpy())
             self.mf_values.append(mf_val.detach().numpy())
             self.objectives.append(self.lagrangian(x).detach().numpy())
-            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} s={s:3.6f}")
+            print(f"Iter{i:3d}: obj={self.objectives[-1]} s={s:3.6f}")
             if self.grad_norms[-1] < tolg:
                 print("Converged!")
         return x, u

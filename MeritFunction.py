@@ -14,9 +14,11 @@ class MeritFunction(object):
                             function
         """
         self.function = function
-        self.eta = 10.
+        self.eta = 0.1
         self.constraints_func = constraints_func
         self.type = type
+        # TODO: initialize eta
+        # TODO: stop condition
 
     def merit_function(self, x):
         constraints = self.constraints_func(x)
