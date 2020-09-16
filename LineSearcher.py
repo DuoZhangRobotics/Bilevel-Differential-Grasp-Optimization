@@ -13,7 +13,7 @@ class LineSearcher(object):
         self.func = func
         self.params = params
 
-    def line_search(self, obj, directional_derivative=None, grad=None, direction=None, c1=1e-4, s=1, tol=1e-20,
+    def line_search(self, obj, directional_derivative=None, grad=None, direction=None, c1=1e-4, s=1, tol=1e-30,
                     scale=0.9, use_directional_derivative=True):
         if use_directional_derivative:
             g_dot_d = directional_derivative

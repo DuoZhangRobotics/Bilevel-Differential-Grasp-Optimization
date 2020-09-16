@@ -2,7 +2,7 @@ import torch
 
 
 class MeritFunction(object):
-    def __init__(self, function, constraints_func, type='l1'):
+    def __init__(self, function, constraints_func, x0, dx0, pho=0.5, tol=1e-5, type='l1'):
         """
 
         Parameters
@@ -14,24 +14,34 @@ class MeritFunction(object):
                             function
         """
         self.function = function
-        self.eta = 0.1
         self.constraints_func = constraints_func
+        self.x0 = x0
+        self.dx0 = dx0
+        self.pho = pho
         self.type = type
+        self.tol = tol
         # TODO: initialize eta
+        self.dfdx = torch.autograd.grad(self.function(x0), x0)[0] @ dx0
+        print("dfdx = ", self.dfdx)
+        constraints = self.constraints_func(x0)
+        inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
+        self.penalty_norm = torch.norm(inequalities, p=1)
+        print("penalty norm = ", self.penalty_norm)
+        self.eta = self._initialize_eta()
+        print("self.eta = ", self.eta)
+        self.directional_derivative = self.dfdx + self.eta * self.penalty_norm
         # TODO: stop condition
+        self.converged = (self.directional_derivative.detach().numpy() <= self.tol)
 
     def merit_function(self, x):
         constraints = self.constraints_func(x)
         inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         if self.type == 'l1':
             return self.function(x) + self.eta * torch.norm(inequalities, p=1)
-        if self.type == 'alm':
-            return self.function(x) + 0.5 * self.eta * torch.norm(self.constraints_func(x), p=2)
 
-    def get_directional_derivative(self, x, dx):
-        constraints = self.constraints_func(x)
-        inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
-        if self.type == 'l1':
-            return torch.autograd.grad(self.function(x), x)[0] @ dx + self.eta * torch.norm(inequalities, p=1)
-        if self.type == 'alm':
-            return torch.autograd.grad(self.merit_function(x), x)[0] @ dx
+    def _initialize_eta(self):
+        if self.penalty_norm.detach() == torch.tensor(0.0, dtype=torch.double):
+            eta = 0
+        else:
+            eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
+        return eta

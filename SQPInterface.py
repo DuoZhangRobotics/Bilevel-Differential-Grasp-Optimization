@@ -9,14 +9,14 @@ data_type = torch.double
 
 
 class QP(object):
-    def __init__(self, function, constraints, u):
+    def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        self.u = u
+        # self.u = u
 
     def lagrangian(self, x):
         # TODO: should be active sets or using slack variables
-        return self.function(x) + self.u * torch.sum(self.constraints(x))
+        return self.function(x) # + self.u * torch.sum(self.constraints(x))
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -46,27 +46,16 @@ class QP(object):
 
     def solve(self, xk):
         dl, hl, dh = self.get_derivatives(xk)
-        # A = torch.cat((torch.cat((hl, dh.T), dim=1),
-        #                torch.cat((dh, torch.zeros((dh.size(0), dh.size(0)))), dim=1)), dim=0)
-        # B = torch.cat((dl.T, self.constraints(xk)))
-        # d, _ = torch.solve(-B, A)
-        # dx = d[:dh.size(1), :]
-        # du = d[dh.size(1):, :]
-        # print('dx = ', dx)
-
         dl = dl.detach().numpy()
         hl = hl.detach().numpy()
         dh = dh.detach().numpy()
         dx = cp.Variable(xk.detach().numpy().T.shape)
         c = self.constraints(xk).detach().numpy()
-        z = cp.Variable(c.shape)
-        constraints = [dh @ dx + c + z <= 0,
-                       z >= 0]
+        print("c = ", c)
+        constraints = [dh @ dx + c <= 0]
         prob = cp.Problem(cp.Minimize(dl @ dx + 1 / 2 * cp.quad_form(dx, hl)), constraints=constraints)
-        prob.solve(solver='SCS')
+        prob.solve()
         du = constraints[0].dual_value
-        # print('dx value = ', dx.value)
-        # print('du value = ', du)
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
     @staticmethod
@@ -79,34 +68,35 @@ class QP(object):
 
 
 class SQP(object):
-    def __init__(self, function, constraints, mf: MeritFunction, u):
+    def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        self.mf = mf
-        self.u = u
-        self.qp = QP(self.function, self.constraints, self.u)
+        # self.u = u
+        self.qp = QP(self.function, self.constraints)
 
     def lagrangian(self, x):
-        return self.function(x) + self.u * self.constraints(x)
+        return self.function(x)  # + self.u * self.constraints(x)
 
-    def solve(self, x0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5, plot_interval=50):
+    def solve(self, x0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5):
         s = 1.
         invscale = 2.
         scale = 0.9
         self.mf_values = []
         self.grad_norms = []
         self.objectives = []
-
         dx, du = self.qp.solve(x0)
+        print("dx = ", dx)
         x: torch.tensor = x0
-        u: torch.tensor = self.u.detach().clone()
+        # u: torch.tensor = self.u.detach().clone()
+        self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
         mf_val = self.mf.merit_function(x)
+        print("mf_val = ", mf_val)
+        print("directional derivative = ", self.mf.directional_derivative)
         line_searcher = LineSearcher(self.mf.merit_function, [x])
         for i in range(niters):
             last_s = s
             s, new_x, mf_val = line_searcher.line_search(obj=mf_val,
-                                                         directional_derivative=self.mf.get_directional_derivative(x,
-                                                                                                                   dx),
+                                                         directional_derivative=self.mf.directional_derivative,
                                                          direction=dx,
                                                          s=last_s, scale=scale, tol=tol,
                                                          use_directional_derivative=True)
@@ -115,19 +105,21 @@ class SQP(object):
                 break
             with torch.no_grad():
                 x = new_x[0]
-                u = u - s * du
+                # u = u - s * du
             x.requires_grad_(True)
-            u.requires_grad_(True)
+            # u.requires_grad_(True)
 
             if s == last_s:
                 s *= invscale
 
-            self.qp.u = u
+            # self.qp.u = u
             dx, du = self.qp.solve(x)
             # self.grad_norms.append(torch.max(torch.abs(df)).detach().numpy())
             self.mf_values.append(mf_val.detach().numpy())
             self.objectives.append(self.lagrangian(x).detach().numpy())
+            self.grad_norms.append(self.mf.directional_derivative)
+            self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
             print(f"Iter{i:3d}: obj={self.objectives[-1]} s={s:3.6f}")
-            if self.grad_norms[-1] < tolg:
+            if self.mf.converged:
                 print("Converged!")
-        return x, u
+        return x

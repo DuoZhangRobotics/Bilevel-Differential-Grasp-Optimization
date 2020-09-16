@@ -146,9 +146,10 @@ class HandTarget(object):
         objective = objective + norm
         return objective
 
-    def alg2_objective(self, params):
+    def alg2_objective(self, params, gamma):
         p, _ = self.hand.forward(params[:, :self.front])
         objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
+        objective = objective * gamma
         return objective
 
     def friction_cone_constraint(self, params, f, gamma):

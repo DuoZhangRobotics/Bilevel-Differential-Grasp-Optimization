@@ -58,10 +58,9 @@ class QOptimizer(object):
         return Q.value, f.value
 
 
-
-
 if __name__ == '__main__':
     hand_target, optimizer = load_optimizer()
+    optimizer.plot_meshes()
     sampled_directions = np.array(Directions(res=2, dim=3).dirs)
     qoptimizer = QOptimizer(hand_target, sampled_directions)
     qoptimizer.optimize()
