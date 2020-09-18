@@ -9,13 +9,13 @@ data_type = torch.double
 
 
 class QP(object):
-    def __init__(self, function, constraints):
+    def __init__(self, function, constraints, u):
         self.function = function
         self.constraints = constraints
-        # self.u = u
+        self.u = u
 
     def lagrangian(self, x):
-        return self.function(x)  # + self.u.T @ self.constraints(x)
+        return self.function(x) + self.u.T @ self.constraints(x)
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -52,7 +52,6 @@ class QP(object):
         xk = xk.detach().numpy()
         dx = cp.Variable(xk.T.shape)
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
-        # print("c = ", c)
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(df @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
         prob.solve()
@@ -72,11 +71,11 @@ class SQP(object):
     def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        # self.u = torch.ones((36, 1), dtype=torch.double)
-        self.qp = QP(self.function, self.constraints)
+        self.u = 100 * torch.ones((36, 1), dtype=torch.double)
+        self.qp = QP(self.function, self.constraints, self.u)
 
     def lagrangian(self, x):
-        return self.function(x)  # + self.u.T @ self.constraints(x)
+        return self.function(x) + self.u.T @ self.constraints(x)
 
     def solve(self, x0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5):
         s = 1.
@@ -86,9 +85,8 @@ class SQP(object):
         self.grad_norms = []
         self.objectives = []
         x: torch.tensor = x0
-        # u: torch.tensor = self.u.detach().clone()
+        u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
-        print("Start")
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
         mf_val = self.mf.merit_function(x)
         line_searcher = LineSearcher(self.mf.merit_function, [x])
@@ -101,27 +99,55 @@ class SQP(object):
                                                          use_directional_derivative=True)
             if s is None:
                 print("Line-Search failed!")
-                return None  # , None
+                return None, None
             with torch.no_grad():
                 x = new_x[0]
-                # u = u - s * du
+                u = u - s * du
+                self.u = u
             x.requires_grad_(True)
-            # u.requires_grad_(True)
+            u.requires_grad_(True)
 
             if s == last_s:
                 s *= invscale
 
-            # self.qp.u = u
+            self.qp.u = u
             self.mf_values.append(mf_val.detach().numpy())
             self.objectives.append(self.lagrangian(x).detach().numpy())
             self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             dx_norm = np.max(np.abs(dx.detach().numpy()))
-            dx, du = self.qp.solve(x)
-            print("End")
-            self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+
             print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dx_norm={dx_norm} eta={self.mf.eta} s={s:3.6f}")
-            # TODO: Convergence condition should not be mf.converged but KKT condition for primal problem. Must Introduce u to the structure.
-            if self.mf.converged:
-                print("SQP Converged!")
+            converged = self.converge_condition(x, u, tolg)
+            if converged:
+                print("SQP converged!")
                 break
-        return x  # , u
+            dx, du = self.qp.solve(x)
+            self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+
+        return x, u
+
+    def converge_condition(self, x, u, tol=1e-5):
+        L = self.lagrangian(x)
+        dL = torch.autograd.grad(L, x, retain_graph=True)[0]
+        converged = True
+        if np.max(np.abs(dL.detach().numpy())) <= tol:
+            print("The first condition of KKT condition satisfied.")
+        else:
+            converged = False
+
+        constraints = self.constraints(x).detach().numpy()
+        if np.all(constraints <= 0):
+            print("The second condition of KKT condition satisfied.")
+        else:
+            converged = False
+        # print("U = ", u.detach().numpy())
+        if np.all(u.detach().numpy() >= 0):
+            print("The third condition of KKT condition satisfied.")
+        else:
+            converged = False
+
+        if np.max(np.abs(u.detach().numpy() * constraints)) < tol:
+            print("The fourth condition of KKT condition satisfied.")
+        else:
+            converged = False
+        return converged

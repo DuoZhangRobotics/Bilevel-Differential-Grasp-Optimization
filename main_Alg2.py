@@ -10,14 +10,14 @@ import numpy as np
 
 
 class Alg2Solver(object):
-    def __init__(self, hand_target, sampled_directions, gamma=0.001):
+    def __init__(self, hand_target, sampled_directions, gamma=0.0001):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma = gamma
         self.Q, self.F = self.qf_solver()
 
     def qf_solver(self):
-        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions)
+        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma)
         Q, F = qoptimizer.optimize()
         return torch.tensor(Q, dtype=torch.double), torch.tensor(F, dtype=torch.double)
 
@@ -33,7 +33,7 @@ class Alg2Solver(object):
         self.Q, self.F = self.qf_solver()
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
-            x = sqp_solver.solve(x)
+            x, u = sqp_solver.solve(x)
             if x is None:
                 print("SQP failed")
                 break
@@ -44,17 +44,13 @@ class Alg2Solver(object):
             if sqp_solver.mf.converged:
                 print('Converged!')
                 self.x_optimal = x
-                # self.u_optimal = u
+                self.u_optimal = u
                 break
-        return x  # , u
-
-    def kkt(self):
-        f_value = self.obj_func(self.x_optimal)
-        c_value = self.constraints_func(self.x_optimal)
+        return x, u
 
 
 if __name__ == "__main__":
-    path = 'hand/ShadowHand/'
+    path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
         dofs = np.zeros(hand.eg_num)
@@ -68,10 +64,10 @@ if __name__ == "__main__":
     hand_target = HandTarget(hand, target)
 
     # hand_target, _ = load_optimizer()
-    gamma = 0.001
+    gamma = 0.01
     sampled_directions = np.array(Directions(res=2, dim=3).dirs)
     # sampled_directions = np.array([[1, 1, 1]])
     alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma=gamma)
-    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=100)
+    x_optimal, u_optimal = alg2_solver.solve(x0=hand_target.params, niters=100)
 
 
