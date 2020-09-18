@@ -20,18 +20,14 @@ class MeritFunction(object):
         self.pho = pho
         self.type = type
         self.tol = tol
-        # TODO: initialize eta
         self.dfdx = torch.autograd.grad(self.function(x0), x0)[0] @ dx0
         print("dfdx = ", self.dfdx)
         constraints = self.constraints_func(x0)
         inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         self.penalty_norm = torch.norm(inequalities, p=1)
-        print("penalty norm = ", self.penalty_norm)
         self.eta = self._initialize_eta()
-        print("self.eta = ", self.eta)
         self.directional_derivative = self.dfdx + self.eta * self.penalty_norm
-        # TODO: stop condition
-        self.converged = (self.directional_derivative.detach().numpy() <= self.tol)
+        self.converged = (torch.abs(self.directional_derivative.detach()).numpy() <= self.tol)
 
     def merit_function(self, x):
         constraints = self.constraints_func(x)

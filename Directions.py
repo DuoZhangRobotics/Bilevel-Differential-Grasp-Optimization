@@ -81,4 +81,4 @@ class Directions:
 
 
 if __name__ == '__main__':
-    Directions(res=2, dim=3).printDirs()
+    Directions(res=3, dim=3).printDirs()

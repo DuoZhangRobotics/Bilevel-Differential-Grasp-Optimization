@@ -24,7 +24,7 @@ class LineSearcher(object):
         if len(self.params) > 1:
             new_param = [param - s * torch.tensor(direction.T)] + self.params[1:]
         else:
-            new_param = [param - s * torch.tensor(direction.T)]
+            new_param = [param - s * direction.T]
         new_obj = self.func(*new_param)
         # Armijo condition
         while new_obj > obj - c1 * s * g_dot_d or torch.isnan(new_obj):
@@ -33,10 +33,11 @@ class LineSearcher(object):
                 if len(self.params) > 1:
                     new_param = [param - s * torch.tensor(direction.T)] + self.params[1:]
                 else:
-                    new_param = [param - s * torch.tensor(direction.T)]
+                    new_param = [param - s * direction.T]
             new_param[0].requires_grad_(True)
             new_obj = self.func(*new_param)
             if s <= tol:
+                print(f"final s = {s}")
                 return None, None, None
 
         return s, new_param, new_obj

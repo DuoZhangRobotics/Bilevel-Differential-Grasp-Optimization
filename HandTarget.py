@@ -155,7 +155,7 @@ class HandTarget(object):
     def friction_cone_constraint(self, params, f, gamma):
         v = torch.tensor([t.points[t.vertices] for t in self.target], dtype=torch.double).reshape((-1, 3))
         n, d, _ = self.get_n_d(params, self.hand.palm, 0)
-        return (n @ f.T - gamma * torch.abs(d - n @ v.T)).reshape((-1, 1))
+        return (n @ f.T - gamma / torch.abs(d - n @ v.T)).reshape((-1, 1))
 
     def get_n_d(self, params, root, idx):
         n = torch.zeros((1, 3))

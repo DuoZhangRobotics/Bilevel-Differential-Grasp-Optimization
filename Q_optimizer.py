@@ -49,18 +49,19 @@ class QOptimizer(object):
         d = d.detach().numpy().reshape((-1, 1))
 
         constraints = [Q <= cp.sum(self.sampled_directions @ f.T, axis=1),
-                       n @ f.T <= self.gamma * np.abs(d - n @ v.T),
+                       n @ f.T <= self.gamma / np.abs(d - n @ v.T),
                        # cp.sum_squares(n @ f.T) * self.mu >=
                        ]
         prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve()
-
+        print(f"Q.value = {Q.value}, f.value = {f.value}")
         return Q.value, f.value
 
 
 if __name__ == '__main__':
     hand_target, optimizer = load_optimizer()
-    optimizer.plot_meshes()
+    # optimizer.plot_meshes()
     sampled_directions = np.array(Directions(res=2, dim=3).dirs)
+    sampled_directions = np.array([[1., 1, 1]])
     qoptimizer = QOptimizer(hand_target, sampled_directions)
     qoptimizer.optimize()
