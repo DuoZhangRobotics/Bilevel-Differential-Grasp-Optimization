@@ -21,7 +21,6 @@ class MeritFunction(object):
         self.type = type
         self.tol = tol
         self.dfdx = torch.autograd.grad(self.function(x0), x0)[0] @ dx0
-        print("dfdx = ", self.dfdx)
         constraints = self.constraints_func(x0)
         inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         self.penalty_norm = torch.norm(inequalities, p=1)

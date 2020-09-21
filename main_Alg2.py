@@ -14,7 +14,6 @@ class Alg2Solver(object):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma = gamma
-        self.Q, self.F = self.qf_solver()
 
     def qf_solver(self):
         qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma)
@@ -33,7 +32,7 @@ class Alg2Solver(object):
         self.Q, self.F = self.qf_solver()
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
-            x, u = sqp_solver.solve(x)
+            x = sqp_solver.solve(x)
             if x is None:
                 print("SQP failed")
                 break
@@ -44,9 +43,9 @@ class Alg2Solver(object):
             if sqp_solver.mf.converged:
                 print('Converged!')
                 self.x_optimal = x
-                self.u_optimal = u
+                # self.u_optimal = u
                 break
-        return x, u
+        return x  # , u
 
 
 if __name__ == "__main__":
@@ -64,10 +63,10 @@ if __name__ == "__main__":
     hand_target = HandTarget(hand, target)
 
     # hand_target, _ = load_optimizer()
-    gamma = 0.01
-    sampled_directions = np.array(Directions(res=2, dim=3).dirs)
-    # sampled_directions = np.array([[1, 1, 1]])
+    gamma = 0.001
+    # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
+    sampled_directions = np.array([[0, 0, -1]])
     alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma=gamma)
-    x_optimal, u_optimal = alg2_solver.solve(x0=hand_target.params, niters=100)
+    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=100)
 
 

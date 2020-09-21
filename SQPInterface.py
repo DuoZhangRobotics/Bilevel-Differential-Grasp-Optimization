@@ -9,13 +9,13 @@ data_type = torch.double
 
 
 class QP(object):
-    def __init__(self, function, constraints, u):
+    def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        self.u = u
+        # self.u = u
 
     def lagrangian(self, x):
-        return self.function(x) + self.u.T @ self.constraints(x)
+        return self.function(x)  # + self.u.T @ self.constraints(x)
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -54,7 +54,7 @@ class QP(object):
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(df @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve()
+        prob.solve(solver=cp.MOSEK)
         du = constraints[0].dual_value
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
@@ -71,13 +71,13 @@ class SQP(object):
     def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        self.u = 100 * torch.ones((36, 1), dtype=torch.double)
-        self.qp = QP(self.function, self.constraints, self.u)
+        # self.u = 100 * torch.ones((36, 1), dtype=torch.double)
+        self.qp = QP(self.function, self.constraints)
 
     def lagrangian(self, x):
-        return self.function(x) + self.u.T @ self.constraints(x)
+        return self.function(x)  # + self.u.T @ self.constraints(x)
 
-    def solve(self, x0, niters: int = 100000, tol: float = 1e-10, tolg: float = 1e-5):
+    def solve(self, x0, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5):
         s = 1.
         invscale = 2.
         scale = 0.9
@@ -85,7 +85,7 @@ class SQP(object):
         self.grad_norms = []
         self.objectives = []
         x: torch.tensor = x0
-        u: torch.tensor = self.u.detach().clone()
+        # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
         mf_val = self.mf.merit_function(x)
@@ -99,32 +99,34 @@ class SQP(object):
                                                          use_directional_derivative=True)
             if s is None:
                 print("Line-Search failed!")
-                return None, None
+                return None  # , None
             with torch.no_grad():
                 x = new_x[0]
-                u = u - s * du
-                self.u = u
+                # u = u - s * du
+                # self.u = u
             x.requires_grad_(True)
-            u.requires_grad_(True)
+            # u.requires_grad_(True)
 
             if s == last_s:
                 s *= invscale
 
-            self.qp.u = u
+            # self.qp.u = u
             self.mf_values.append(mf_val.detach().numpy())
             self.objectives.append(self.lagrangian(x).detach().numpy())
             self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             dx_norm = np.max(np.abs(dx.detach().numpy()))
 
-            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dx_norm={dx_norm} eta={self.mf.eta} s={s:3.6f}")
-            converged = self.converge_condition(x, u, tolg)
-            if converged:
-                print("SQP converged!")
+            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} eta={self.mf.eta} s={s}")
+            if self.mf.converged:
+                print("Converged!")
                 break
+            # converged = self.converge_condition(x, u, tolg)
+            # if converged:
+            #     print("SQP converged!")
+            #     break
             dx, du = self.qp.solve(x)
             self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
-
-        return x, u
+        return x  # , u
 
     def converge_condition(self, x, u, tol=1e-5):
         L = self.lagrangian(x)
