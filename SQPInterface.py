@@ -115,8 +115,8 @@ class SQP(object):
             self.objectives.append(self.lagrangian(x).detach().numpy())
             self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             dx_norm = np.max(np.abs(dx.detach().numpy()))
-
-            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} eta={self.mf.eta} s={s}")
+            max_c = np.max(self.constraints(x).detach().numpy())
+            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
             if self.mf.converged:
                 print("Converged!")
                 break

@@ -30,6 +30,8 @@ class Alg2Solver(object):
         x = x0
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
+        self.F = -1 * torch.ones((4, 3), dtype=torch.double)
+        print(self.F)
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
             x = sqp_solver.solve(x)
