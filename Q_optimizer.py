@@ -47,12 +47,13 @@ class QOptimizer(object):
         n, d, _ = self.hand_target.get_n_d(self.hand_target.params, self.hand_target.hand.palm, 0)
         n = n.detach().numpy()
         d = d.detach().numpy().reshape((-1, 1))
-        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1)), f >= 0
+        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))
                        # cp.sum_squares(n @ f.T) * self.mu >=
                        ]
         for i in range(n.shape[0]):
             for j in range(v_num):
                 constraints.append(n[i, :] @ f[j, :].T <= self.gamma / np.abs(d[i] - n[i, :] @ v[j, :].T))
+                constraints.append(n[i, :] @ f[j, :].T >= 0)
         prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve(solver=cp.MOSEK)
         print(f"Q.value = {Q.value}, f.value = {f.value}")

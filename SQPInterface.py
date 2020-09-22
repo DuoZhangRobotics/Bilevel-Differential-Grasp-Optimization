@@ -77,13 +77,15 @@ class SQP(object):
     def lagrangian(self, x):
         return self.function(x)  # + self.u.T @ self.constraints(x)
 
-    def solve(self, x0, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5):
+    def solve(self, x0, hand_target, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5):
         s = 1.
         invscale = 2.
         scale = 0.9
         self.mf_values = []
         self.grad_norms = []
         self.objectives = []
+        self.meshes = [i.mesh() for i in hand_target.target]
+        self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
         x: torch.tensor = x0
         # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
@@ -98,6 +100,7 @@ class SQP(object):
                                                          s=last_s, scale=scale, tol=tol,
                                                          use_directional_derivative=True)
             if s is None:
+                self.plot_meshes()
                 print("Line-Search failed!")
                 return None  # , None
             with torch.no_grad():
@@ -116,7 +119,8 @@ class SQP(object):
             self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             dx_norm = np.max(np.abs(dx.detach().numpy()))
             max_c = np.max(self.constraints(x).detach().numpy())
-            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.grad_norms[-1]} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
+            print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.mf.directional_derivative.detach().numpy()} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
+            self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
             if self.mf.converged:
                 print("Converged!")
                 break
@@ -124,8 +128,11 @@ class SQP(object):
             # if converged:
             #     print("SQP converged!")
             #     break
+
             dx, du = self.qp.solve(x)
             self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+        print("meshes", len(self.meshes))
+        self.plot_meshes()
         return x  # , u
 
     def converge_condition(self, x, u, tol=1e-5):
@@ -153,3 +160,13 @@ class SQP(object):
         else:
             converged = False
         return converged
+
+    def plot_meshes(self):
+        # show hand
+        import vtk
+        from Hand import vtk_add_from_hand, vtk_render
+        renderer = vtk.vtkRenderer()
+        vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
+        vtk_render(renderer, axes=True)
+
+
