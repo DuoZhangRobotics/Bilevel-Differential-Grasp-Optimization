@@ -77,7 +77,7 @@ class SQP(object):
     def lagrangian(self, x):
         return self.function(x)  # + self.u.T @ self.constraints(x)
 
-    def solve(self, x0, hand_target, niters: int = 100000, tol: float = 1e-20, tolg: float = 1e-5):
+    def solve(self, x0, hand_target, niters: int = 100000, tol: float = 1e-30, tolg: float = 1e-5):
         s = 1.
         invscale = 2.
         scale = 0.9
@@ -90,13 +90,14 @@ class SQP(object):
         # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+        print(self.mf.eta)
         mf_val = self.mf.merit_function(x)
         line_searcher = LineSearcher(self.mf.merit_function, [x])
         for i in range(niters):
             last_s = s
             s, new_x, mf_val = line_searcher.line_search(obj=mf_val,
-                                                         directional_derivative=self.mf.directional_derivative,
-                                                         direction=dx,
+                                                         directional_derivative=-self.mf.directional_derivative,
+                                                         direction=-dx,
                                                          s=last_s, scale=scale, tol=tol,
                                                          use_directional_derivative=True)
             if s is None:

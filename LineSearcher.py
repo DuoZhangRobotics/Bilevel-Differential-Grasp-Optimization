@@ -37,7 +37,5 @@ class LineSearcher(object):
             new_param[0].requires_grad_(True)
             new_obj = self.func(*new_param)
             if s <= tol:
-                print(f"final s = {s}")
                 return None, None, None
-
         return s, new_param, new_obj

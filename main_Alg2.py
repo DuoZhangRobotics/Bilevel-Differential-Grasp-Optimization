@@ -30,7 +30,7 @@ class Alg2Solver(object):
         x = x0
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
-        self.F = self.F * 1000
+        # self.F = self.F - 1 * torch.ones(self.F.shape, dtype=torch.double)
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
             x = sqp_solver.solve(x, self.hand_target, niters=10)
@@ -60,7 +60,16 @@ if __name__ == "__main__":
         params = torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
     p, t = hand.forward(params)
     # create object
-    target = [ConvexHull(2 * np.random.rand(4, 3) + np.array([-0.5, -0.5, 0.5]))]
+    # target = [ConvexHull(2 * np.random.rand(4, 3) + np.array([-0.5, -0.5, 0.5]))]
+    target = [ConvexHull(np.array([[-0.5, -0.5, -0.5],
+                                   [-0.5, 0.5, -0.5],
+                                   [0.5, -0.5, -0.5],
+                                   [0.5, 0.5, -0.5],
+                                   [-0.5, 0.5, 0.5],
+                                   [0.5, -0.5, 0.5],
+                                   [-0.5, -0.5, 0.5],
+                                   [0.5, 0.5, 0.5]]) + np.array([0., 0., 2.]))]
+
     hand_target = HandTarget(hand, target)
 
     # hand_target, _ = load_optimizer()
@@ -69,5 +78,3 @@ if __name__ == "__main__":
     sampled_directions = np.array([[0, 0, 1]])
     alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma=gamma)
     x_optimal = alg2_solver.solve(x0=hand_target.params, niters=1)
-
-
