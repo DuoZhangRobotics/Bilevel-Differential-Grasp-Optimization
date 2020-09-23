@@ -15,7 +15,7 @@ class QP(object):
         # self.u = u
 
     def lagrangian(self, x):
-        return self.function(x)  # + self.u.T @ self.constraints(x)
+        return self.function(x)  # self.u.T @ self.constraints(x)
 
     def get_hessian(self, x, jacobian):
         length = jacobian.size(1)
@@ -26,7 +26,7 @@ class QP(object):
         try:
             # check if the hessian matrix is positive definite
             hessian = hessian.detach().numpy()
-            return hessian, scipy.linalg.cho_factor(hessian)
+            return torch.tensor(hessian, dtype=data_type), scipy.linalg.cho_factor(hessian)
         except np.linalg.LinAlgError:
             # if the hessian matrix is not positive definite, then make it positive definite.
             hessian = torch.tensor(self.make_positive_definite(hessian), dtype=data_type)
@@ -71,11 +71,11 @@ class SQP(object):
     def __init__(self, function, constraints):
         self.function = function
         self.constraints = constraints
-        # self.u = 100 * torch.ones((36, 1), dtype=torch.double)
+        # self.u = torch.ones((72, 1), dtype=torch.double)
         self.qp = QP(self.function, self.constraints)
 
     def lagrangian(self, x):
-        return self.function(x)  # + self.u.T @ self.constraints(x)
+        return self.function(x)  # self.u.T @ self.constraints(x)
 
     def solve(self, x0, hand_target, niters: int = 100000, tol: float = 1e-30, tolg: float = 1e-5):
         s = 1.
@@ -90,7 +90,6 @@ class SQP(object):
         # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
-        print(self.mf.eta)
         mf_val = self.mf.merit_function(x)
         line_searcher = LineSearcher(self.mf.merit_function, [x])
         for i in range(niters):
@@ -111,20 +110,22 @@ class SQP(object):
             x.requires_grad_(True)
             # u.requires_grad_(True)
 
-            if s == last_s:
-                s *= invscale
-
             # self.qp.u = u
             self.mf_values.append(mf_val.detach().numpy())
             self.objectives.append(self.lagrangian(x).detach().numpy())
             self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             dx_norm = np.max(np.abs(dx.detach().numpy()))
             max_c = np.max(self.constraints(x).detach().numpy())
+            # u_max = np.max(self.u.detach().numpy())
+            # u_min = np.min(self.u.detach().numpy())
             print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.mf.directional_derivative.detach().numpy()} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
             self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+            if i % 30 == 0:
+                self.plot_meshes()
             if self.mf.converged:
                 print("Converged!")
                 break
+
             # converged = self.converge_condition(x, u, tolg)
             # if converged:
             #     print("SQP converged!")
@@ -132,6 +133,9 @@ class SQP(object):
 
             dx, du = self.qp.solve(x)
             self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+            line_searcher = LineSearcher(self.mf.merit_function, [x])
+            if s == last_s:
+                s *= invscale
         print("meshes", len(self.meshes))
         self.plot_meshes()
         return x  # , u
