@@ -54,12 +54,12 @@ class QP(object):
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(df @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve(solver=cp.MOSEK)
+        prob.solve(solver=cp.OSQP)
         du = constraints[0].dual_value
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
     @staticmethod
-    def make_positive_definite(hessian, min_cond=0.00001):
+    def make_positive_definite(hessian, min_cond=0.0001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
         l = np.max(np.abs(eigenvalues))
         for i in range(len(eigenvalues)):
@@ -77,16 +77,19 @@ class SQP(object):
     def lagrangian(self, x):
         return self.function(x)  # self.u.T @ self.constraints(x)
 
-    def solve(self, x0, hand_target, niters: int = 100000, tol: float = 1e-30, tolg: float = 1e-5):
+    def solve(self, x0, niters: int = 100000, tol: float = 1e-30, tolg: float = 1e-5, hand_target=None, plot_interval=50):
         s = 1.
         invscale = 2.
         scale = 0.9
         self.mf_values = []
         self.grad_norms = []
         self.objectives = []
-        self.meshes = [i.mesh() for i in hand_target.target]
-        self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+        if hand_target:
+            self.meshes = [i.mesh() for i in hand_target.target]
+            self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
         x: torch.tensor = x0
+        print(self.constraints(x).detach().numpy())
+
         # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
@@ -100,11 +103,13 @@ class SQP(object):
                                                          s=last_s, scale=scale, tol=tol,
                                                          use_directional_derivative=True)
             if s is None:
-                self.plot_meshes()
+                if hand_target:
+                    self.plot_meshes()
                 print("Line-Search failed!")
                 return None  # , None
             with torch.no_grad():
                 x = new_x[0]
+                # print("x = ", x[:, :hand_target.front])
                 # u = u - s * du
                 # self.u = u
             x.requires_grad_(True)
@@ -119,9 +124,11 @@ class SQP(object):
             # u_max = np.max(self.u.detach().numpy())
             # u_min = np.min(self.u.detach().numpy())
             print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.mf.directional_derivative.detach().numpy()} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
-            self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
-            if i % 1 == 0:
-                self.plot_meshes()
+            if hand_target:
+                hand_target.hand.forward(x[:, :hand_target.front])
+                self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+                if (i + 1) % plot_interval == 0:
+                    self.plot_meshes()
             if self.mf.converged:
                 print("Converged!")
                 break
@@ -136,8 +143,8 @@ class SQP(object):
             line_searcher = LineSearcher(self.mf.merit_function, [x])
             if s == last_s:
                 s *= invscale
-        # print("meshes", len(self.meshes))
-        self.plot_meshes()
+        if hand_target:
+            self.plot_meshes()
         return x  # , u
 
     def converge_condition(self, x, u, tol=1e-5):
@@ -171,6 +178,7 @@ class SQP(object):
         import vtk
         from Hand import vtk_add_from_hand, vtk_render
         renderer = vtk.vtkRenderer()
+        print(len(self.meshes))
         vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
         vtk_render(renderer, axes=True)
 

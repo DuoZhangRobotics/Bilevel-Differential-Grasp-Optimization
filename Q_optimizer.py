@@ -38,7 +38,6 @@ class QOptimizer(object):
         self.sampled_directions = sampled_directions
         self.gamma = gamma
         self.mu = mu
-        self.va, self.vb = self.get_vertices()
         self.n, self.d = self.get_n_d()
         self.lamb = self.get_lambda()
 
@@ -49,27 +48,19 @@ class QOptimizer(object):
         for i in range(self.n.shape[0]):
             n = self.n[i, :]
             constraints.append(n @ f[i, :].T <= self.lamb)
-            constraints.append(self.mu * n @ f[i, :].T >= cp.norm(((np.identity(3) - n.T @ n) @ f[i, :].T)))
+            constraints.append(cp.norm(f[i, :] - n @ f[i, :].T * n) <= self.mu * n @ f[i, :].T)
 
         prob = cp.Problem(cp.Maximize(Q), constraints)
-        prob.solve(solver=cp.MOSEK)
+        prob.solve()
         print(f"Q.value = {Q.value}, f.value = {f.value}")
         return Q.value, f.value
 
-    def get_vertices(self):
-        p, _ = self.hand_target.hand.forward(self.hand_target.params[:, :self.hand_target.front])
-        va, _, _ = self.hand_target.get_v1(self.hand_target.hand.palm, p, 0, 0)
-        vb = np.array([np.array(t.points[t.vertices]) for t in self.hand_target.target]).reshape((-1, 3))
-        return va, vb
-
     def get_lambda(self):
-        denominator = 0
-        for i in range(self.n.shape[0]):
-            n = self.n[i, :]
-            d = self.d[i, :]
-            va = self.va[i].detach().numpy()
-            denominator += np.sum(np.abs(n @ va.T - d)) + np.sum(np.abs(n @ self.vb.T - d))
-        return self.gamma / denominator
+        p, _ = self.hand_target.hand.forward(self.hand_target.params[:, :self.hand_target.front])
+        closeness, _, _ = self.hand_target.closeness(self.hand_target.hand.palm, self.hand_target.target,
+                                                     self.hand_target.params, p, 0, 0)
+        closeness = closeness.detach().numpy()
+        return self.gamma / closeness
 
     def get_n_d(self):
         n, d, _ = self.hand_target.get_n_d(self.hand_target.params, self.hand_target.hand.palm, 0)

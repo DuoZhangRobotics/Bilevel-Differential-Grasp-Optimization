@@ -363,7 +363,7 @@ class Hand(torch.nn.Module):
         for file in os.listdir(self.hand_path + '/off'):
             if file.endswith('.off'):
                 name = file[0:len(file) - 4]
-                self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file).apply_scale(scale)
+                self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file, process=False).apply_scale(scale)
         # build links
         transform = transforms3d.affines.compose(np.zeros(3), np.eye(3, 3), [1, 1, 1])
         self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None, use_contacts=use_contacts)
