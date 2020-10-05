@@ -38,26 +38,44 @@ class QOptimizer(object):
         self.sampled_directions = sampled_directions
         self.gamma = gamma
         self.mu = mu
+        self.va, self.vb = self.get_vertices()
+        self.n, self.d = self.get_n_d()
+        self.lamb = self.get_lambda()
 
     def optimize(self):
-        v_num = sum([len(t.vertices) for t in self.hand_target.target])
-        v = np.array([np.array(t.points[t.vertices]) for t in self.hand_target.target]).reshape((-1, 3))
         Q = cp.Variable(1)
-        f = cp.Variable((v_num, 3))
-        n, d, _ = self.hand_target.get_n_d(self.hand_target.params, self.hand_target.hand.palm, 0)
-        n = n.detach().numpy()
-        d = d.detach().numpy().reshape((-1, 1))
-        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))
-                       # cp.sum_squares(n @ f.T) * self.mu >=
-                       ]
-        for i in range(n.shape[0]):
-            for j in range(v_num):
-                constraints.append(n[i, :] @ f[j, :].T <= self.gamma / np.abs(d[i] - n[i, :] @ v[j, :].T))
-                constraints.append(n[i, :] @ f[j, :].T >= 0)
+        f = cp.Variable((self.n.shape[0], 3))
+        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))]
+        for i in range(self.n.shape[0]):
+            n = self.n[i, :]
+            constraints.append(n @ f[i, :].T <= self.lamb)
+            constraints.append(self.mu * n @ f[i, :].T >= cp.norm(((np.identity(3) - n.T @ n) @ f[i, :].T)))
+
         prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve(solver=cp.MOSEK)
         print(f"Q.value = {Q.value}, f.value = {f.value}")
         return Q.value, f.value
+
+    def get_vertices(self):
+        p, _ = self.hand_target.hand.forward(self.hand_target.params[:, :self.hand_target.front])
+        va, _, _ = self.hand_target.get_v1(self.hand_target.hand.palm, p, 0, 0)
+        vb = np.array([np.array(t.points[t.vertices]) for t in self.hand_target.target]).reshape((-1, 3))
+        return va, vb
+
+    def get_lambda(self):
+        denominator = 0
+        for i in range(self.n.shape[0]):
+            n = self.n[i, :]
+            d = self.d[i, :]
+            va = self.va[i].detach().numpy()
+            denominator += np.sum(np.abs(n @ va.T - d)) + np.sum(np.abs(n @ self.vb.T - d))
+        return self.gamma / denominator
+
+    def get_n_d(self):
+        n, d, _ = self.hand_target.get_n_d(self.hand_target.params, self.hand_target.hand.palm, 0)
+        n = n.detach().numpy()
+        d = d.detach().numpy().reshape((-1, 1))
+        return n, d
 
 
 if __name__ == '__main__':

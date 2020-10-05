@@ -152,10 +152,24 @@ class HandTarget(object):
         objective = objective * gamma
         return objective
 
-    def friction_cone_constraint(self, params, f, gamma):
-        v = torch.tensor([t.points[t.vertices] for t in self.target], dtype=torch.double).reshape((-1, 3))
+    def friction_cone_constraint(self, params, f, gamma, mu):
         n, d, _ = self.get_n_d(params, self.hand.palm, 0)
-        return (n @ f.T - gamma / torch.abs(d - n @ v.T)).reshape((-1, 1))
+        p, _ = self.hand.forward(self.params[:, :self.front])
+        va, _, _ = self.get_v1(self.hand.palm, p, 0, 0)
+        vb = torch.tensor([t.points[t.vertices] for t in self.target], dtype=torch.double).reshape((-1, 3))
+        denominator = 0
+        for i in range(n.shape[0]):
+            denominator += torch.sum(torch.abs(n[i, :] @ va[i].T - d[i, :])) + torch.sum(torch.abs(n[i, :] @ vb.T - d[i, :]))
+        lamb = gamma / denominator
+
+        constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
+        friction = (torch.norm((torch.eye(3) - n[0, :].T @ n[0, :]) @ f[0, :].T) - mu * n[0, :] @ f[0, :].T).reshape((1, 1))
+        constraints = torch.cat((constraints, friction), dim=0)
+        for i in range(1, n.shape[0]):
+            constraints = torch.cat((constraints, (n[i, :] @ f[i, :].T - lamb).reshape((1, 1))), dim=0)
+            friction = (torch.norm((torch.eye(3) - n[i, :].T @ n[i, :]) @ f[i, :].T) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
+            constraints = torch.cat((constraints, friction), dim=0)
+        return constraints
 
     def get_n_d(self, params, root, idx):
         n = torch.zeros((1, 3))
@@ -167,7 +181,7 @@ class HandTarget(object):
             phi = params[0, self.front + 3 * (idx * len(self.target) + i) + 1]
             rotation_matrix = self.rotation_matrix[idx * len(self.target) + i, :, :]
             n = torch.cat((n, self.get_n(rotation_matrix, beta, phi).T), dim=0)
-            d = torch.cat((d.reshape((1, 1)), params[0, self.front + 3 * (idx * len(self.target) + i) + 2].reshape((1,1))), dim=0)
+            d = torch.cat((d.reshape((1, 1)), params[0, self.front + 3 * (idx * len(self.target) + i) + 2].reshape((1, 1))), dim=0)
         n = n[1:, :]
         d = d[1:, :]
 
@@ -177,3 +191,12 @@ class HandTarget(object):
             n = torch.cat((n, tmp_n), dim=0)
             d = torch.cat((d, tmp_d), dim=0)
         return n, d, idx
+
+    def get_v1(self, root, p, start, idx):
+        v1 = [p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T]
+        start += len(root.mesh.vertices)
+        idx += 1
+        for child in root.children:
+            tmp_v1, start, idx = self.get_v1(child, p, start, idx)
+            v1.extend(tmp_v1)
+        return v1, start, idx

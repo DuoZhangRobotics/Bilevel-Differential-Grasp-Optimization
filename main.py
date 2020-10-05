@@ -18,6 +18,8 @@ if __name__ == "__main__":
         params = torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
     p, t = hand.forward(params)
 
+
+
     # create object
     target = [ConvexHull(np.random.rand(4, 3) + 1.)]
     hand_target = HandTarget(hand, target)

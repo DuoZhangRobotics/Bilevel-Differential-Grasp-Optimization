@@ -120,7 +120,7 @@ class SQP(object):
             # u_min = np.min(self.u.detach().numpy())
             print(f"Iter{i:3d}: obj={self.objectives[-1]} grad={self.mf.directional_derivative.detach().numpy()} mf_val={mf_val} dfdx={self.mf.dfdx} dx_norm={dx_norm} max_constraint={max_c} eta={self.mf.eta} s={s}")
             self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
-            if i % 30 == 0:
+            if i % 1 == 0:
                 self.plot_meshes()
             if self.mf.converged:
                 print("Converged!")
@@ -136,7 +136,7 @@ class SQP(object):
             line_searcher = LineSearcher(self.mf.merit_function, [x])
             if s == last_s:
                 s *= invscale
-        print("meshes", len(self.meshes))
+        # print("meshes", len(self.meshes))
         self.plot_meshes()
         return x  # , u
 

@@ -10,26 +10,29 @@ import numpy as np
 
 
 class Alg2Solver(object):
-    def __init__(self, hand_target, sampled_directions, gamma=0.0001):
+    def __init__(self, hand_target, sampled_directions, gamma=0.0001, mu=0.1):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma = gamma
+        self.mu = mu
 
     def qf_solver(self):
-        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma)
+        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma, self.mu)
         Q, F = qoptimizer.optimize()
         return torch.tensor(Q, dtype=torch.double), torch.tensor(F, dtype=torch.double)
 
     def obj_func(self, params):
         return self.hand_target.alg2_objective(params=params, gamma=self.gamma)
+        # return self.hand_target.hand_target_objective(params=params, gamma=self.gamma)
 
     def constraints_func(self, params):
-        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma)
+        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma, mu=self.mu)
 
     def solve(self, x0, niters=100000):
         x = x0
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
+        self.old_Q = self.Q
         self.F = 1 * self.F  # - 1 * torch.ones(self.F.shape, dtype=torch.double)
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
@@ -39,15 +42,22 @@ class Alg2Solver(object):
                 break
             hand_target.reset_parameters(x, True)
             p, _ = hand_target.hand.forward(x[:, :hand_target.front])
+            self.old_Q = self.Q
             self.Q, self.F = self.qf_solver()
             print(f'Alg2 Iter{i}: OBJ={self.obj_func(x)}')
-            if sqp_solver.mf.converged:
-                print('Converged!')
+            if self.converged():
+                print('Alg2 Converged!')
                 self.x_optimal = x
+                sqp_solver.plot_meshes()
                 # self.u_optimal = u
                 break
         return x  # , u
 
+    def converged(self, tol=1e-7):
+        if np.abs(self.Q - self.old_Q) < tol:
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     path = 'hand/BarrettHand/'
@@ -77,4 +87,4 @@ if __name__ == "__main__":
     # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
     sampled_directions = np.array([[0, 0, -1]])
     alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma=gamma)
-    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=1)
+    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=20)
