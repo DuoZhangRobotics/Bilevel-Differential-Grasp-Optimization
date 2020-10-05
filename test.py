@@ -266,18 +266,24 @@ class Link:
                 rett += ct
         return retv, retn, rett
 
-    def draw(self):
+    def draw(self, save=False, path=None, idx=None):
         if self.mesh:
             ret = copy.deepcopy(self.mesh).apply_transform(self.joint_transform)
+            if save:
+                obj = trimesh.exchange.obj.export_obj(ret)
+                with open(os.path.join(path, str(idx) + '.obj'),'w') as f:
+                    f.write(obj)
         else:
             ret = None
+        idx += 1
         if self.children:
             for c in self.children:
                 if ret:
-                    ret += c.draw()
+                    tmp_ret, idx = c.draw(save, path, idx)
+                    ret += tmp_ret
                 else:
-                    ret = c.draw()
-        return ret
+                    ret, _ = c.draw(save, path, idx)
+        return ret, idx
 
     def Rx(self):
         tr, Z, X = DH2trans(0, self.dhParams[0][3], self.dhParams[0][4], self.dhParams[0][5])
@@ -652,12 +658,19 @@ class Hand(torch.nn.Module):
         print('AutoGradCheck=',
               torch.autograd.gradcheck(self, (params), eps=1e-6, atol=1e-6, rtol=1e-6, raise_exception=True))
 
-    def draw(self, scale_factor=1, show_to_screen=True):
-        mesh = self.palm.draw()
+    def draw(self, scale_factor=1, show_to_screen=True, save=False, path=None):
+        if save and not os.path.exists(path):
+            os.makedirs(path)
+
+        mesh, _ = self.palm.draw(save, path, 0)
+        obj = trimesh.exchange.obj.export_obj(mesh)
+        with open("file.obj", 'w') as f:
+            f.write(obj)
         mesh.apply_scale(scale_factor)
         if show_to_screen:
             mesh.show()
         return mesh
+
 
     def write_limits(self):
         if os.path.exists('limits'):
@@ -863,16 +876,38 @@ if __name__ == '__main__':
     hand_paths = ['hand/ShadowHand/']
     scale = 0.01
     for path in hand_paths:
-        use_eigen = True
+        use_eigen = False
         hand = Hand(path, scale, use_joint_limit=False, use_quat=True, use_eigen=use_eigen)
         if hand.use_eigen:
             dofs = np.zeros(hand.eg_num)
         else:
             dofs = np.zeros(hand.nr_dof())
-        hand.forward_kinematics(np.zeros(hand.extrinsic_size), dofs)
-        hand.value_check(10)
-        hand.grad_check(2)
-        hand.write_limits()
+
+        ex = np.zeros(hand.extrinsic_size)
+        ex[3] = 1
+        hand.forward_kinematics(ex, dofs)
+        # hand.value_check(10)
+        # hand.grad_check(2)
+        # hand.write_limits()
+        # obj = trimesh.exchange.obj.export_obj(hand.palm.mesh)
+        # with open("file.obj", 'w') as f:
+        #     f.write(obj)
+        # hand.draw(scale_factor=1, show_to_screen=False, save=True, path='transformed_objs')
+
+
+        renderer = vtk.vtkRenderer()
+        vtk_add_from_hand(hand, renderer, scale)
+        vtk_render(renderer, axes=True)
+
+        # ex = np.zeros(hand.extrinsic_size)
+        rot1 = transforms3d.quaternions.axangle2quat([1, 0, 0], 0.5 * np.pi)
+        # rot2 = transforms3d.quaternions.axangle2quat([0, 1, 0], np.pi)
+        # rot3 = transforms3d.quaternions.axangle2quat([0, 0, 1], 0)
+        # rot = transforms3d.quaternions.qmult(rot2, rot1)
+        # rot = transforms3d.quaternions.qmult(rot3, rot)
+        ex[3:7] = rot1
+        dofs[15] = 2/3 * np.pi
+        hand.forward_kinematics(ex, dofs)
         renderer = vtk.vtkRenderer()
         vtk_add_from_hand(hand, renderer, scale)
         vtk_render(renderer, axes=True)
