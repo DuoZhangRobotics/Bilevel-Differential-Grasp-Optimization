@@ -33,10 +33,10 @@ class Alg2Solver(object):
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
         self.old_Q = self.Q
-        self.F = 1 * self.F  # - 1 * torch.ones(self.F.shape, dtype=torch.double)
+        self.F = 1 * self.F
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
-            x = sqp_solver.solve(x, self.hand_target)
+            x = sqp_solver.solve(x, hand_target=self.hand_target, plot_interval=30)
             if x is None:
                 print("SQP failed")
                 break
@@ -58,6 +58,7 @@ class Alg2Solver(object):
             return True
         else:
             return False
+
 
 if __name__ == "__main__":
     path = 'hand/BarrettHand/'

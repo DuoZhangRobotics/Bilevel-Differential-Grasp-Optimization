@@ -341,6 +341,7 @@ class Hand(torch.nn.Module):
         # load other mesh
         self.linkMesh = {}
         for file in os.listdir(self.hand_path + '/off'):
+            print(file)
             if file.endswith('.off'):
                 name = file[0:len(file) - 4]
                 self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file).apply_scale(scale)
@@ -654,6 +655,7 @@ class Hand(torch.nn.Module):
 
     def draw(self, scale_factor=1, show_to_screen=True):
         mesh = self.palm.draw()
+        print(type(mesh))
         mesh.apply_scale(scale_factor)
         if show_to_screen:
             mesh.show()
@@ -864,15 +866,28 @@ if __name__ == '__main__':
     scale = 0.01
     for path in hand_paths:
         use_eigen = True
-        hand = Hand(path, scale, use_joint_limit=False, use_quat=True, use_eigen=use_eigen)
+        hand = Hand(path, scale, use_joint_limit=False, use_quat=True, use_eigen=False)
         if hand.use_eigen:
             dofs = np.zeros(hand.eg_num)
         else:
             dofs = np.zeros(hand.nr_dof())
-        hand.forward_kinematics(np.zeros(hand.extrinsic_size), dofs)
-        hand.value_check(10)
-        hand.grad_check(2)
-        hand.write_limits()
+
+        ex = np.zeros(hand.extrinsic_size)
+        rot = transforms3d.quaternions.axangle2quat([1, 0, 0], 0.5 * np.pi)
+        hand.forward_kinematics(ex, dofs)
+        # hand.value_check(10)
+        # hand.grad_check(2)
+        # hand.write_limits()
         renderer = vtk.vtkRenderer()
         vtk_add_from_hand(hand, renderer, scale)
         vtk_render(renderer, axes=True)
+        ex[3:7] = rot
+        hand.forward_kinematics(ex, dofs)
+        # hand.value_check(10)
+        # hand.grad_check(2)
+        # hand.write_limits()
+        renderer = vtk.vtkRenderer()
+        vtk_add_from_hand(hand, renderer, scale)
+        vtk_render(renderer, axes=True)
+
+
