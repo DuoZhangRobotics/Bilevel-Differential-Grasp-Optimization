@@ -34,7 +34,7 @@ class Alg2Solver(object):
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
         self.old_Q = self.Q
-        self.F = 10 * self.F
+        self.F = 1 * self.F
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
             x = sqp_solver.solve(x, hand_target=self.hand_target, plot_interval=plot_interval)

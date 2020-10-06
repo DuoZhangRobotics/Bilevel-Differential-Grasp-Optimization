@@ -88,8 +88,6 @@ class SQP(object):
             self.meshes = [i.mesh() for i in hand_target.target]
             self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
         x: torch.tensor = x0
-        print(self.constraints(x).detach().numpy())
-
         # u: torch.tensor = self.u.detach().clone()
         dx, du = self.qp.solve(x)
         self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)

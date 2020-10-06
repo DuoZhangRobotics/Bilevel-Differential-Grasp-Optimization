@@ -44,23 +44,28 @@ class QOptimizer(object):
     def optimize(self):
         Q = cp.Variable(1)
         f = cp.Variable((self.n.shape[0], 3))
-        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))]
+        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis =1))]
         for i in range(self.n.shape[0]):
             n = self.n[i, :]
             constraints.append(n @ f[i, :].T <= self.lamb)
             constraints.append(cp.norm(f[i, :] - n @ f[i, :].T * n) <= self.mu * n @ f[i, :].T)
-
         prob = cp.Problem(cp.Maximize(Q), constraints)
         prob.solve()
         print(f"Q.value = {Q.value}, f.value = {f.value}")
+        self.Q, self.F = Q.value, f.value
         return Q.value, f.value
+
+    def check_values(self):
+        for i in range(self.n.shape[0]):
+            n = self.n[i, :]
+            f = self.F
+            print(n @ f[i, :].T - self.lamb, "friction", np.linalg.norm(f[i, :] - n @ f[i, :].T * n) - self.mu * n @ f[i, :].T)
 
     def get_lambda(self):
         p, _ = self.hand_target.hand.forward(self.hand_target.params[:, :self.hand_target.front])
         closeness, _, _ = self.hand_target.closeness(self.hand_target.hand.palm, self.hand_target.target,
                                                      self.hand_target.params, p, 0, 0)
         closeness = closeness.detach().numpy()
-        print(closeness)
         return self.gamma / closeness
 
     def get_n_d(self):

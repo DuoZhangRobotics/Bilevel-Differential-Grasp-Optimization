@@ -158,11 +158,11 @@ class HandTarget(object):
         closeness, _, _ = self.closeness(self.hand.palm, self.target, params, p, 0, 0)
         lamb = gamma / closeness
         constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
-        friction = (torch.norm(f[0, :] - n[0, :] @ f[0, :] * n[0, :]) - mu * n[0, :] @ f[0, :].T).reshape((1, 1))
+        friction = (torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :]) - mu * n[0, :] @ f[0, :].T).reshape((1, 1))
         constraints = torch.cat((constraints, friction), dim=0)
         for i in range(1, n.shape[0]):
             constraints = torch.cat((constraints, (n[i, :] @ f[i, :].T - lamb).reshape((1, 1))), dim=0)
-            friction = (torch.norm(torch.norm(f[i, :] - n[i, :] @ f[i, :] * n[i, :])) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
+            friction = (torch.norm(torch.norm(f[i, :] - n[i, :] @ f[i, :].T * n[i, :])) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
             constraints = torch.cat((constraints, friction), dim=0)
         return constraints
 
