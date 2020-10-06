@@ -60,6 +60,7 @@ class QOptimizer(object):
         closeness, _, _ = self.hand_target.closeness(self.hand_target.hand.palm, self.hand_target.target,
                                                      self.hand_target.params, p, 0, 0)
         closeness = closeness.detach().numpy()
+        print(closeness)
         return self.gamma / closeness
 
     def get_n_d(self):
@@ -71,8 +72,8 @@ class QOptimizer(object):
 
 if __name__ == '__main__':
     hand_target, optimizer = load_optimizer()
-    # optimizer.plot_meshes()
-    sampled_directions = np.array(Directions(res=2, dim=3).dirs)
-    # sampled_directions = np.array([[1., 1, 1]])
-    qoptimizer = QOptimizer(hand_target, sampled_directions)
+    optimizer.plot_meshes()
+    # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
+    sampled_directions = np.array([[1., 1, 1]])
+    qoptimizer = QOptimizer(hand_target, sampled_directions, gamma=1000)
     qoptimizer.optimize()

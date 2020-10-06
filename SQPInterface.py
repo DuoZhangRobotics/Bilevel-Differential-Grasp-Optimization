@@ -54,7 +54,7 @@ class QP(object):
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(df @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve(solver=cp.OSQP)
+        prob.solve(solver=cp.MOSEK)
         du = constraints[0].dual_value
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
@@ -178,7 +178,7 @@ class SQP(object):
         import vtk
         from Hand import vtk_add_from_hand, vtk_render
         renderer = vtk.vtkRenderer()
-        print(len(self.meshes))
+        # print(len(self.meshes))
         vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
         vtk_render(renderer, axes=True)
 
