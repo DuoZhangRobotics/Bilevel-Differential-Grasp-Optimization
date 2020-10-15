@@ -49,6 +49,11 @@ class QP(object):
         hessianL = hessianL.detach().numpy()
         dh = dh.detach().numpy()
         h = self.constraints(xk).detach().numpy()
+        print("h = ", h)
+        print("dh = ", dh)
+        print("dL = ", dL)
+        print("hessianL = ", hessianL)
+
         xk = xk.detach().numpy()
         dx = cp.Variable(xk.T.shape)
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
