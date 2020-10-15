@@ -2,29 +2,32 @@ from Hand import Hand, vtk_render, vtk_add_from_hand, Link
 from ConvexHulls import ConvexHull
 import vtk, torch, trimesh
 import numpy as np
-
+np.set_printoptions(threshold=np.inf)
 data_type = torch.double
 
 
 class HandTarget(object):
-    def __init__(self, hand: Hand, target: list):
+    def __init__(self, hand: Hand, target: list, alg2=False, Q=None, F=None, sampled_directions=None):
         self.hand = hand
         self.target = target
         if self.hand.use_eigen:
-            self.params = torch.zeros(
-                (1, self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)),
-                dtype=data_type)
+            self.param_size = self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.eg_num
         else:
-            self.params = torch.zeros(
-                (1, self.hand.extrinsic_size + self.hand.nr_dof() + 3 * self.hand.link_num * len(self.target)),
-                dtype=data_type)
+            self.param_size = self.hand.extrinsic_size + self.hand.nr_dof() + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.nr_dof()
+        self.params = torch.zeros((1, self.param_size), dtype=data_type)
         self.p, _ = self.hand.forward(torch.zeros((1, self.front)))
         self.rotation_matrix = torch.eye(3, dtype=data_type).repeat((self.hand.link_num * len(self.target), 1, 1))
         self._initialize_params(self.hand.palm, self.target, 0, 0)
         self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
+        self.alg2 = alg2
+        if self.alg2:
+            self.Q = torch.tensor(Q, dtype=data_type).reshape((1, 1)).requires_grad_(True)
+            self.F = torch.tensor(F, dtype=data_type).requires_grad_(True)
+            self.sampled_directions = torch.tensor(sampled_directions, dtype=data_type)
+            self.params = torch.cat((self.params, self.F.reshape((1, -1)), self.Q), dim=1)
 
     def _initialize_params(self, root: Link, target: list, start, idx):
         hull = ConvexHull(self.p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T.numpy())
@@ -111,11 +114,11 @@ class HandTarget(object):
             lower_bound1 = torch.min(v1 @ n)
             upper_bound1 = torch.max(v1 @ n)
             if lower_bound0 > upper_bound1:
-                objective = -torch.sum(torch.log(v0 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
+                objective = -torch.sum(torch.log(torch.atan(v0 @ n - d))) - torch.sum(torch.log(torch.atan(d - v1 @ n)))
             elif lower_bound1 > upper_bound0:
-                objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v0 @ n))
+                objective = -torch.sum(torch.log(torch.atan(v1 @ n - d))) - torch.sum(torch.log(torch.atan(d - v0 @ n)))
             else:
-                objective = -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v0 @ n))
+                objective = -torch.sum(torch.log(torch.atan(v1 @ n - d))) - torch.sum(torch.log(torch.atan(d - v0 @ n)))
 
         start += len(root.mesh.vertices)
         idx += 1
@@ -150,17 +153,23 @@ class HandTarget(object):
         p, _ = self.hand.forward(params[:, :self.front])
         objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
         objective = objective * gamma
+        # Q = self.params[0, -1]
+        # objective =  objective
         return objective
 
     def friction_cone_constraint(self, params, f, gamma, mu):
         n, d, _ = self.get_n_d(params, self.hand.palm, 0)
         p, _ = self.hand.forward(self.params[:, :self.front])
+        # Q = self.params[0, -1]
+        # f = self.params[0, self.param_size: -1].reshape((-1, 3))
         closeness, _, _ = self.closeness(self.hand.palm, self.target, params, p, 0, 0)
         lamb = gamma / closeness
+        # constraints = (Q - torch.min(torch.sum(self.sampled_directions @ f.T, dim=1))).reshape((-1, 1))
         constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
-        friction = (torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :]) - mu * n[0, :] @ f[0, :].T).reshape((1, 1))
+        friction = (torch.norm(torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :])) - mu * n[0, :] @ f[0, :].T).reshape(
+            (1, 1))
         constraints = torch.cat((constraints, friction), dim=0)
-        for i in range(1, n.shape[0]):
+        for i in range(0, n.shape[0]):
             constraints = torch.cat((constraints, (n[i, :] @ f[i, :].T - lamb).reshape((1, 1))), dim=0)
             friction = (torch.norm(torch.norm(f[i, :] - n[i, :] @ f[i, :].T * n[i, :])) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
             constraints = torch.cat((constraints, friction), dim=0)
