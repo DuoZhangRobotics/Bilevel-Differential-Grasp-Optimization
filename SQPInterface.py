@@ -54,7 +54,7 @@ class QP(object):
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(dL @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve(solver=cp.ECOS)
+        prob.solve(solver=cp.MOSEK)
         du = constraints[0].dual_value
         print(f'x={xk} dL={dL}, hessianL={hessianL}, dh={dh.T}, h={h.T}, dx={dx.value.T}, du={du.T} u={self.u.T.detach().numpy()}')
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
@@ -136,10 +136,10 @@ class SQP(object):
                 # print("x = ", x[:, :hand_target.front])
                 u = u + s * du
                 cons = self.constraints(x)
-                u[torch.where(cons <= 0)] = 0
+                u[cons <= 0] = 0
                 # u[torch.where(cons > 1)] = torch.log(cons[torch.where(cons > 0)])
                 # u[torch.where(0 < cons < 1)] = -torch.log(cons[torch.where(0 < cons < 1)])
-                u[torch.where(cons > 0)] = 100.
+                # u[cons > 0] = 10
 
             x.requires_grad_(True)
             u.requires_grad_(True)

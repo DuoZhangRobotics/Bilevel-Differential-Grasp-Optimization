@@ -41,6 +41,6 @@ class MeritFunction(object):
             eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
             # eta = torch.tensor(10000, dtype=torch.double)
             if eta < torch.tensor(0., dtype=torch.double):
-                # eta = torch.tensor(0.3, dtype=torch.double)
-                eta = -1. * eta
+                eta = torch.tensor(0.2, dtype=torch.double)
+                # eta = -1. * eta
         return eta
