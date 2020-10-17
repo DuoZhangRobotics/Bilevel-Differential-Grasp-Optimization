@@ -49,18 +49,14 @@ class QP(object):
         hessianL = hessianL.detach().numpy()
         dh = dh.detach().numpy()
         h = self.constraints(xk).detach().numpy()
-        print("h = ", h)
-        print("dh = ", dh)
-        print("dL = ", dL)
-        print("hessianL = ", hessianL)
-
         xk = xk.detach().numpy()
         dx = cp.Variable(xk.T.shape)
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(dL @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve(solver=cp.MOSEK)
+        prob.solve(solver=cp.ECOS)
         du = constraints[0].dual_value
+        print(f'x={xk} dL={dL}, hessianL={hessianL}, dh={dh.T}, h={h.T}, dx={dx.value.T}, du={du.T} u={self.u.T.detach().numpy()}')
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)
 
     @staticmethod
@@ -81,8 +77,8 @@ class SQP(object):
         self.function = function
         self.constraints = constraints
 
-    def lagrangian(self, x, u):
-        return self.function(x) + u.T @ self.constraints(x)
+    def lagrangian(self, x):
+        return self.function(x) + self.u.T @ self.constraints(x)
 
     def initialize_u(self, x):
         df = torch.autograd.grad(self.function(x), x, retain_graph=True, create_graph=True)[0]
@@ -90,9 +86,16 @@ class SQP(object):
         dh: torch.tensor = torch.zeros((constraints.size(0), x.size(1)))
         for i in range(constraints.size(0)):
             dh[i, :] = torch.autograd.grad(constraints[i], x, retain_graph=True)[0]
-        # u0 = torch.inverse(dh @ dh.T) @ dh @ df
+
+        # print("dh = ", dh)
+        # print("dh dh.T = ", dh @ dh.T)
+        # print("inverse of dh dh.T = ", torch.inverse(dh @ dh.T))
+        # print("inverse  dh dh.T = ", torch.inverse(dh @ dh.T) @ dh)
+        # print("df = ", df)
+
+        # u0 = -torch.inverse(dh @ dh.T) @ dh @ df
         u0 = torch.ones(constraints.shape, dtype=data_type)
-        # u0[torch.where(constraints <= 0)] = 0
+        u0[torch.where(constraints <= 0)] = 0
         return u0
 
     def solve(self, x0, niters: int = 100000, tol: float = 1e-30, tolg: float = 1e-5, hand_target=None, plot_interval=50):
@@ -107,15 +110,16 @@ class SQP(object):
             self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
         x: torch.tensor = x0
         u: torch.tensor = self.initialize_u(x)
-
-        self.qp = QP(self.function, self.constraints, u)
+        self.u = u
+        self.qp = QP(self.function, self.constraints, self.u)
         dx, du = self.qp.solve(x)
-        self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+        self.mf = MeritFunction(self.lagrangian, self.constraints, x, dx, tol=tolg)
         mf_val = self.mf.merit_function(x)
         line_searcher = LineSearcher(self.mf.merit_function, [x])
         for i in range(niters):
+            # self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
             max_c = np.max(self.constraints(x).detach().numpy())
-            self.grad_norms.append(np.abs(self.mf.directional_derivative.detach().numpy()))
+            print(f"Iter{i:3d}: obj={self.function(x).detach().numpy()} x={x[:, :3].detach().numpy()} u={u.T.detach().numpy()} grad={self.mf.directional_derivative.detach().numpy()} dfdx={self.mf.dfdx} max_constraint={max_c} eta={self.mf.eta.detach().numpy()} s={s}")
             last_s = s
             s, new_x, mf_val = line_searcher.line_search(obj=mf_val,
                                                          directional_derivative=-self.mf.directional_derivative,
@@ -127,17 +131,20 @@ class SQP(object):
                     self.plot_meshes()
                 print("Line-Search failed!")
                 return None  # , None
-            print(f"Iter{i:3d}: obj={self.function(x).detach().numpy()} x={x[:, :3].detach().numpy()} u={u.T.detach().numpy()} grad={self.mf.directional_derivative.detach().numpy()} dfdx={self.mf.dfdx} max_constraint={max_c} eta={self.mf.eta} s={s}")
             with torch.no_grad():
                 x = new_x[0]
                 # print("x = ", x[:, :hand_target.front])
-                u = u - s * du
-                # u[torch.where(self.constraints(x) <= 0)] = 0
+                u = u + s * du
+                cons = self.constraints(x)
+                u[torch.where(cons <= 0)] = 0
+                # u[torch.where(cons > 1)] = torch.log(cons[torch.where(cons > 0)])
+                # u[torch.where(0 < cons < 1)] = -torch.log(cons[torch.where(0 < cons < 1)])
+                u[torch.where(cons > 0)] = 100.
+
             x.requires_grad_(True)
             u.requires_grad_(True)
-            self.u = u
 
-            self.qp.u = self.u
+            self.u = u
             if hand_target:
                 hand_target.hand.forward(x[:, :hand_target.front])
                 self.meshes.append(hand_target.hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
@@ -149,8 +156,10 @@ class SQP(object):
                 print("SQP converged!")
                 break
 
+            self.qp = QP(self.function, self.constraints, self.u)
             dx, du = self.qp.solve(x)
-            self.mf = MeritFunction(self.function, self.constraints, x, dx, tol=tolg)
+            self.mf = MeritFunction(self.lagrangian, self.constraints, x, dx, tol=tolg)
+            mf_val = self.mf.merit_function(x)
             line_searcher = LineSearcher(self.mf.merit_function, [x])
             if s == last_s:
                 s *= invscale

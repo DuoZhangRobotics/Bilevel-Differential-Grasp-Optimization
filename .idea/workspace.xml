@@ -20,6 +20,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="089e4c86-a8e8-4818-a71d-72fd53a64d3c" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MeritFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/MeritFunction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SQPInterface.py" beforeDir="false" afterPath="$PROJECT_DIR$/SQPInterface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cosh_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/cosh_test.py" afterDir="false" />
     </list>
@@ -74,17 +76,17 @@
       <method v="2" />
     </configuration>
     <configuration name="main_Alg2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Bilevel-Differential-Grasp-Optimization" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="" />
+      <option name="SDK_HOME" value="C:\Users\97653\Tunneling_Free_Grasp_Planner\.venv\Scripts\python.exe" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main_Alg2.py" />
       <option name="PARAMETERS" value="" />
@@ -116,7 +118,9 @@
       <workItem from="1602745309826" duration="8113000" />
       <workItem from="1602753885251" duration="252000" />
       <workItem from="1602754149118" duration="937000" />
-      <workItem from="1602760461076" duration="4932000" />
+      <workItem from="1602760461076" duration="5813000" />
+      <workItem from="1602832740920" duration="15648000" />
+      <workItem from="1602913381805" duration="11002000" />
     </task>
     <servers />
   </component>
@@ -140,22 +144,22 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="739" y="275" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1602257960441" />
-    <state width="1877" height="379" key="GridCell.Tab.0.bottom" timestamp="1602767887751">
+    <state width="1877" height="564" key="GridCell.Tab.0.bottom" timestamp="1602929196234">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="379" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1602767887751" />
-    <state width="1877" height="379" key="GridCell.Tab.0.center" timestamp="1602767887751">
+    <state width="1877" height="564" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1602929196234" />
+    <state width="1877" height="564" key="GridCell.Tab.0.center" timestamp="1602929196233">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="379" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1602767887751" />
-    <state width="1877" height="379" key="GridCell.Tab.0.left" timestamp="1602767887751">
+    <state width="1877" height="564" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1602929196233" />
+    <state width="1877" height="564" key="GridCell.Tab.0.left" timestamp="1602929196233">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="379" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1602767887751" />
-    <state width="1877" height="379" key="GridCell.Tab.0.right" timestamp="1602767887751">
+    <state width="1877" height="564" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1602929196233" />
+    <state width="1877" height="564" key="GridCell.Tab.0.right" timestamp="1602929196233">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="379" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1602767887751" />
+    <state width="1877" height="564" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1602929196233" />
     <state width="1340" height="328" key="GridCell.Tab.1.bottom" timestamp="1602485324995">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -176,9 +180,13 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="461" y="165" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1602469013355" />
+    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1602927761735">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="623" y="225" width="672" height="678" key="search.everywhere.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1602927761735" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Bilevel_Differential_Grasp_Optimization$main_Alg2.coverage" NAME="main_Alg2 Coverage Results" MODIFIED="1602745667308" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Bilevel_Differential_Grasp_Optimization$cosh_test.coverage" NAME="cosh_test Coverage Results" MODIFIED="1602767887741" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Bilevel_Differential_Grasp_Optimization$main_Alg2.coverage" NAME="main_Alg2 Coverage Results" MODIFIED="1602853727632" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Bilevel_Differential_Grasp_Optimization$cosh_test.coverage" NAME="cosh_test Coverage Results" MODIFIED="1602929196209" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

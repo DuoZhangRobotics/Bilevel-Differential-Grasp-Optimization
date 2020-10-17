@@ -2,7 +2,7 @@ import torch
 
 
 class MeritFunction(object):
-    def __init__(self, function, constraints_func, x0, dx0, pho=0.5, tol=1e-5, type='l1'):
+    def __init__(self, function, constraints_func, x0, dx0, pho=0.9, tol=1e-5, type='l1'):
         """
 
         Parameters
@@ -36,9 +36,11 @@ class MeritFunction(object):
 
     def _initialize_eta(self):
         if self.penalty_norm.detach() == torch.tensor(0.0, dtype=torch.double):
-            eta = 0
+            eta = torch.tensor(0, dtype=torch.double)
         else:
             eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
+            # eta = torch.tensor(10000, dtype=torch.double)
             if eta < torch.tensor(0., dtype=torch.double):
-                eta = torch.tensor(0.3, dtype=torch.double)
+                # eta = torch.tensor(0.3, dtype=torch.double)
+                eta = -1. * eta
         return eta
