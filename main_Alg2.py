@@ -34,10 +34,16 @@ class Alg2Solver(object):
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
         self.old_Q = self.Q
-        self.F = 1 * self.F
+        self.gamma2 = self.gamma1
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
-            x = sqp_solver.solve(x, hand_target=self.hand_target, plot_interval=plot_interval)
+            j = 1
+            while self.gamma1 > 0.000000001:
+                x = sqp_solver.solve(x, hand_target=self.hand_target, plot_interval=plot_interval)
+                self.gamma1 *= 0.1
+                self.gamma2 *= 0.1
+                print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
+                j += 1
             if x is None:
                 print("SQP failed")
                 break
@@ -63,7 +69,7 @@ class Alg2Solver(object):
 
 if __name__ == "__main__":
     path = 'hand/BarrettHand/'
-    hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
+    hand = Hand(path, scale=0.01, use_joint_limit=True, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
         dofs = np.zeros(hand.eg_num)
         params = torch.zeros((1, hand.extrinsic_size + hand.eg_num))
@@ -80,9 +86,9 @@ if __name__ == "__main__":
                                    [-0.3, 0.3, 0.3],
                                    [0.3, -0.3, 0.3],
                                    [-0.3, -0.3, 0.3],
-                                   [0.3, 0.3, 0.3]]) + np.array([0., 0., 1]))]
-    gamma1 = 0.001
-    gamma2 = 0.001
+                                   [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.4]))]
+    gamma1 = 1000.
+    gamma2 = 1000.
 
     sampled_directions = np.array([[0, 0, 1]])
     hand_target = HandTarget(hand, target)
@@ -91,4 +97,4 @@ if __name__ == "__main__":
     # hand_target, _ = load_optimizer()
     # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
     alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma1=gamma1, gamma2=gamma2, mu=0.9)
-    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=20, plot_interval=30)
+    x_optimal = alg2_solver.solve(x0=hand_target.params, niters=20, plot_interval=300)

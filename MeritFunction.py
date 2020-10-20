@@ -2,7 +2,7 @@ import torch
 
 
 class MeritFunction(object):
-    def __init__(self, function, constraints_func, x0, dx0, pho=0.9, tol=1e-5, type='l1'):
+    def __init__(self, function, constraints_func, x0, dx0, pho=0.01, tol=1e-5, type='l1', last_eta=torch.tensor(1, dtype=torch.double)):
         """
 
         Parameters
@@ -24,6 +24,7 @@ class MeritFunction(object):
         constraints = self.constraints_func(x0)
         inequalities = torch.where(constraints <= 0, torch.tensor(0, dtype=torch.double), constraints)
         self.penalty_norm = torch.norm(inequalities, p=1)
+        self.last_eta = last_eta
         self.eta = self._initialize_eta()
         self.directional_derivative = self.dfdx - self.eta * self.penalty_norm
         self.converged = (torch.abs(self.directional_derivative.detach()).numpy() <= self.tol)
@@ -35,12 +36,11 @@ class MeritFunction(object):
             return self.function(x) + self.eta * torch.norm(inequalities, p=1)
 
     def _initialize_eta(self):
-        if self.penalty_norm.detach() == torch.tensor(0.0, dtype=torch.double):
+        if self.penalty_norm == 0:
             eta = torch.tensor(0, dtype=torch.double)
-        else:
-            eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
-            # eta = torch.tensor(10000, dtype=torch.double)
-            if eta < torch.tensor(0., dtype=torch.double):
-                eta = torch.tensor(0.2, dtype=torch.double)
-                # eta = -1. * eta
+            return eta
+        eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
+        if eta < self.last_eta:
+            eta = self.last_eta
+        self.last_eta = eta
         return eta

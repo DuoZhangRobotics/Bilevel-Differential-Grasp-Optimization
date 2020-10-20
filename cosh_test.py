@@ -16,7 +16,7 @@ def obj(x: torch.tensor):
 
 
 def constraints(x: torch.tensor):
-    c = torch.cat(((x-2) * (x-5), x - 4))
+    c = torch.cat((3 - x, x - 4))
     return c
 
 
