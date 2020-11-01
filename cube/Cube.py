@@ -184,7 +184,6 @@ class Solve(object):
         return x  # , u
 
 
-
 if __name__ == "__main__":
     cube = Cube(0.3)
     target = ConvexHull(np.array([[-0.3, -0.3, -0.3],
