@@ -11,12 +11,18 @@ import numpy as np
 
 def obj(x: torch.tensor):
     # return 0.5 * (torch.exp(x) + torch.exp(1/x))
-    return 1/3 * torch.pow(x, 3) - x
+    # return 1/3 * torch.pow(x, 3) - x
     # return torch.square(x)
+    a = torch.zeros((1, 3), dtype=torch.double)
+    b = torch.ones((1, 3), dtype=torch.double)
+    theta = x[:, :3]
+    # beta = x[:, 3]
+    # phi = x[:, 4]
+    return torch.log(x)
 
 
 def constraints(x: torch.tensor):
-    c = torch.cat((3 - x, x - 4))
+    c = torch.cat(((x-1) * (x-5), x - 4))
     return c
 
 
@@ -30,10 +36,4 @@ if __name__ == "__main__":
     x0 = torch.tensor(100, dtype=torch.double).reshape((1, 1)).requires_grad_(True)
     x_optimal = sqp_solver.solve(x0)
     print(x_optimal)
-    #
-    # x0 = torch.tensor(3.69916941, dtype=torch.double).reshape((1, 1)).requires_grad_(True)
-    # x_optimal = sqp_solver.solve(x0)
-    # print(x_optimal)
-    # x0 = torch.tensor(3.97302029, dtype=torch.double).reshape((1, 1)).requires_grad_(True)
-    # x_optimal = sqp_solver.solve(x0)
-    # print(x_optimal)
+

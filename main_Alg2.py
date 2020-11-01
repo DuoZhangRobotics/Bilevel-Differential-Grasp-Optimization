@@ -16,7 +16,7 @@ class Alg2Solver(object):
         self.gamma1 = gamma1
         self.gamma2 = gamma2
         self.mu = mu
-        self.scale_closeness = 1e6
+        self.scale_closeness = scale_closeness
 
     def qf_solver(self):
         qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma2, self.mu, self.scale_closeness)
