@@ -10,15 +10,16 @@ import numpy as np
 
 
 class Alg2Solver(object):
-    def __init__(self, hand_target, sampled_directions, gamma1=0.0001, gamma2=1000., mu=0.1):
+    def __init__(self, hand_target, sampled_directions, gamma1=0.0001, gamma2=1000., mu=0.1, scale_closeness=1e6):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma1 = gamma1
         self.gamma2 = gamma2
         self.mu = mu
+        self.scale_closeness = 1e6
 
     def qf_solver(self):
-        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma2, self.mu)
+        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma2, self.mu, self.scale_closeness)
         Q, F = qoptimizer.optimize()
         return torch.tensor(Q, dtype=torch.double), torch.tensor(F, dtype=torch.double)
 
@@ -27,14 +28,13 @@ class Alg2Solver(object):
         # return self.hand_target.hand_target_objective(params=params, gamma=self.gamma)
 
     def constraints_func(self, params):
-        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma2, mu=self.mu)
+        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma2, mu=self.mu, scale_closeness=self.scale_closeness)
 
     def solve(self, x0, niters=100000, plot_interval=30):
         x = x0
         p, _ = self.hand_target.hand.forward(x[:, :hand_target.front])
         self.Q, self.F = self.qf_solver()
         self.old_Q = self.Q
-        self.gamma2 = self.gamma1
         for i in range(niters):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
             j = 1
@@ -87,8 +87,8 @@ if __name__ == "__main__":
                                    [0.3, -0.3, 0.3],
                                    [-0.3, -0.3, 0.3],
                                    [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.4]))]
-    gamma1 = 1000.
-    gamma2 = 1000.
+    gamma1 = 0.001
+    gamma2 = 0.001
 
     sampled_directions = np.array([[0, 0, 1]])
     hand_target = HandTarget(hand, target)

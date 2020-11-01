@@ -56,7 +56,7 @@ class QP(object):
         # print(f'df={np.max(np.abs(df))} dh={np.max(np.abs(dh))} hl={np.max(np.abs(hl))} xk={np.max(np.abs(xk))}')
         constraints = [dh @ dx + h <= 0]
         prob = cp.Problem(cp.Minimize(dL @ dx + 0.5 * cp.quad_form(dx, hessianL)), constraints=constraints)
-        prob.solve(solver=cp.OSQP)
+        prob.solve(solver=cp.MOSEK, verbose=True)
         du = constraints[0].dual_value
         # print(f'x={xk} dL={dL}, hessianL={hessianL}, dh={dh.T}, h={h.T}, dx={dx.value.T}, du={du.T}')
         return torch.tensor(dx.value, dtype=data_type), torch.tensor(du, dtype=data_type)

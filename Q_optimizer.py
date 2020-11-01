@@ -33,18 +33,19 @@ def load_optimizer(index: int = None):
 
 
 class QOptimizer(object):
-    def __init__(self, hand_target, sampled_directions, gamma=0.001, mu=0.1):
+    def __init__(self, hand_target, sampled_directions, gamma=0.001, mu=0.1, scale_closeness=1e3):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma = gamma
         self.mu = mu
         self.n, self.d = self.get_n_d()
+        self.scale_closeness = scale_closeness
         self.lamb = self.get_lambda()
 
     def optimize(self):
         Q = cp.Variable(1)
         f = cp.Variable((self.n.shape[0], 3))
-        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis =1))]
+        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))]
         for i in range(self.n.shape[0]):
             n = self.n[i, :]
             constraints.append(n @ f[i, :].T <= self.lamb)
@@ -66,6 +67,7 @@ class QOptimizer(object):
         closeness, _, _ = self.hand_target.closeness(self.hand_target.hand.palm, self.hand_target.target,
                                                      self.hand_target.params, p, 0, 0)
         closeness = closeness.detach().numpy()
+        closeness = closeness / self.scale_closeness
         return self.gamma / closeness
 
     def get_n_d(self):
@@ -77,8 +79,8 @@ class QOptimizer(object):
 
 if __name__ == '__main__':
     hand_target, optimizer = load_optimizer()
-    optimizer.plot_meshes()
+    # optimizer.plot_meshes()
     # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
     sampled_directions = np.array([[1., 1, 1]])
-    qoptimizer = QOptimizer(hand_target, sampled_directions, gamma=1000)
+    qoptimizer = QOptimizer(hand_target, sampled_directions)
     qoptimizer.optimize()

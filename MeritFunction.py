@@ -2,7 +2,7 @@ import torch
 
 
 class MeritFunction(object):
-    def __init__(self, function, constraints_func, x0, dx0, pho=0.01, tol=1e-5, type='l1', last_eta=torch.tensor(1, dtype=torch.double)):
+    def __init__(self, function, constraints_func, x0, dx0, pho=0.01, tol=1e-5, type='l1', last_eta=torch.tensor(1e4, dtype=torch.double)):
         """
 
         Parameters

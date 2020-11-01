@@ -157,12 +157,13 @@ class HandTarget(object):
         # objective =  objective
         return objective
 
-    def friction_cone_constraint(self, params, f, gamma, mu):
+    def friction_cone_constraint(self, params, f, gamma, mu, scale_closeness=1e3):
         n, d, _ = self.get_n_d(params, self.hand.palm, 0)
         p, _ = self.hand.forward(self.params[:, :self.front])
         # Q = self.params[0, -1]
         # f = self.params[0, self.param_size: -1].reshape((-1, 3))
         closeness, _, _ = self.closeness(self.hand.palm, self.target, params, p, 0, 0)
+        closeness = closeness / scale_closeness
         lamb = gamma / closeness
         # constraints = (Q - torch.min(torch.sum(self.sampled_directions @ f.T, dim=1))).reshape((-1, 1))
         constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
