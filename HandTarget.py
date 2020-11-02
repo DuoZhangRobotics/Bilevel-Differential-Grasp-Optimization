@@ -78,7 +78,7 @@ class HandTarget(object):
 
     @staticmethod
     def _get_beta_phi(c0, c1):
-        closest_vec = torch.tensor(c0 - c1, dtype=data_type)
+        closest_vec = torch.tensor(c1 - c0, dtype=data_type)
         closest_vec /= torch.norm(closest_vec)
         sin_phi = closest_vec[2]
         phi = torch.asin(sin_phi)

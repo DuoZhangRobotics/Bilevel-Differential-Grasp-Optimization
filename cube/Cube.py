@@ -2,6 +2,7 @@ from ConvexHulls import ConvexHull
 import numpy as np
 import torch
 from SQPInterface import SQP
+import cvxpy as cp
 
 
 class Cube:
@@ -30,8 +31,10 @@ class CubeTarget:
     def __init__(self, cube: Cube, target):
         self.cube = cube
         self.target = target
-        self.params = torch.zeros((1, 3 + 2 + 1), dtype=torch.double)
         self.rotation_matrix = torch.eye(3, dtype=torch.double)
+        self.params = torch.zeros((1, 3 + 2 + 1), dtype=torch.double).requires_grad_(True)
+        self.initialize_params()
+        self.chart_reset()
 
     def initialize_params(self):
         hull = self.cube.convex_hull()
@@ -68,7 +71,7 @@ class CubeTarget:
 
     @staticmethod
     def _get_beta_phi(c0, c1):
-        closest_vec = torch.tensor(c0 - c1, dtype=torch.double)
+        closest_vec = torch.tensor(c1 - c0, dtype=torch.double)
         closest_vec /= torch.norm(closest_vec)
         sin_phi = closest_vec[2]
         phi = torch.asin(sin_phi)
@@ -106,56 +109,72 @@ class CubeTarget:
 
     def alg2_objective(self, params, gamma):
         p = self.cube.forward(params[:, :3])
-        objective, _, _ = self.get_log_barrier(params, p)
+        objective = self.get_log_barrier(params, p)
         objective = objective * gamma
         return objective
 
     def friction_cone_constraint(self, params, f, gamma, mu, scale_closeness=1.):
         n = self.get_n(self.rotation_matrix, self.params[0, 3], self.params[0, 4]).T
-        d = self.params[0, 5]
-        p = self.cube.forward(params[:, :3])
-        v0 = p
-        upper_bound0 = torch.max(v0 @ n)
-        lower_bound0 = torch.min(v0 @ n)
-        lower_bound1 = torch.min(self.target.surface_vertices() @ n)
-        upper_bound1 = torch.max(self.target.surface_vertices() @ n)
-        if lower_bound0 > upper_bound1:
-            closeness = torch.sum(v0 @ n - d) + torch.sum(d - self.target.surface_vertices() @ n)
-        elif lower_bound1 > upper_bound0:
-            closeness = torch.sum(self.target.surface_vertices() @ n - d) + torch.sum(d - v0 @ n)
-        else:
-            closeness = torch.sum(self.target.surface_vertices() @ n - d) + torch.sum(d - v0 @ n)
+        closeness = self.closeness(params)
         closeness = closeness / scale_closeness
         lamb = gamma / closeness
         # constraints = (Q - torch.min(torch.sum(self.sampled_directions @ f.T, dim=1))).reshape((-1, 1))
-        constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
-        friction = (torch.norm(torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :])) - mu * n[0, :] @ f[0, :].T).reshape(
-            (1, 1))
+        constraints = (n @ f.T - lamb).reshape((1, 1))
+        friction = (torch.norm(torch.norm(f - n @ f.T * n)) - mu * n @ f.T).reshape((1, 1))
         constraints = torch.cat((constraints, friction), dim=0)
         return constraints
 
+    def closeness(self, params):
+        v0 = self.cube.forward(params[:, :3])
+        t = torch.tensor(self.target.surface_vertices(), dtype=torch.double)
+        n = self.get_n(self.rotation_matrix, self.params[0, 3], self.params[0, 4])
+        d = self.params[0, 5]
+        upper_bound0 = torch.max(v0 @ n)
+        lower_bound0 = torch.min(v0 @ n)
+        lower_bound1 = torch.min(t @ n)
+        upper_bound1 = torch.max(t @ n)
+        if lower_bound0 > upper_bound1:
+            closeness = torch.sum(v0 @ n - d) + torch.sum(d - t @ n)
+        elif lower_bound1 > upper_bound0:
+            closeness = torch.sum(t @ n - d) + torch.sum(d - v0 @ n)
+        else:
+            closeness = torch.sum(t @ n - d) + torch.sum(d - v0 @ n)
+        return closeness
+
 
 class Solve(object):
-    def __init__(self, cube_target, sampled_directions, gamma1=0.0001, gamma2=0.0001, mu=0.1):
+    def __init__(self, cube_target: CubeTarget, sampled_directions, gamma1=0.0001, mu=0.1):
         self.cube_target = cube_target
         self.sampled_directions = sampled_directions
         self.gamma1 = gamma1
-        self.gamma2 = gamma2
         self.mu = mu
 
     def qf_solver(self):
-        return torch.tensor(0., dtype=torch.double), torch.tensor(1., dtype=torch.double)
+        Q = cp.Variable(1)
+        n = self.cube_target.get_n(self.cube_target.rotation_matrix, self.cube_target.params[0, 3], self.cube_target.params[0, 4])
+        n = n.detach().numpy()
+        n = n.T
+        f = cp.Variable((1, 3))
+        constraints = [Q <= cp.min(cp.sum(self.sampled_directions @ f.T, axis=1))]
+        lamb = self.gamma1 / self.cube_target.closeness(self.cube_target.params)
+        lamb = lamb.detach().numpy()
+        constraints.append(n @ f.T <= lamb)
+        constraints.append(cp.norm(f - n @ f.T * n) <= self.mu * n @ f.T)
+        prob = cp.Problem(cp.Maximize(Q), constraints)
+        prob.solve(cp.MOSEK)
+        print(f"Q.value = {Q.value}, f.value = {f.value}")
+        return torch.tensor(Q.value, dtype=torch.double), torch.tensor(f.value, dtype=torch.double)
 
     def obj_func(self, params):
         return self.cube_target.alg2_objective(params=params, gamma=self.gamma1)
         # return self.hand_target.hand_target_objective(params=params, gamma=self.gamma)
 
     def constraints_func(self, params):
-        return self.cube_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma2, mu=self.mu)
+        return self.cube_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma1, mu=self.mu)
 
     def solve(self, x0, niters=100000, plot_interval=30):
         x = x0
-        p, _ = self.cube_target.forward(x[:, :3])
+        p = self.cube_target.cube.forward(x[:, :3])
         self.Q, self.F = self.qf_solver()
         self.old_Q = self.Q
         for i in range(niters):
@@ -164,7 +183,6 @@ class Solve(object):
             while self.gamma1 > 0.000000001:
                 x = sqp_solver.solve(x, plot_interval=plot_interval)
                 self.gamma1 *= 0.1
-                self.gamma2 *= 0.1
                 print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
                 j += 1
             # if x is None:
@@ -193,6 +211,11 @@ if __name__ == "__main__":
                                   [-0.3, 0.3, 0.3],
                                   [0.3, -0.3, 0.3],
                                   [-0.3, -0.3, 0.3],
-                                  [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.4]))
-    cubetarget = CubeTarget(cube, target)
+                                  [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.5]))
+    cube_target = CubeTarget(cube, target)
+    gamma1 = 0.001
+
+    sampled_directions = np.array([[0, 0, 1]])
+    solver = Solve(cube_target, sampled_directions, gamma1)
+    solver.solve(cube_target.params)
 

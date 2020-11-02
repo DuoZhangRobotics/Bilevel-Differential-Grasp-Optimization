@@ -39,7 +39,7 @@ class Alg2Solver(object):
             sqp_solver = SQP(self.obj_func, self.constraints_func)
             j = 1
             while self.gamma1 > 0.000000001:
-                x = sqp_solver.solve(x, hand_target=self.hand_target, plot_interval=plot_interval)
+                x = sqp_solver.solve(x, plot_interval=plot_interval)
                 self.gamma1 *= 0.1
                 self.gamma2 *= 0.1
                 print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
