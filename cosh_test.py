@@ -13,9 +13,7 @@ def obj(x: torch.tensor):
     # return 0.5 * (torch.exp(x) + torch.exp(1/x))
     # return 1/3 * torch.pow(x, 3) - x
     # return torch.square(x)
-    a = torch.zeros((1, 3), dtype=torch.double)
-    b = torch.ones((1, 3), dtype=torch.double)
-    theta = x[:, :3]
+
     # beta = x[:, 3]
     # phi = x[:, 4]
     return torch.log(x)
@@ -32,8 +30,13 @@ def derivative(x: torch.tensor):
 
 
 if __name__ == "__main__":
-    sqp_solver = SQP(obj, constraints)
-    x0 = torch.tensor(100, dtype=torch.double).reshape((1, 1)).requires_grad_(True)
-    x_optimal = sqp_solver.solve(x0)
-    print(x_optimal)
+    x = torch.tensor(100, dtype=torch.double).reshape((1, 1)).requires_grad_(True)
+    gamma = 1.
+    obj = lambda x: gamma * torch.log(x)
+    while gamma > 1e-5:
+        print("Gamma = ", gamma)
+        sqp_solver = SQP(obj, constraints)
+        x = sqp_solver.solve(x)
+        gamma *= 0.1
+    print(x)
 

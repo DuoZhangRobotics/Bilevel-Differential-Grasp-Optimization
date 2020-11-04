@@ -182,7 +182,7 @@ class Solve(object):
             j = 1
             while self.gamma1 > 0.000000001:
                 x = sqp_solver.solve(x, plot_interval=plot_interval)
-                self.gamma1 *= 0.1
+                self.gamma1 *= 0.9
                 print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
                 j += 1
             # if x is None:
@@ -214,7 +214,6 @@ if __name__ == "__main__":
                                   [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.5]))
     cube_target = CubeTarget(cube, target)
     gamma1 = 0.001
-
     sampled_directions = np.array([[0, 0, 1]])
     solver = Solve(cube_target, sampled_directions, gamma1)
     solver.solve(cube_target.params)

@@ -4,6 +4,9 @@ rm -r ./limits
 rm -r ./__pycache__
 rm -r ./.ipynb_checkpoints
 rm ./.project
+rm .DS_Store
+rm -r .idea
+rm -r __pycache__
 rm ./.pydevproject
 rm -r ./.idea
 git add --all
