@@ -143,7 +143,7 @@ class CubeTarget:
 
 
 class Solve(object):
-    def __init__(self, cube_target: CubeTarget, sampled_directions, gamma1=0.0001, mu=0.1):
+    def __init__(self, cube_target: CubeTarget, sampled_directions, gamma1=torch.tensor(0.001, dtype=torch.double), mu=0.1):
         self.cube_target = cube_target
         self.sampled_directions = sampled_directions
         self.gamma1 = gamma1
@@ -159,9 +159,9 @@ class Solve(object):
         lamb = self.gamma1 / self.cube_target.closeness(self.cube_target.params)
         lamb = lamb.detach().numpy()
         constraints.append(n @ f.T <= lamb)
-        constraints.append(cp.norm(f - n @ f.T * n) <= self.mu * n @ f.T)
+        constraints.append(cp.norm(f - n @ f.T @ n) <= self.mu * n @ f.T)
         prob = cp.Problem(cp.Maximize(Q), constraints)
-        prob.solve(cp.MOSEK)
+        prob.solve()
         print(f"Q.value = {Q.value}, f.value = {f.value}")
         return torch.tensor(Q.value, dtype=torch.double), torch.tensor(f.value, dtype=torch.double)
 
@@ -183,7 +183,7 @@ class Solve(object):
             while self.gamma1 > 0.000000001:
                 x = sqp_solver.solve(x, plot_interval=plot_interval)
                 self.gamma1 *= 0.9
-                print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
+                print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x.detach().numpy()} dist={torch.norm(x[:, :3])}")
                 j += 1
             # if x is None:
             #     print("SQP failed")
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                                   [-0.3, -0.3, 0.3],
                                   [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.5]))
     cube_target = CubeTarget(cube, target)
-    gamma1 = 0.001
+    gamma1 = torch.tensor(0.001, dtype=torch.double)
     sampled_directions = np.array([[0, 0, 1]])
     solver = Solve(cube_target, sampled_directions, gamma1)
     solver.solve(cube_target.params)

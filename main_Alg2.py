@@ -10,16 +10,15 @@ import numpy as np
 
 
 class Alg2Solver(object):
-    def __init__(self, hand_target, sampled_directions, gamma1=0.0001, gamma2=1000., mu=0.1, scale_closeness=1e6):
+    def __init__(self, hand_target, sampled_directions, gamma1=0.0001, mu=0.1, scale_closeness=1e6):
         self.hand_target = hand_target
         self.sampled_directions = sampled_directions
         self.gamma1 = gamma1
-        self.gamma2 = gamma2
         self.mu = mu
         self.scale_closeness = scale_closeness
 
     def qf_solver(self):
-        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma2, self.mu, self.scale_closeness)
+        qoptimizer = QOptimizer(self.hand_target, self.sampled_directions, self.gamma1, self.mu, self.scale_closeness)
         Q, F = qoptimizer.optimize()
         return torch.tensor(Q, dtype=torch.double), torch.tensor(F, dtype=torch.double)
 
@@ -28,7 +27,7 @@ class Alg2Solver(object):
         # return self.hand_target.hand_target_objective(params=params, gamma=self.gamma)
 
     def constraints_func(self, params):
-        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma2, mu=self.mu, scale_closeness=self.scale_closeness)
+        return self.hand_target.friction_cone_constraint(params=params, f=self.F, gamma=self.gamma1, mu=self.mu, scale_closeness=self.scale_closeness)
 
     def solve(self, x0, niters=100000, plot_interval=30):
         x = x0
@@ -41,7 +40,6 @@ class Alg2Solver(object):
             while self.gamma1 > 0.000000001:
                 x = sqp_solver.solve(x, plot_interval=plot_interval)
                 self.gamma1 *= 0.1
-                self.gamma2 *= 0.1
                 print(f"Gamma shrinkage{j}: gamma={self.gamma1} x={x[:, :3].detach().numpy()}")
                 j += 1
             if x is None:
@@ -87,8 +85,7 @@ if __name__ == "__main__":
                                    [0.3, -0.3, 0.3],
                                    [-0.3, -0.3, 0.3],
                                    [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.4]))]
-    gamma1 = 0.001
-    gamma2 = 0.001
+    gamma = 0.001
 
     sampled_directions = np.array([[0, 0, 1]])
     hand_target = HandTarget(hand, target)
@@ -96,5 +93,5 @@ if __name__ == "__main__":
     # hand_target = HandTarget(hand, target, alg2=True, Q=Q, F=f, sampled_directions=sampled_directions)
     # hand_target, _ = load_optimizer()
     # sampled_directions = np.array(Directions(res=2, dim=3).dirs)
-    alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma1=gamma1, gamma2=gamma2, mu=0.9)
+    alg2_solver = Alg2Solver(hand_target, sampled_directions, gamma1=gamma, mu=0.9)
     x_optimal = alg2_solver.solve(x0=hand_target.params, niters=20, plot_interval=300)

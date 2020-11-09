@@ -37,10 +37,13 @@ class MeritFunction(object):
 
     def _initialize_eta(self):
         if self.penalty_norm == 0:
-            eta = torch.tensor(0, dtype=torch.double)
+            # eta = torch.tensor(0, dtype=torch.double)
+            eta = self.last_eta
             return eta
         eta = self.dfdx / ((1 - self.pho) * self.penalty_norm)
         if eta < self.last_eta:
             eta = self.last_eta
+        # if eta < torch.tensor(1e4, dtype=torch.double):
+        #     eta = torch.tensor(1e4, dtype=torch.double)
         self.last_eta = eta
         return eta
