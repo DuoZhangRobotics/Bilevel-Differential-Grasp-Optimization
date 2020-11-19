@@ -16,10 +16,10 @@ def obj_func(param, hand_target, gamma):
 
 def load_optimizer(index: int = None):
     if index is None:
-        with open(f'./log/HandTarget_final.pkl', 'rb') as input:
+        with open(f'../log/HandTarget_final.pkl', 'rb') as input:
             hand_target: HandTarget = pickle.load(input)
 
-        with open(f'./log/Optimizer_final.pkl', 'rb') as input:
+        with open(f'../log/Optimizer_final.pkl', 'rb') as input:
             optimizer: Optimizer = pickle.load(input)
 
     else:

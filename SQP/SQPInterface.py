@@ -1,7 +1,7 @@
 import torch
 import scipy
 import numpy as np
-from MeritFunction import MeritFunction
+from SQP.MeritFunction import MeritFunction
 from LineSearcher import LineSearcher
 import cvxpy as cp
 

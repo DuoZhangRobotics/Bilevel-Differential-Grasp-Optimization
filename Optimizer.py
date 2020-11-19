@@ -92,12 +92,18 @@ class Optimizer(object):
             hessian = hessian.detach().numpy()
             return hessian, scipy.linalg.cho_factor(hessian)
 
-    def make_positive_definite(self, hessian, scale=1., min_cond=0.00001):
+    # def make_positive_definite(self, hessian, min_cond=0.00001):
+    #     eigenvalues, eigenvectors = np.linalg.eig(hessian)
+    #     l = np.max(np.abs(eigenvalues))
+    #     for i in range(len(eigenvalues)):
+    #         eigenvalues[i] = max(eigenvalues[i], l * min_cond)
+    #     return eigenvectors @ np.diag(eigenvalues) @ np.linalg.inv(eigenvectors)
+    @staticmethod
+    def make_positive_definite(hessian, min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
-        l = np.max(np.abs(eigenvalues))
-        for i in range(len(eigenvalues)):
-            eigenvalues[i] = max(eigenvalues[i], l * min_cond)
-        return eigenvectors @ np.diag(eigenvalues) @ np.linalg.inv(eigenvectors)
+        tau = min_cond - eigenvalues
+        tau = np.where(tau < 0, 0, tau)
+        return hessian + eigenvectors @ np.diag(tau) @ np.linalg.inv(eigenvectors)
 
     def grad_check(self):
         print(torch.autograd.gradcheck(self.func, self.params))

@@ -1,9 +1,7 @@
 from ConvexHulls import ConvexHull
 from HandTarget import HandTarget
-from Q_optimizer import QOptimizer, load_optimizer, obj_func
-from MeritFunction import MeritFunction
-from SQPInterface import SQP
-from Directions import Directions
+from SQP.Q_optimizer import QOptimizer
+from SQP.SQPInterface import SQP
 from Hand import Hand
 import torch
 import numpy as np
@@ -66,7 +64,7 @@ class Alg2Solver(object):
 
 
 if __name__ == "__main__":
-    path = 'hand/BarrettHand/'
+    path = '../hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=True, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
         dofs = np.zeros(hand.eg_num)
@@ -85,7 +83,7 @@ if __name__ == "__main__":
                                    [0.3, -0.3, 0.3],
                                    [-0.3, -0.3, 0.3],
                                    [0.3, 0.3, 0.3]]) + np.array([0., 0., 0.4]))]
-    gamma = 0.001
+    gamma = 0.0001
 
     sampled_directions = np.array([[0, 0, 1]])
     hand_target = HandTarget(hand, target)

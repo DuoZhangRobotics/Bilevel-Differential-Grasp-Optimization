@@ -1,6 +1,6 @@
-from Hand import Hand, vtk_render, vtk_add_from_hand, Link
+from Hand import Hand, Link
 from ConvexHulls import ConvexHull
-import vtk, torch, trimesh
+import torch
 import numpy as np
 np.set_printoptions(threshold=np.inf)
 data_type = torch.double
@@ -133,7 +133,6 @@ class HandTarget(object):
         for t in target:
             centroid1 = torch.tensor(t.centroid, dtype=torch.double)
             norm = norm + torch.norm(centroid0 - centroid1)
-
         start += len(root.mesh.vertices)
         if root.children:
             for child in root.children:
@@ -149,79 +148,117 @@ class HandTarget(object):
         objective = objective + norm
         return objective
 
-    def alg2_objective(self, params, gamma):
-        p, _ = self.hand.forward(params[:, :self.front])
-        objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
-        objective = objective * gamma
-        # Q = self.params[0, -1]
-        # objective =  objective
-        return objective
 
-    def friction_cone_constraint(self, params, f, gamma, mu, scale_closeness=1e3):
-        n, d, _ = self.get_n_d(params, self.hand.palm, 0)
-        p, _ = self.hand.forward(self.params[:, :self.front])
-        # Q = self.params[0, -1]
-        # f = self.params[0, self.param_size: -1].reshape((-1, 3))
-        closeness, _, _ = self.closeness(self.hand.palm, self.target, params, p, 0, 0)
-        closeness = closeness / scale_closeness
-        lamb = gamma / closeness
-        # constraints = (Q - torch.min(torch.sum(self.sampled_directions @ f.T, dim=1))).reshape((-1, 1))
-        constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
-        friction = (torch.norm(torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :])) - mu * n[0, :] @ f[0, :].T).reshape(
-            (1, 1))
-        constraints = torch.cat((constraints, friction), dim=0)
-        for i in range(0, n.shape[0]):
-            constraints = torch.cat((constraints, (n[i, :] @ f[i, :].T - lamb).reshape((1, 1))), dim=0)
-            friction = (torch.norm(torch.norm(f[i, :] - n[i, :] @ f[i, :].T * n[i, :])) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
-            constraints = torch.cat((constraints, friction), dim=0)
-        return constraints
 
-    def get_n_d(self, params, root, idx):
-        n = torch.zeros((1, 3))
-        d = torch.zeros((1, 1))
-        # n = torch.empty((1, 3))
-        # d = torch.empty((1, 1))
-        for i, t in enumerate(self.target):
-            beta = params[0, self.front + 3 * (idx * len(self.target) + i) + 0]
-            phi = params[0, self.front + 3 * (idx * len(self.target) + i) + 1]
-            rotation_matrix = self.rotation_matrix[idx * len(self.target) + i, :, :]
-            n = torch.cat((n, self.get_n(rotation_matrix, beta, phi).T), dim=0)
-            d = torch.cat((d.reshape((1, 1)), params[0, self.front + 3 * (idx * len(self.target) + i) + 2].reshape((1, 1))), dim=0)
-        n = n[1:, :]
-        d = d[1:, :]
 
-        idx += 1
-        for child in root.children:
-            tmp_n, tmp_d, idx = self.get_n_d(params, child, idx)
-            n = torch.cat((n, tmp_n), dim=0)
-            d = torch.cat((d, tmp_d), dim=0)
-        return n, d, idx
 
-    def closeness(self, root: Link, target: list, params, p, start, idx):
-        v0 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
-        objective = 0
-        for i, t in enumerate(target):
-            v1 = torch.tensor(t.surface_vertices(), dtype=torch.double)
 
-            beta = params[0, self.front + 3 * (idx * len(target) + i) + 0]
-            phi = params[0, self.front + 3 * (idx * len(target) + i) + 1]
-            d = params[0, self.front + 3 * (idx * len(target) + i) + 2]
 
-            n = self.get_n(self.rotation_matrix[idx * len(target) + i, :, :], beta, phi)
-            upper_bound0 = torch.max(v0 @ n)
-            lower_bound0 = torch.min(v0 @ n)
-            lower_bound1 = torch.min(v1 @ n)
-            upper_bound1 = torch.max(v1 @ n)
-            if lower_bound0 > upper_bound1:
-                objective = torch.sum(v0 @ n - d) + torch.sum(d - v1 @ n)
-            elif lower_bound1 > upper_bound0:
-                objective = torch.sum(v1 @ n - d) + torch.sum(d - v0 @ n)
-            else:
-                objective = torch.sum(v1 @ n - d) + torch.sum(d - v0 @ n)
 
-        start += len(root.mesh.vertices)
-        idx += 1
-        for child in root.children:
-            tmp_objective, start, idx = self.closeness(child, target, params, p, start, idx)
-            objective = objective + tmp_objective
-        return objective, start, idx
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def alg2_objective(self, params, gamma):
+    #     p, _ = self.hand.forward(params[:, :self.front])
+    #     objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
+    #     objective = objective * gamma
+    #     # Q = self.params[0, -1]
+    #     # objective =  objective
+    #     return objective
+    #
+    # def friction_cone_constraint(self, params, f, gamma, mu, scale_closeness=1e3):
+    #     n, d, _ = self.get_n_d(params, self.hand.palm, 0)
+    #     p, _ = self.hand.forward(self.params[:, :self.front])
+    #     # Q = self.params[0, -1]
+    #     # f = self.params[0, self.param_size: -1].reshape((-1, 3))
+    #     closeness, _, _ = self.closeness(self.hand.palm, self.target, params, p, 0, 0)
+    #     closeness = closeness / scale_closeness
+    #     lamb = gamma / closeness
+    #     # constraints = (Q - torch.min(torch.sum(self.sampled_directions @ f.T, dim=1))).reshape((-1, 1))
+    #     constraints = (n[0, :] @ f[0, :].T - lamb).reshape((1, 1))
+    #     friction = (torch.norm(torch.norm(f[0, :] - n[0, :] @ f[0, :].T * n[0, :])) - mu * n[0, :] @ f[0, :].T).reshape(
+    #         (1, 1))
+    #     constraints = torch.cat((constraints, friction), dim=0)
+    #     for i in range(0, n.shape[0]):
+    #         constraints = torch.cat((constraints, (n[i, :] @ f[i, :].T - lamb).reshape((1, 1))), dim=0)
+    #         friction = (torch.norm(torch.norm(f[i, :] - n[i, :] @ f[i, :].T * n[i, :])) - mu * n[i, :] @ f[i, :].T).reshape((1, 1))
+    #         constraints = torch.cat((constraints, friction), dim=0)
+    #     return constraints
+    #
+    # def get_n_d(self, params, root, idx):
+    #     n = torch.zeros((1, 3))
+    #     d = torch.zeros((1, 1))
+    #     # n = torch.empty((1, 3))
+    #     # d = torch.empty((1, 1))
+    #     for i, t in enumerate(self.target):
+    #         beta = params[0, self.front + 3 * (idx * len(self.target) + i) + 0]
+    #         phi = params[0, self.front + 3 * (idx * len(self.target) + i) + 1]
+    #         rotation_matrix = self.rotation_matrix[idx * len(self.target) + i, :, :]
+    #         n = torch.cat((n, self.get_n(rotation_matrix, beta, phi).T), dim=0)
+    #         d = torch.cat((d.reshape((1, 1)), params[0, self.front + 3 * (idx * len(self.target) + i) + 2].reshape((1, 1))), dim=0)
+    #     n = n[1:, :]
+    #     d = d[1:, :]
+    #
+    #     idx += 1
+    #     for child in root.children:
+    #         tmp_n, tmp_d, idx = self.get_n_d(params, child, idx)
+    #         n = torch.cat((n, tmp_n), dim=0)
+    #         d = torch.cat((d, tmp_d), dim=0)
+    #     return n, d, idx
+    #
+    # def closeness(self, root: Link, target: list, params, p, start, idx):
+    #     v0 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
+    #     objective = 0
+    #     for i, t in enumerate(target):
+    #         v1 = torch.tensor(t.surface_vertices(), dtype=torch.double)
+    #
+    #         beta = params[0, self.front + 3 * (idx * len(target) + i) + 0]
+    #         phi = params[0, self.front + 3 * (idx * len(target) + i) + 1]
+    #         d = params[0, self.front + 3 * (idx * len(target) + i) + 2]
+    #
+    #         n = self.get_n(self.rotation_matrix[idx * len(target) + i, :, :], beta, phi)
+    #         upper_bound0 = torch.max(v0 @ n)
+    #         lower_bound0 = torch.min(v0 @ n)
+    #         lower_bound1 = torch.min(v1 @ n)
+    #         upper_bound1 = torch.max(v1 @ n)
+    #         if lower_bound0 > upper_bound1:
+    #             objective = torch.sum(v0 @ n - d) + torch.sum(d - v1 @ n)
+    #         elif lower_bound1 > upper_bound0:
+    #             objective = torch.sum(v1 @ n - d) + torch.sum(d - v0 @ n)
+    #         else:
+    #             objective = torch.sum(v1 @ n - d) + torch.sum(d - v0 @ n)
+    #
+    #     start += len(root.mesh.vertices)
+    #     idx += 1
+    #     for child in root.children:
+    #         tmp_objective, start, idx = self.closeness(child, target, params, p, start, idx)
+    #         objective = objective + tmp_objective
+    #     return objective, start, idx

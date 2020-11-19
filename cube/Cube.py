@@ -1,7 +1,7 @@
 from ConvexHulls import ConvexHull
 import numpy as np
 import torch
-from SQPInterface import SQP
+from SQP.SQPInterface import SQP
 import cvxpy as cp
 
 

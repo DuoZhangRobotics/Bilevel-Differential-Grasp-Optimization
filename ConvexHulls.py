@@ -1,4 +1,4 @@
-import torch,scipy,trimesh
+import torch, scipy, trimesh
 import numpy as np
 import cvxpy as cp
 data_type = torch.double
@@ -39,3 +39,7 @@ class ConvexHull(object):
     
     def mesh(self):
         return trimesh.Trimesh(vertices=self.surface_vertices(), faces=self.surface_indices())
+
+    def surface_points_sampling(self, count=100):
+        samples, face_indices = trimesh.sample.sample_surface_even(self.mesh(), 100)
+        return samples

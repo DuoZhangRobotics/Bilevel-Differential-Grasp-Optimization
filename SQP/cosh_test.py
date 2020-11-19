@@ -1,12 +1,5 @@
-from ConvexHulls import ConvexHull
-from HandTarget import HandTarget
-from Q_optimizer import QOptimizer, load_optimizer, obj_func
-from MeritFunction import MeritFunction
-from SQPInterface import SQP
-from Directions import Directions
-from Hand import Hand
+from SQP.SQPInterface import SQP
 import torch
-import numpy as np
 
 
 def obj(x: torch.tensor):

@@ -14,7 +14,7 @@ class LineSearcher(object):
         self.params = params
 
     def line_search(self, obj, directional_derivative=None, grad=None, direction=None, c1=1e-4, s=1, tol=1e-30,
-                    scale=0.9, use_directional_derivative=True):
+                    scale=0.9, use_directional_derivative=False):
         if use_directional_derivative:
             g_dot_d = directional_derivative
         else:

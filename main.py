@@ -21,7 +21,10 @@ if __name__ == "__main__":
 
 
     # create object
-    target = [ConvexHull(np.random.rand(4, 3) + 1.)]
+    count = 100
+    target = [ConvexHull(2 * np.random.rand(4, 3) + 2.)]
+    target_point_cloud = [t.surface_points_sampling(count) for t in target]
+    print(type(target[0].surface_points_sampling()))
     hand_target = HandTarget(hand, target)
     gamma = torch.tensor(0.001, dtype=data_type)
 
@@ -31,6 +34,6 @@ if __name__ == "__main__":
 
 
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
-    optimizer.optimize(niters=10000, plot_interval=20)
+    optimizer.optimize(niters=1, plot_interval=20)
     optimizer.plot_meshes()
-    optimizer.plot_history().savefig("history.png")
+    # optimizer.plot_history().savefig("history.png")
