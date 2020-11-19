@@ -4,6 +4,7 @@ from Optimizer import Optimizer
 from Hand import Hand
 import torch
 import numpy as np
+from Directions import Directions
 
 data_type = torch.double
 
@@ -22,10 +23,17 @@ if __name__ == "__main__":
 
     # create object
     count = 100
-    target = [ConvexHull(2 * np.random.rand(4, 3) + 2.)]
-    target_point_cloud = [t.surface_points_sampling(count) for t in target]
-    print(type(target[0].surface_points_sampling()))
-    hand_target = HandTarget(hand, target)
+    sampled_directions = np.array(Directions(2, 3).dirs)
+    # target = [ConvexHull(2 * np.random.rand(4, 3) + 2.)]
+    target = [ConvexHull(np.array([[-1.0, -1.0, -1.0],
+                                   [-1.0, 1.0, -1.0],
+                                   [1.0, -1.0, -1.0],
+                                   [1.0, 1.0, -1.0],
+                                   [-1.0, 1.0, 1.0],
+                                   [1.0, -1.0, 1.0],
+                                   [-1.0, -1.0, 1.0],
+                                   [1.0, 1.0, 1.0]]) + 2.0)]
+    hand_target = HandTarget(hand, target, sampled_directions)
     gamma = torch.tensor(0.001, dtype=data_type)
 
 
@@ -34,6 +42,6 @@ if __name__ == "__main__":
 
 
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
-    optimizer.optimize(niters=1, plot_interval=20)
-    optimizer.plot_meshes()
+    # optimizer.optimize(niters=1, plot_interval=20)
+    # optimizer.plot_meshes()
     # optimizer.plot_history().savefig("history.png")

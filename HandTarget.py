@@ -2,14 +2,21 @@ from Hand import Hand, Link
 from ConvexHulls import ConvexHull
 import torch
 import numpy as np
+
 np.set_printoptions(threshold=np.inf)
 data_type = torch.double
 
 
 class HandTarget(object):
-    def __init__(self, hand: Hand, target: list, alg2=False, Q=None, F=None, sampled_directions=None):
+    def __init__(self, hand: Hand, target: list, sampled_directions, alg2=False, Q=None, F=None):
         self.hand = hand
         self.target = target
+        self.sampled_directions = torch.tensor(sampled_directions, dtype=data_type)
+        point_and_normals = [t.surface_points_sampling(100) for t in self.target]
+        self.surface_points = torch.squeeze(torch.tensor([p[0] for p in point_and_normals], dtype=data_type))
+        self.point_normals = torch.squeeze(torch.tensor([p[1] for p in point_and_normals], dtype=data_type))
+        self.g = torch.zeros((self.surface_points.shape[0], self.sampled_directions.shape[0]), dtype=data_type)
+        print(self.g.shape)
         if self.hand.use_eigen:
             self.param_size = self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.eg_num
@@ -26,7 +33,6 @@ class HandTarget(object):
         if self.alg2:
             self.Q = torch.tensor(Q, dtype=data_type).reshape((1, 1)).requires_grad_(True)
             self.F = torch.tensor(F, dtype=data_type).requires_grad_(True)
-            self.sampled_directions = torch.tensor(sampled_directions, dtype=data_type)
             self.params = torch.cat((self.params, self.F.reshape((1, -1)), self.Q), dim=1)
 
     def _initialize_params(self, root: Link, target: list, start, idx):
@@ -98,6 +104,17 @@ class HandTarget(object):
             self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
 
+    def get_g(self, mu=0.9):
+        for i in range(self.g.shape[0]):
+            for j in range(self.g.shape[1]):
+                w_vertical = self.sampled_directions[j, :] @ self.point_normals[i, :].T
+                w_parallel = torch.norm(self.sampled_directions[j, :] @ torch.eye(3) @ (
+                            torch.eye(3) - self.point_normals[i, :].T @ self.point_normals[i, :]))
+                if mu * w_vertical > w_parallel:
+                    self.g[i, j] = -1 * (w_vertical + torch.square(w_parallel)/w_vertical)
+                else:
+                    self.g[i, j] = -1 * (w_vertical + mu * w_parallel)
+
     def get_log_barrier(self, root: Link, target: list, params, p, start, idx):
         v0 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
         objective = 0
@@ -147,44 +164,6 @@ class HandTarget(object):
         objective = objective * gamma
         objective = objective + norm
         return objective
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     # def alg2_objective(self, params, gamma):
     #     p, _ = self.hand.forward(params[:, :self.front])
