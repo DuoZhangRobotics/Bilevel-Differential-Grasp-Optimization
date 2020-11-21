@@ -16,7 +16,7 @@ class HandTarget(object):
         self.surface_points = torch.squeeze(torch.tensor([p[0] for p in point_and_normals], dtype=data_type))
         self.point_normals = torch.squeeze(torch.tensor([p[1] for p in point_and_normals], dtype=data_type))
         self.g = torch.zeros((self.surface_points.shape[0], self.sampled_directions.shape[0]), dtype=data_type)
-        print(self.g.shape)
+        self.R = torch.zeros((1, self.surface_points.shape[0]), dtype=data_type)
         if self.hand.use_eigen:
             self.param_size = self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.eg_num
@@ -114,6 +114,33 @@ class HandTarget(object):
                     self.g[i, j] = -1 * (w_vertical + torch.square(w_parallel)/w_vertical)
                 else:
                     self.g[i, j] = -1 * (w_vertical + mu * w_parallel)
+
+    def get_Ri(self, root, p, start, point, alpha=1.0):
+        centroid0 = torch.mean(p[:, :, start: start + len(root.mesh.vertices)], dim=2)
+        Ri = 0
+        Ri = Ri + torch.exp(-alpha * torch.norm(centroid0 - point))
+        start += len(root.mesh.vertices)
+        if root.children:
+            for child in root.children:
+                tmp_Ri, start = self.get_Ri(child, p, start, point, alpha=alpha)
+                Ri = tmp_Ri + Ri
+        return Ri, start
+
+    def get_R(self, params, alpha=1.0):
+        p, t = self.hand.forward(params[:, :self.front])
+        for i in range(self.R.shape[1]):
+            self.R[0, i] = self.get_Ri(self.hand.palm, p, 0, self.surface_points[i, :], alpha=alpha)
+
+    def linear_piece_enumeration(self, epsilon=torch.tensor(0.1, dtype=data_type)):
+        g_min = torch.min(self.g, dim=0)
+        R = torch.zeros((1, 1), dtype=data_type)
+        for g in g_min:
+            for i in range(self.R.shape[1]):
+                ri = self.R[0, i]
+                other_ri = torch.cat((self.R[0, :i], self.R[0, i+1:]))
+                if all((g * (ri + epsilon) - other_ri) > 0):
+                    R = torch.cat((R, g * ri))
+        return g_min, R
 
     def get_log_barrier(self, root: Link, target: list, params, p, start, idx):
         v0 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
