@@ -8,10 +8,11 @@ data_type = torch.double
 
 
 class HandTarget(object):
-    def __init__(self, hand: Hand, target: list, sampled_directions, alg2=False, Q=None, F=None):
+    def __init__(self, hand: Hand, target: list, sampled_directions, mu=0.9):
         self.hand = hand
         self.target = target
         self.sampled_directions = torch.tensor(sampled_directions, dtype=data_type)
+        self.mu = mu
         point_and_normals = [t.surface_points_sampling(100) for t in self.target]
         self.surface_points = torch.squeeze(torch.tensor([p[0] for p in point_and_normals], dtype=data_type))
         self.point_normals = torch.squeeze(torch.tensor([p[1] for p in point_and_normals], dtype=data_type))
@@ -29,11 +30,11 @@ class HandTarget(object):
         self._initialize_params(self.hand.palm, self.target, 0, 0)
         self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
-        self.alg2 = alg2
-        if self.alg2:
-            self.Q = torch.tensor(Q, dtype=data_type).reshape((1, 1)).requires_grad_(True)
-            self.F = torch.tensor(F, dtype=data_type).requires_grad_(True)
-            self.params = torch.cat((self.params, self.F.reshape((1, -1)), self.Q), dim=1)
+        # self.alg2 = alg2
+        # if self.alg2:
+        #     self.Q = torch.tensor(Q, dtype=data_type).reshape((1, 1)).requires_grad_(True)
+        #     self.F = torch.tensor(F, dtype=data_type).requires_grad_(True)
+        #     self.params = torch.cat((self.params, self.F.reshape((1, -1)), self.Q), dim=1)
 
     def _initialize_params(self, root: Link, target: list, start, idx):
         hull = ConvexHull(self.p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T.numpy())
@@ -126,21 +127,40 @@ class HandTarget(object):
                 Ri = tmp_Ri + Ri
         return Ri, start
 
-    def get_R(self, params, alpha=1.0):
-        p, t = self.hand.forward(params[:, :self.front])
+    def get_R(self, p, alpha=1.0):
         for i in range(self.R.shape[1]):
-            self.R[0, i] = self.get_Ri(self.hand.palm, p, 0, self.surface_points[i, :], alpha=alpha)
+            Ri, _ = self.get_Ri(self.hand.palm, p, 0, self.surface_points[i, :], alpha=alpha)
+            self.R[0, i] = Ri
 
-    def linear_piece_enumeration(self, epsilon=torch.tensor(0.1, dtype=data_type)):
-        g_min = torch.min(self.g, dim=0)
+    def linear_piece_enumeration(self, p, epsilon=torch.tensor(0.1, dtype=data_type), alpha=1.0):
+        self.get_g(self.mu)
+        self.get_R(p, alpha)
+        # print("g shape", self.g.shape)
+        # print("R shape", self.R.shape)
+        g_min = torch.min(self.g, dim=1)
+        # print(g_min)
         R = torch.zeros((1, 1), dtype=data_type)
-        for g in g_min:
-            for i in range(self.R.shape[1]):
-                ri = self.R[0, i]
-                other_ri = torch.cat((self.R[0, :i], self.R[0, i+1:]))
-                if all((g * (ri + epsilon) - other_ri) > 0):
-                    R = torch.cat((R, g * ri))
-        return g_min, R
+        for i in range(g_min.values.shape[0]):
+            g = g_min.values[i]
+            j = g_min.indices[i]
+            ri = self.R[0, i]
+            gij_Ri = g * (ri + epsilon)
+            greatest = True
+            for k in range(self.R.shape[1]):
+                # ri = self.R[0, i]
+                if i != k and g_min.indices[k] == j:
+                    rk = self.R[0, k]
+                    gkj_Rk = g_min.values[k] * (rk - epsilon)
+                    if gij_Ri < gkj_Rk:
+                        greatest = False
+                        break
+                # print("g_RI = ", g * (ri + epsilon))
+                # print("g_Other_Ri", g * (other_ri - epsilon))
+                # print("other ri", other_ri)
+            if greatest:
+                R = torch.cat((R, gij_Ri.reshape((1, 1))), dim=1)
+        print("R = ", R, R.shape, epsilon, R[0, 1:])
+        return R[:, 1:]
 
     def get_log_barrier(self, root: Link, target: list, params, p, start, idx):
         v0 = p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T
