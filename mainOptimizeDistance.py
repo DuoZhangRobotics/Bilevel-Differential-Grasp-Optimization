@@ -19,8 +19,6 @@ if __name__ == "__main__":
         params = torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
     p, t = hand.forward(params)
 
-
-
     # create object
     count = 100
     sampled_directions = np.array(Directions(2, 3).dirs)
@@ -36,12 +34,10 @@ if __name__ == "__main__":
     hand_target = HandTarget(hand, target, sampled_directions)
     gamma = torch.tensor(0.001, dtype=data_type)
 
-
     def obj_func(param, hand_target):
         return hand_target.hand_target_objective(param, gamma)
 
-
     optimizer = Optimizer(obj_func, params=[hand_target.params, hand_target], method='Newton')
-    # optimizer.optimize(niters=1, plot_interval=20)
-    # optimizer.plot_meshes()
-    # optimizer.plot_history().savefig("history.png")
+    optimizer.optimize(niters=1000, plot_interval=20)
+    optimizer.plot_meshes()
+    optimizer.plot_history().savefig("history.png")

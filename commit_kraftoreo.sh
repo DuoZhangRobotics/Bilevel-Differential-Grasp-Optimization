@@ -1,4 +1,5 @@
 #! /bin/bash
+rm -rdf ./log
 rm -rdf *.png
 rm -r ./limits
 rm -r ./__pycache__

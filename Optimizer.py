@@ -6,7 +6,6 @@ import pickle
 
 data_type = torch.double
 
-
 class Optimizer(object):
     def __init__(self, obj_func: Callable, params, method='Newton'):
         self.func = obj_func
