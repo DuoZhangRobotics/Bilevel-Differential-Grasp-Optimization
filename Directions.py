@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def cmpToKey(mycmp):
     """Convert a cmp= function into a key= function"""
 
@@ -27,7 +26,6 @@ def cmpToKey(mycmp):
             return mycmp(self.obj, other.obj) != 0
 
     return K
-
 
 class Directions:
     def __init__(self, res=4, dim=6):
@@ -78,7 +76,6 @@ class Directions:
         print('res=%d dim=%d #dir=%d' % (self.res, self.dim, len(self.dirs)))
         for d in self.dirs:
             print(d)
-
 
 if __name__ == '__main__':
     Directions(res=3, dim=3).printDirs()

@@ -1,22 +1,16 @@
-from Hand import Hand, Link
 from ConvexHulls import ConvexHull
-import torch
+from Hand import Hand, Link
 import numpy as np
+import torch
 
 np.set_printoptions(threshold=np.inf)
 data_type = torch.double
 
 class HandTarget(object):
-    def __init__(self, hand: Hand, target: list, sampled_directions, mu=0.9):
+    def __init__(self, hand: Hand, target: list, mu=0.9):
         self.hand = hand
         self.target = target
-        self.sampled_directions = torch.tensor(sampled_directions, dtype=data_type)
         self.mu = mu
-        point_and_normals = [t.surface_points_sampling(100) for t in self.target]
-        self.surface_points = torch.squeeze(torch.tensor([p[0] for p in point_and_normals], dtype=data_type))
-        self.point_normals = torch.squeeze(torch.tensor([p[1] for p in point_and_normals], dtype=data_type))
-        self.g = torch.zeros((self.surface_points.shape[0], self.sampled_directions.shape[0]), dtype=data_type)
-        self.R = torch.zeros((1, self.surface_points.shape[0]), dtype=data_type)
         if self.hand.use_eigen:
             self.param_size = self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.eg_num
@@ -29,11 +23,6 @@ class HandTarget(object):
         self._initialize_params(self.hand.palm, self.target, 0, 0)
         self.chart_reset(self.hand.palm, 0)
         self.params = self.params.detach().clone().requires_grad_(True)
-        # self.alg2 = alg2
-        # if self.alg2:
-        #     self.Q = torch.tensor(Q, dtype=data_type).reshape((1, 1)).requires_grad_(True)
-        #     self.F = torch.tensor(F, dtype=data_type).requires_grad_(True)
-        #     self.params = torch.cat((self.params, self.F.reshape((1, -1)), self.Q), dim=1)
 
     def _initialize_params(self, root: Link, target: list, start, idx):
         hull = ConvexHull(self.p[:, :, start: start + len(root.mesh.vertices)].view(3, -1).T.numpy())
@@ -120,11 +109,11 @@ class HandTarget(object):
             lower_bound1 = torch.min(v1 @ n)
             upper_bound1 = torch.max(v1 @ n)
             if lower_bound0 > upper_bound1:
-                objective = -torch.sum(torch.log(torch.atan(v0 @ n - d))) - torch.sum(torch.log(torch.atan(d - v1 @ n)))
+                objective += -torch.sum(torch.log(v0 @ n - d)) - torch.sum(torch.log(d - v1 @ n))
             elif lower_bound1 > upper_bound0:
-                objective = -torch.sum(torch.log(torch.atan(v1 @ n - d))) - torch.sum(torch.log(torch.atan(d - v0 @ n)))
+                objective += -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v0 @ n))
             else:
-                objective = -torch.sum(torch.log(torch.atan(v1 @ n - d))) - torch.sum(torch.log(torch.atan(d - v0 @ n)))
+                objective += -torch.sum(torch.log(v1 @ n - d)) - torch.sum(torch.log(d - v0 @ n))
 
         start += len(root.mesh.vertices)
         idx += 1

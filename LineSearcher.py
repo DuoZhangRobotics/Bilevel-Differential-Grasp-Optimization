@@ -1,8 +1,8 @@
 import torch
 import numpy as np
 from typing import Callable
-data_type = torch.double
 
+data_type = torch.double
 
 class LineSearcher(object):
     def __init__(self, func: Callable, params: list):

@@ -54,6 +54,11 @@ class Optimizer(object):
                 s *= invscale
             if i % plot_interval == 0:
                 self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+                
+                import os
+                if not os.path.exists('./log'):
+                    os.mkdir('./log')
+                    
                 with open(rf'./log/Optimizer_{i}.pkl', 'wb') as output:
                     pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -68,6 +73,11 @@ class Optimizer(object):
             # convergence check
             if self.grad_norms[-1] < tolg:
                 print("Converged!")
+                
+                import os
+                if not os.path.exists('./log'):
+                    os.mkdir('./log')
+                    
                 with open(rf'./log/Optimizer_final.pkl', 'wb') as output:
                     pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -91,18 +101,12 @@ class Optimizer(object):
             hessian = hessian.detach().numpy()
             return hessian, scipy.linalg.cho_factor(hessian)
 
-    # def make_positive_definite(self, hessian, min_cond=0.00001):
-    #     eigenvalues, eigenvectors = np.linalg.eig(hessian)
-    #     l = np.max(np.abs(eigenvalues))
-    #     for i in range(len(eigenvalues)):
-    #         eigenvalues[i] = max(eigenvalues[i], l * min_cond)
-    #     return eigenvectors @ np.diag(eigenvalues) @ np.linalg.inv(eigenvectors)
-    @staticmethod
-    def make_positive_definite(hessian, min_cond=0.00001):
+    def make_positive_definite(self, hessian, min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)
-        tau = min_cond - eigenvalues
-        tau = np.where(tau < 0, 0, tau)
-        return hessian + eigenvectors @ np.diag(tau) @ np.linalg.inv(eigenvectors)
+        l = np.max(np.abs(eigenvalues))
+        for i in range(len(eigenvalues)):
+            eigenvalues[i] = max(eigenvalues[i], l * min_cond)
+        return eigenvectors @ np.diag(eigenvalues) @ np.transpose(eigenvectors)
 
     def grad_check(self):
         print(torch.autograd.gradcheck(self.func, self.params))
