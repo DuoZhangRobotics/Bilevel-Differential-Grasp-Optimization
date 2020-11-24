@@ -6,7 +6,7 @@ import torch
 np.set_printoptions(threshold=np.inf)
 data_type = torch.double
 
-class HandTarget(object):
+class HandObjective(object):
     def __init__(self, hand: Hand, target: list, mu=0.9):
         self.hand = hand
         self.target = target
@@ -135,10 +135,19 @@ class HandTarget(object):
                 norm = norm + tmp_norm
         return norm, start
 
-    def hand_target_objective(self, params, gamma):
+    def hand_objective(self, params, gamma, normCoef=1.):
         p, t = self.hand.forward(params[:, :self.front])
-        norm, _ = self.get_norm(self.hand.palm, self.target, p, 0)
-        objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
-        objective = objective * gamma
-        objective = objective + norm
+        
+        #collision objective
+        if gamma>0.:
+            objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
+            objective = objective * gamma
+        else: 
+            objective = 0.
+            
+        #debug objective, distance between hand and objective
+        if normCoef>0.:
+            norm, _ = self.get_norm(self.hand.palm, self.target, p, 0)
+            objective = objective + norm * normCoef
+        
         return objective

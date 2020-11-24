@@ -1,9 +1,9 @@
 import os, trimesh, trimesh.creation, copy, math, re, pickle, shutil, vtk, scipy, torch, transforms3d
 from collections import defaultdict
 import xml.etree.ElementTree as ET
-import numpy as np
-from scipy.spatial import ConvexHull
+from ConvexHulls import ConvexHull
 import torch.nn.functional as F
+import numpy as np
 import random
 
 torch.set_default_dtype(torch.float64)
@@ -142,7 +142,8 @@ def write_vtk(polydata, name):
 class Link:
     def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
         # print(mesh)
-        self.mesh = self._initialize_convex_mesh(mesh)
+        self.hull = ConvexHull(mesh.vertices)
+        self.mesh = self.hull.mesh()
         self.centroid = torch.tensor(self.mesh.centroid, dtype=torch.double)
         # print(self.mesh)
         # for facet in self.mesh.facets:
@@ -165,14 +166,6 @@ class Link:
 
     def check_watertight(self):
         return True if self.mesh.is_watertight else False
-
-    @staticmethod
-    def _initialize_convex_mesh(mesh: trimesh.Trimesh):
-        points = mesh.vertices
-        hull = ConvexHull(points)
-        hull = ConvexHull(hull.points[hull.vertices, :])
-        convex_mesh = trimesh.Trimesh(vertices=hull.points[hull.vertices, :], faces=hull.simplices)
-        return convex_mesh
 
     def convert_to_revolute(self):
         if self.dhParams and len(self.dhParams) > 1:

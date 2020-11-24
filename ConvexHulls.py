@@ -16,16 +16,23 @@ class ConvexHull(object):
 
     def distance_to(self, target_hull):
         # distance between two convex hulls
-        A2, b2 = target_hull.A, target_hull.b
-
         x1 = cp.Variable(3)
-        x2 = cp.Variable(3)
+        
+        if isinstance(target_hull,ConvexHull):
+            x2 = cp.Variable(3)
+            A2, b2 = target_hull.A, target_hull.b
+            constraints = [self.A @ x1 <= self.b, A2 @ x2 <= b2]
+        else:
+            x2 = [target_hull[0], target_hull[1], target_hull[2]]
+            constraints = [self.A @ x1 <= self.b]
 
         objective = cp.Minimize(cp.sum_squares(x1 - x2))
-        constraints = [self.A @ x1 <= self.b, A2 @ x2 <= b2]
         prob = cp.Problem(objective, constraints)
         min_dist = prob.solve(solver=cp.MOSEK)
-        return min_dist, x1.value, x2.value
+        
+        if isinstance(target_hull,ConvexHull):
+            return min_dist, x1.value, x2.value
+        else: return min_dist, x1.value, x2
     
     def surface_vertices(self):
         return self.points[self.vertices, :]
@@ -39,3 +46,6 @@ class ConvexHull(object):
     
     def mesh(self):
         return trimesh.Trimesh(vertices=self.surface_vertices(), faces=self.surface_indices())
+
+    def contain(self, x2, thres=1e-3):
+        return self.distance_to(x2)[0] < thres
