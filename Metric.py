@@ -8,63 +8,41 @@ class Metric(object):
         self.points = []
         self.normals = []
         self.targets = targets
-        self.meshes = [t.mesh() for t in targets]
-        samples = [trimesh.sample.sample_surface_even(t, count) for t in self.meshes]
-        for tid, sample in enumerate(samples):
-            for sid in range(sample[0].shape[0]):
-                pt = sample[0][sid,:].tolist()
-                fid = sample[1][sid]
-                contain = False 
-                for tid2, target in enumerate(targets):
-                    if tid2!=tid and target.contain(pt):
-                        contain=True
-                        break
-                if not contain:
-                    self.points.append(pt)
-                    self.normals.append(-self.meshes[tid].face_normals[fid])
+        from PoissonDiskSampling import sample_convex_hulls
+        self.points, self.normals = sample_convex_hulls(self.targets, count)
         self.mu = friCoef
-        self.points=np.array(self.points,dtype=np.float64).T
-        self.normals=np.array(self.normals,dtype=np.float64).T
         
         #sample directions
         from Directions import Directions
         self.dirs = Directions(res=res, dim=6).dirs
-        self.dirs=np.array(self.dirs,dtype=np.float64).T
+        self.dirs = np.array(self.dirs,dtype=np.float64)
         
         #compute gij
-        self.gij = np.zeros((self.points.shape[1],self.dirs.shape[1]), dtype=np.float64)
-        for i in range(self.gij.shape[0]):
-            p=self.points[:,i]
-            n=self.normals[:,i]
-            for j in range(self.gij.shape[1]):
-                d=self.dirs[:,j]
-                f2w=np.concatenate((np.eye(3,3,dtype=np.float64),Metric.cross(p)))
-                if M is not None:
-                    f2w=np.matmul(M,f2w)
-                w_perp=(np.mat(d)*f2w*np.mat(n).T)[0,0]
-                w_para=np.linalg.norm(np.mat(d)*f2w*(np.identity(3)-np.mat(n).T*np.mat(n)))
-                if self.mu*w_perp>w_para:
-                    max_sw=(w_perp+w_para**2/w_perp)
-                else: max_sw=max(0,w_perp+self.mu*w_para)
-                self.gij[i][j]=max_sw
-                
-    @staticmethod
-    def cross(p):
-        ret=np.zeros((3,3),dtype=np.float64)
-        ret[2,1]= p[0]
-        ret[1,2]=-p[0]
-        ret[0,2]= p[1]
-        ret[2,0]=-p[1]
-        ret[1,0]= p[2]
-        ret[0,1]=-p[2]
-        return ret
-
+        f2w = np.zeros((self.points.shape[0],6,3), dtype=np.float64)
+        f2w[:,0,0] = f2w[:,1,1] = f2w[:,2,2] = 1
+        f2w[:,2,1] = self.points[:,0]
+        f2w[:,1,2] =-self.points[:,0]
+        f2w[:,0,2] = self.points[:,1]
+        f2w[:,2,0] =-self.points[:,1]
+        f2w[:,1,0] = self.points[:,2]
+        f2w[:,0,1] =-self.points[:,2]
+        if M is not None:
+            f2w = np.einsum("ij,kjl->kil", M, f2w)
+        df2w = np.einsum("ij,kjl->kil", self.dirs, f2w)
+        w_perp = np.einsum("ijk,ik->ij", df2w, self.normals)
+        w_para = np.linalg.norm(df2w - np.einsum("ij,il->ijl", w_perp, self.normals),axis=2)
+        
+        case1 = w_perp + w_para**2 / w_perp
+        case2 = np.maximum(0 , w_perp + self.mu * w_para)
+        choice = self.mu * w_perp > w_para
+        self.gij = np.where(choice, case1, case2)
+        
     def draw_samples(self, scale, length):
         # show hand
         import vtk
         from Hand import vtk_render,vtk_add_from_hand
         renderer = vtk.vtkRenderer()
-        vtk_add_from_hand(self.meshes, renderer, 1.0, use_torch=True)
+        vtk_add_from_hand([t.mesh() for t in self.targets], renderer, 1.0, use_torch=True)
         vtk_add_metric_samples(renderer, self, scale, length)
         vtk_render(renderer, axes=True)
 
@@ -73,7 +51,7 @@ class Metric(object):
             return self.compute_exp_dist(link.palm)
         else:
             trans = link.joint_transform_torch.numpy()[0,:,:]
-            pss = trans[:3,:3].T @ (self.points.T - trans[:3,3]).T
+            pss = trans[:3,:3].T @ (self.points - trans[:3,3]).T
             ret = [[link.hull.distance_to(pss[:,i]) for i in range(pss.shape[1])]]
             if link.children:
                 for c in link.children:
@@ -90,12 +68,12 @@ class Metric(object):
 
 def vtk_add_metric_samples(renderer, metric, scale, length):
     import vtk
-    for i in range(metric.points.shape[1]):
+    for i in range(metric.points.shape[0]):
         #point
         sphere = vtk.vtkSphereSource()
-        sphere.SetCenter(metric.points[0,i],
-                         metric.points[1,i],
-                         metric.points[2,i])
+        sphere.SetCenter(metric.points[i,0],
+                         metric.points[i,1],
+                         metric.points[i,2])
         sphere.SetRadius(scale)
         sphere.SetThetaResolution(24)
         sphere.SetPhiResolution(24)
@@ -113,12 +91,12 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         normal.SetTipResolution(100)
         normal.SetShaftResolution(100)
         # Generate a random start and end point
-        startPoint=[metric.points[0,i],
-                    metric.points[1,i],
-                    metric.points[2,i]]
-        endPoint=[metric.points[0,i]+metric.normals[0,i]*length,
-                  metric.points[1,i]+metric.normals[1,i]*length,
-                  metric.points[2,i]+metric.normals[2,i]*length]
+        startPoint=[metric.points[i,0],
+                    metric.points[i,1],
+                    metric.points[i,2]]
+        endPoint=[metric.points[i,0]+metric.normals[i,0]*length,
+                  metric.points[i,1]+metric.normals[i,1]*length,
+                  metric.points[i,2]+metric.normals[i,2]*length]
         rng = vtk.vtkMinimalStandardRandomSequence()
         rng.SetSeed(8775070)  # For testing.
         # Compute a basis
