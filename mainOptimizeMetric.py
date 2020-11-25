@@ -32,11 +32,10 @@ if __name__ == "__main__":
                                    [ 1.0, 1.0, 1.0]]) + 2.0)]
     metric = Metric(target)
     metric.setup_distance(hand)
-    
+    metric.draw_samples(.1, 0.5)
     for i in range(10):
         use_numpy = i%2
         if use_numpy:
             print("numpy: ",metric.compute_metric_numpy(hand))
         else:
             print("torch: ",metric.compute_metric_torch(hand))
-    metric.draw_samples(.1, 0.2)
