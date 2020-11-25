@@ -3,10 +3,9 @@ from Hand import Hand
 import scipy, trimesh
 import numpy as np
 
+
 class Metric(object):
     def __init__(self, targets, count=100, friCoef=.7, res=3, M=None):
-        self.points = []
-        self.normals = []
         self.targets = targets
         from PoissonDiskSampling import sample_convex_hulls
         self.points, self.normals = sample_convex_hulls(self.targets, count)
@@ -40,14 +39,14 @@ class Metric(object):
     def draw_samples(self, scale, length):
         # show hand
         import vtk
-        from Hand import vtk_render,vtk_add_from_hand
+        from Hand import vtk_render, vtk_add_from_hand
         renderer = vtk.vtkRenderer()
         vtk_add_from_hand([t.mesh() for t in self.targets], renderer, 1.0, use_torch=True)
         vtk_add_metric_samples(renderer, self, scale, length)
         vtk_render(renderer, axes=True)
 
     def compute_exp_dist(self, link):
-        if isinstance(link,Hand):
+        if isinstance(link, Hand):
             return self.compute_exp_dist(link.palm)
         else:
             trans = link.joint_transform_torch.numpy()[0,:,:]
@@ -61,9 +60,10 @@ class Metric(object):
     def compute_metric(self, hand, alpha=.1):
         dists = self.compute_exp_dist(hand)
         dists_value = np.array([[d[0] for d in distsL] for distsL in dists])
-        exp_dists_max = np.amax(np.exp(dists_value * -alpha),axis=0)
-        Q_value = self.gij * np.expand_dims(exp_dists_max,axis=1)
-        Q_value = np.mean(np.amax(Q_value,axis=1),axis=0)
+        print(dists_value.shape)
+        exp_dists_max = np.amax(np.exp(dists_value * -alpha), axis=0)
+        Q_value = self.gij * np.expand_dims(exp_dists_max, axis=1)
+        Q_value = np.mean(np.amax(Q_value, axis=1), axis=0)
         return Q_value
 
 def vtk_add_metric_samples(renderer, metric, scale, length):
@@ -81,13 +81,13 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         sphere_mapper.SetInputConnection(sphere.GetOutputPort())
         sphere_actor = vtk.vtkActor()
         sphere_actor.SetMapper(sphere_mapper)
-        sphere_actor.GetProperty().SetColor(255./255,.0/255,255.0/255)
+        sphere_actor.GetProperty().SetColor(255. / 255, .0 / 255, 255.0 / 255)
         renderer.AddActor(sphere_actor)
 
-        #normal
-        if length<=0.:
+        # normal
+        if length <= 0.:
             continue
-        normal=vtk.vtkArrowSource()
+        normal = vtk.vtkArrowSource()
         normal.SetTipResolution(100)
         normal.SetShaftResolution(100)
         # Generate a random start and end point
@@ -108,7 +108,7 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         length = vtk.vtkMath.Norm(normalizedX)
         vtk.vtkMath.Normalize(normalizedX)
         # The Z axis is an arbitrary vector cross X
-        arbitrary=[0 for i in range(3)]
+        arbitrary = [0 for i in range(3)]
         for j in range(0, 3):
             rng.Next()
             arbitrary[j] = rng.GetRangeValue(-10, 10)
@@ -142,5 +142,5 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         else:
             normalMapper.SetInputConnection(transformPD.GetOutputPort())
         normalActor.SetMapper(normalMapper)
-        normalActor.GetProperty().SetColor(255.0/255, 0.0/255, 0.0/255)
+        normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
         renderer.AddActor(normalActor)

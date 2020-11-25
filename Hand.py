@@ -8,6 +8,7 @@ import random
 
 torch.set_default_dtype(torch.float64)
 
+
 def normalize_quaternion(quaternion: torch.Tensor,
                          eps: float = 1e-12) -> torch.Tensor:
     if not isinstance(quaternion, torch.Tensor):
@@ -18,6 +19,7 @@ def normalize_quaternion(quaternion: torch.Tensor,
             "Input must be a tensor of shape (*, 4). Got {}".format(
                 quaternion.shape))
     return F.normalize(quaternion, p=2, dim=-1, eps=eps)
+
 
 def Quat2mat(quaternion):
     if not isinstance(quaternion, torch.Tensor):
@@ -54,6 +56,7 @@ def Quat2mat(quaternion):
         matrix = torch.squeeze(matrix, dim=0)
     return matrix
 
+
 def DH2trans(theta, d, r, alpha):
     Z = np.asarray([[math.cos(theta), -math.sin(theta), 0, 0],
                     [math.sin(theta), math.cos(theta), 0, 0],
@@ -65,6 +68,7 @@ def DH2trans(theta, d, r, alpha):
                     [0, 0, 0, 1]])
     tr = np.matmul(Z, X)
     return tr, Z, X
+
 
 def DH2trans_torch(theta, d, r, alpha):
     Zc = torch.tensor([[1., 0, 0, 0],
@@ -87,6 +91,7 @@ def DH2trans_torch(theta, d, r, alpha):
                       [0, math.sin(alpha), math.cos(alpha), 0],
                       [0, 0, 0, 1]]).type(theta.type())
     return torch.matmul(Z, X), Z, X
+
 
 def trimesh_to_vtk(trimesh):
     r"""Return a `vtkPolyData` representation of a :map:`TriMesh` instance
@@ -130,6 +135,7 @@ def trimesh_to_vtk(trimesh):
     mesh.SetPolys(cells)
     return mesh
 
+
 def write_vtk(polydata, name):
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(name)
@@ -138,6 +144,7 @@ def write_vtk(polydata, name):
     else:
         writer.SetInputData(polydata)
     writer.Write()
+
 
 class Link:
     def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
@@ -324,6 +331,7 @@ class Link:
                 ret += c.get_end_effector_all()
         return ret
 
+
 class Hand(torch.nn.Module):
     def __init__(self, hand_path, scale, use_joint_limit=True, use_quat=True, use_eigen=False, use_contacts=False):
         super(Hand, self).__init__()
@@ -348,7 +356,8 @@ class Hand(torch.nn.Module):
         for file in os.listdir(self.hand_path + '/off'):
             if file.endswith('.off'):
                 name = file[0:len(file) - 4]
-                self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file, process=False).apply_scale(scale)
+                self.linkMesh[name] = trimesh.load_mesh(self.hand_path + '/off/' + file, process=False).apply_scale(
+                    scale)
         # build links
         transform = transforms3d.affines.compose(np.zeros(3), np.eye(3, 3), [1, 1, 1])
         self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None, use_contacts=use_contacts)
@@ -859,6 +868,7 @@ class Hand(torch.nn.Module):
         res = scipy.optimize.minimize(fun, x0, method='SLSQP', bounds=tuple(bnds))
         return res.x[0:7], res.x[7:]
 
+
 def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
     for i in range(len(meshes)):
         mesh = meshes[i]
@@ -870,6 +880,7 @@ def vtk_add_from_hand(meshes: list, renderer, scale, use_torch=False):
         mesh_actor.SetMapper(mesh_mapper)
         mesh_actor.GetProperty().SetOpacity(1)
         renderer.AddActor(mesh_actor)
+
 
 def vtk_render(renderer, axes=True):
     if axes is True:
@@ -894,6 +905,7 @@ def vtk_render(renderer, axes=True):
     # Begin Interaction
     renderWindow.Render()
     renderWindowInteractor.Start()
+
 
 if __name__ == '__main__':
     hand_paths = [

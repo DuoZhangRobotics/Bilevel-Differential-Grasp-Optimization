@@ -6,6 +6,7 @@ import torch
 np.set_printoptions(threshold=np.inf)
 data_type = torch.double
 
+
 class HandObjective(object):
     def __init__(self, hand: Hand, target: list, mu=0.9):
         self.hand = hand
