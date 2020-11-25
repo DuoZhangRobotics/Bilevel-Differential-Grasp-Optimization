@@ -1,0 +1,61 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 13.04.2 ] */
+
+/* [wxMaxima: input   start ] */
+A: sin(theta);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+B: cos(theta);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+C: A/theta;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+D: (1-B)/theta;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+E: D/theta;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+F: (theta-A)/theta/theta;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+G: (A-theta*B)/theta/theta;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(A,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(B,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(C,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(D,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(E,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(F,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+taylor(G,theta,0,10);
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$

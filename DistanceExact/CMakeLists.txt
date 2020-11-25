@@ -1,0 +1,50 @@
+PROJECT(DistanceExact)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+
+#COMPILE SETTINGS
+#SET(CMAKE_C_COMPILER gcc-7)
+#SET(CMAKE_CXX_COMPILER g++-7)
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE Release)
+ENDIF()
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/modules/")
+SET(CUDA_SEPARABLE_COMPILATION ON)
+IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  MESSAGE(STATUS "Build type: Debug")
+  IF(APPLE)
+    SET(CMAKE_CXX_FLAGS "-O0 -Wall -fPIC -std=c++11 -Wno-unused-function ${CMAKE_CXX_FLAGS}")
+  ELSEIF(MSVC)
+    SET(CMAKE_CXX_FLAGS "/openmp /bigobj -Wall -std=c++11 ${CMAKE_CXX_FLAGS}")
+  ELSE()
+    SET(CMAKE_CXX_FLAGS "-fopenmp -O0 -Wall -fPIC -std=c++11 -Wno-unused-function ${CMAKE_CXX_FLAGS}")
+  ENDIF()
+ELSE()
+  MESSAGE(STATUS "Build type: Release")
+  IF(APPLE)
+    SET(CMAKE_CXX_FLAGS "-O3 -Wall -fPIC -std=c++11 -Wno-unused-function ${CMAKE_CXX_FLAGS}")
+  ELSEIF(MSVC)
+    SET(CMAKE_CXX_FLAGS "/openmp /bigobj -Wall -std=c++11 ${CMAKE_CXX_FLAGS}")
+  ELSE()
+    SET(CMAKE_CXX_FLAGS "-fopenmp -O3 -Wall -fPIC -std=c++11 -Wno-unused-function ${CMAKE_CXX_FLAGS}")
+  ENDIF()
+ENDIF()
+SET(CMAKE_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE})
+
+#LIBRARY
+INCLUDE("${PROJECT_SOURCE_DIR}/cmake/modules/LoadLibs.cmake")
+
+#THIRD PARTY HEADERS
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
+MACRO(SEARCH_SOURCE NAME DIRPRJ)
+  FILE(GLOB_RECURSE header${NAME} ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.h ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.hpp ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.hh)
+  FILE(GLOB_RECURSE source${NAME} ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.cpp ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.cpp ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.cc ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.c)
+  FILE(GLOB_RECURSE cuda_source${NAME} ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.cu)
+ENDMACRO(SEARCH_SOURCE)
+SEARCH_SOURCE(Utils Utils)
+SEARCH_SOURCE(DistanceExact .)
+SEARCH_SOURCE(CommonFile CommonFile)
+
+#BUILD LIBRARY
+ADD_LIBRARY(DistanceExact SHARED ${sourceDistanceExact} ${headerDistanceExact} ${sourceCommonFile} ${headerCommonFile} ${sourceUtils} ${headerUtils} PythonInterface.cpp PythonInterface.h)
+TARGET_LINK_LIBRARIES(DistanceExact stdc++fs ${ALL_LIBRARIES} ${ALL_STATIC_LIBRARIES})
+

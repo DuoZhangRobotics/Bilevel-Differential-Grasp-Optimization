@@ -4,6 +4,7 @@ rm -rdf *.png
 rm -r ./limits
 rm -r ./__pycache__
 rm -r ./.ipynb_checkpoints
+rm -r DistanceExact/CMakeLists.txt.user
 rm ./.project
 rm .DS_Store
 rm -r .idea
