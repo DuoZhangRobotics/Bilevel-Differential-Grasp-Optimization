@@ -5,11 +5,16 @@ from scipy.spatial.distance import pdist, squareform
 
 reflection = np.array([[0., -1.], [-1., 0.]])
 
-def mesh_area(triangle_list):
+def mesh_area(triangle_list, target):
     N = np.cross(triangle_list[:,1] - triangle_list[:,0], triangle_list[:,2] - triangle_list[:,0], axis = 1)
     N_norm = np.sqrt(np.sum(N ** 2, axis = 1))
     normals = N / np.expand_dims(N_norm, axis = 1)
     N_norm *= .5
+    
+    TC = (triangle_list[:,0] + triangle_list[:,1] + triangle_list[:,2]) / 3 - target.centroid
+    case = np.einsum("ij,ij->i", TC, normals) > 0
+    case = np.transpose(np.vstack([case, case, case]))
+    normals = np.where(case, normals, -normals)
     return N_norm, normals
 
 def triangle_point_picking(triangle_list):
@@ -75,10 +80,10 @@ def sample_convex_hulls(targets, counts, multiple=10):
     
     tri_areas = []
     tri_normals =[]
-    for triangle in triangles:
-        area, normal = mesh_area(triangle)
-        tri_areas.append(area)
+    for triangle, target in zip(triangles, targets):
+        area, normal = mesh_area(triangle, target)
         tri_normals.append(normal)
+        tri_areas.append(area)
     
     tri_area_sums = [np.sum(tri_area) for tri_area in tri_areas]
     tri_area_sums_all = np.sum(tri_area_sums)
