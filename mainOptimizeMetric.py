@@ -1,4 +1,6 @@
 from ConvexHulls import ConvexHull
+from HandObjective import HandObjective
+from Optimizer import Optimizer
 from Metric import Metric
 from Hand import Hand
 import numpy as np
@@ -14,28 +16,40 @@ if __name__ == "__main__":
     p, t = hand.forward(params)
 
     # create object
-    target = [ConvexHull(np.array([[-1.0,-1.0,-1.0],
-                                   [-1.0, 1.0,-1.0],
-                                   [ 1.0,-1.0,-1.0],
-                                   [ 1.0, 1.0,-1.0],
-                                   [-1.0, 1.0, 1.0],
-                                   [ 1.0,-1.0, 1.0],
-                                   [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 1.5),
-              ConvexHull(np.array([[-1.0,-1.0,-1.0],
-                                   [-1.0, 1.0,-1.0],
-                                   [ 1.0,-1.0,-1.0],
-                                   [ 1.0, 1.0,-1.0],
-                                   [-1.0, 1.0, 1.0],
-                                   [ 1.0,-1.0, 1.0],
-                                   [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 2.0)]
+    target = [ConvexHull(np.array([[-0.5,-0.5,-0.5],
+                                   [-0.5, 0.5,-0.5],
+                                   [ 0.5,-0.5,-0.5],
+                                   [ 0.5, 0.5,-0.5],
+                                   [-0.5, 0.5, 0.5],
+                                   [ 0.5,-0.5, 0.5],
+                                   [-0.5,-0.5, 0.5],
+                                   [ 0.5, 0.5, 0.5]]) + 1.0),
+            #   ConvexHull(np.array([[-0.5,-0.5,-0.5],
+            #                        [-0.5, 0.5,-0.5],
+            #                        [ 0.5,-0.5,-0.5],
+            #                        [ 0.5, 0.5,-0.5],
+            #                        [-0.5, 0.5, 0.5],
+            #                        [ 0.5,-0.5, 0.5],
+            #                        [-0.5,-0.5, 0.5],
+            #                        [ 0.5, 0.5, 0.5]]) + 2.0)
+                                   ]
     metric = Metric(target)
-    metric.setup_distance(hand)
-    metric.draw_samples(.1, 0.5)
-    for i in range(10):
-        use_numpy = i%2
-        if use_numpy:
-            print("numpy: ",metric.compute_metric_numpy(hand))
-        else:
-            print("torch: ",metric.compute_metric_torch(hand))
+    # metric.setup_distance(hand)
+    # metric.draw_samples(.1, 0.5)
+    # for i in range(10):
+    #     use_numpy = i%2
+    #     if use_numpy:
+    #         print("numpy: ",metric.compute_metric_numpy(hand))
+    #     else:
+    #         print("torch: ",metric.compute_metric_torch(hand))
+    obj = HandObjective(hand, target, metric)
+    gamma = torch.tensor(0.001, dtype=torch.double)
+    alpha = torch.tensor(0.1, dtype=torch.double)
+
+    def obj_func(param, hand_target):
+        return obj.Q_metric_objective(param, gamma, alpha)
+
+    optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
+    optimizer.optimize(niters=1000, plot_interval=20)
+    optimizer.plot_meshes()
+    optimizer.plot_history().savefig("history.png")

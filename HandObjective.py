@@ -1,4 +1,5 @@
 from ConvexHulls import ConvexHull
+from Metric import Metric
 from Hand import Hand, Link
 import numpy as np
 import torch
@@ -8,10 +9,11 @@ data_type = torch.double
 
 
 class HandObjective(object):
-    def __init__(self, hand: Hand, target: list, mu=0.9):
+    def __init__(self, hand: Hand, target: list, metric: Metric=None):
         self.hand = hand
         self.target = target
-        self.mu = mu
+        self.metric = metric
+        self.metric.setup_distance(self.hand)
         if self.hand.use_eigen:
             self.param_size = self.hand.extrinsic_size + self.hand.eg_num + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.eg_num
@@ -152,3 +154,21 @@ class HandObjective(object):
             objective = objective + norm * normCoef
         
         return objective
+
+    def Q_metric_objective(self, params, gamma, alpha):
+        p, t = self.hand.forward(params[:, :self.front])
+
+        #collision objective
+        if gamma>0.:
+            objective, _, _ = self.get_log_barrier(self.hand.palm, self.target, params, p, 0, 0)
+            objective = objective * gamma
+        else: 
+            objective = 0.
+
+        # Q metric objective
+        Q_metric = self.metric.compute_metric_torch(self.hand)
+        
+        objective = objective + Q_metric
+        
+        return objective
+    
