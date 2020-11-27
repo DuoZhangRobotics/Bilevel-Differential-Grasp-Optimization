@@ -54,7 +54,7 @@ class Optimizer(object):
                 s *= invscale
             if i % plot_interval == 0:
                 self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
-                
+                self.plot_meshes()
                 import os
                 if not os.path.exists('./log'):
                     os.mkdir('./log')
@@ -68,7 +68,7 @@ class Optimizer(object):
             # record/print
             self.objectives.append(obj)
             self.grad_norms.append(np.max(np.abs(jacobian)))
-            print(f"Iter{i:3d}: obj={self.objectives[-1]:3.6f} grad={self.grad_norms[-1]:3.6f} s={s:3.6f}")
+            print(f"Iter{i:3d}: obj={self.objectives[-1]:3.6f} grad={self.grad_norms[-1]:3.6f} x={self.params[0][:, :3].detach().numpy()} s={s:3.6f}")
 
             # convergence check
             if self.grad_norms[-1] < tolg:

@@ -43,13 +43,13 @@ if __name__ == "__main__":
     #     else:
     #         print("torch: ",metric.compute_metric_torch(hand))
     obj = HandObjective(hand, target, metric)
-    gamma = torch.tensor(0.001, dtype=torch.double)
-    alpha = torch.tensor(0.1, dtype=torch.double)
+    gamma = torch.tensor(0.0001, dtype=torch.double)
+    alpha = torch.tensor(5, dtype=torch.double)
 
     def obj_func(param, hand_target):
         return obj.Q_metric_objective(param, gamma, alpha)
 
     optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
-    optimizer.optimize(niters=1000, plot_interval=20)
+    optimizer.optimize(niters=10000, plot_interval=10)
     optimizer.plot_meshes()
     optimizer.plot_history().savefig("history.png")
