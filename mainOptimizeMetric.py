@@ -5,8 +5,14 @@ from Metric import Metric
 from Hand import Hand
 import numpy as np
 import torch
+import argparse
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--alpha", type=float, default=10)
+    parser.add_argument("--gamma", type=float, default=0.001)
+    args = parser.parse_args()
     path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
@@ -43,13 +49,14 @@ if __name__ == "__main__":
     #     else:
     #         print("torch: ",metric.compute_metric_torch(hand))
     obj = HandObjective(hand, target, metric)
-    gamma = torch.tensor(0.0001, dtype=torch.double)
-    alpha = torch.tensor(5, dtype=torch.double)
-
+    gamma = torch.tensor(args.gamma, dtype=torch.double)
+    alpha = torch.tensor(args.alpha, dtype=torch.double)
+    print("GAMMA = ", gamma)
+    print("ALPHA = ", alpha)
     def obj_func(param, hand_target):
         return obj.Q_metric_objective(param, gamma, alpha)
 
     optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
-    optimizer.optimize(niters=10000, plot_interval=10)
+    optimizer.optimize(niters=10000, plot_interval=100)
     optimizer.plot_meshes()
     optimizer.plot_history().savefig("history.png")

@@ -166,7 +166,7 @@ class HandObjective(object):
             objective = 0.
 
         # Q metric objective
-        Q_metric = self.metric.compute_metric_torch(self.hand)
+        Q_metric = -1 * self.metric.compute_metric_torch(self.hand)
         
         objective = objective + Q_metric
         
