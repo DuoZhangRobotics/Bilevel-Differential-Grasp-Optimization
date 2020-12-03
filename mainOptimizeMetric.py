@@ -57,6 +57,6 @@ if __name__ == "__main__":
         return obj.Q_metric_objective(param, gamma, alpha)
 
     optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
-    optimizer.optimize(niters=10000, plot_interval=100)
+    optimizer.optimize(niters=10000, plot_interval=1000)
     optimizer.plot_meshes()
     optimizer.plot_history().savefig("history.png")

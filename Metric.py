@@ -15,7 +15,7 @@ class Metric(object):
         self.pointsTorch = torch.from_numpy(self.points)
         self.mu = friCoef
         
-        #sample directions
+        #sample directions  
         from Directions import Directions
         self.dirs = Directions(res=res, dim=6).dirs
         self.dirs = np.array(self.dirs,dtype=np.float64)
@@ -74,8 +74,10 @@ class Metric(object):
     def compute_metric_torch(self, hand, alpha=.1):
         dists_value = self.compute_dist_torch(hand)
         dists_value = torch.exp(dists_value * -alpha)
-        exp_dists_max = torch.max(dists_value, axis=0)[0]
-        Q_value = torch.transpose(self.gijTorch,0,1) * exp_dists_max
+        # exp_dists_max = torch.max(dists_value, axis=0)[0]
+        # exp_dists_sum = torch.sum(dists_value, axis=0)[0]
+        exp_dists_sum = torch.sum(dists_value, axis=0)
+        Q_value = torch.transpose(self.gijTorch,0,1) * exp_dists_sum
         return torch.mean(torch.max(Q_value, axis=0)[0])
 
     def compute_dist_numpy(self, link):
@@ -185,3 +187,38 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         normalActor.SetMapper(normalMapper)
         normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
         renderer.AddActor(normalActor)
+
+
+
+if __name__ == "__main__":
+    path = 'hand/BarrettHand/'
+    hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
+    print("hand.linknum=", hand.link_num)
+    if hand.use_eigen:
+        params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
+    else:
+        params = torch.rand((1, hand.extrinsic_size + hand.nr_dof()))
+    p, t = hand.forward(params)
+
+    # create object
+    target = [ConvexHull(np.array([[-1.0,-1.0,-1.0],
+                                   [-1.0, 1.0,-1.0],
+                                   [ 1.0,-1.0,-1.0],
+                                   [ 1.0, 1.0,-1.0],
+                                   [-1.0, 1.0, 1.0],
+                                   [ 1.0,-1.0, 1.0],
+                                   [-1.0,-1.0, 1.0],
+                                   [ 1.0, 1.0, 1.0]]) + 1.0),
+              ConvexHull(np.array([[-1.0,-1.0,-1.0],
+                                   [-1.0, 1.0,-1.0],
+                                   [ 1.0,-1.0,-1.0],
+                                   [ 1.0, 1.0,-1.0],
+                                   [-1.0, 1.0, 1.0],
+                                   [ 1.0,-1.0, 1.0],
+                                   [-1.0,-1.0, 1.0],
+                                   [ 1.0, 1.0, 1.0]]) + 1.5)
+                                   ]
+    metric = Metric(target)
+    metric.setup_distance(hand)
+    metric.draw_samples(.1, 0.5)
+    print("torch: ",metric.compute_metric_torch(hand))
