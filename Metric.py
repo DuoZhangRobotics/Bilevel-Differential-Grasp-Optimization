@@ -40,7 +40,6 @@ class Metric(object):
         choice = self.mu * w_perp > w_para
         self.gij = np.where(choice, case1, case2)
         self.gijTorch = torch.from_numpy(self.gij)
-        print(np.amax(self.gij,axis=0)[351])
         
     @staticmethod
     def move_ctr(targets):
