@@ -8,6 +8,9 @@ data_type = torch.double
 class ConvexHull(object):
     def __init__(self, points: np.array):
         self.points = points
+        self.reset()
+        
+    def reset(self):
         self.hull = scipy.spatial.ConvexHull(self.points)
         self.A = self.hull.equations[:, :-1]
         self.b = -self.hull.equations[:, -1]
@@ -49,6 +52,14 @@ class ConvexHull(object):
 
     def mesh(self):
         return trimesh.Trimesh(vertices=self.surface_vertices(), faces=self.surface_indices())
+
+    def mass(self):
+        m = self.mesh()
+        return m.center_mass,m.mass
+
+    def translate(self, dt):
+        self.points += dt
+        self.reset()
 
     def contain(self, x2, thres=1e-3):
         return self.distance_to(x2)[0] < thres

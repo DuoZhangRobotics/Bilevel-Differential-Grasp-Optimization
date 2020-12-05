@@ -9,7 +9,7 @@ torch.set_default_dtype(torch.float64)
 
 class Metric(object):
     def __init__(self, targets, count=100, friCoef=.7, res=3, M=None):
-        self.targets = targets
+        self.targets = Metric.move_ctr(targets)
         from PoissonDiskSampling import sample_convex_hulls
         self.points, self.normals = sample_convex_hulls(self.targets, count)
         self.pointsTorch = torch.from_numpy(self.points)
@@ -40,6 +40,20 @@ class Metric(object):
         choice = self.mu * w_perp > w_para
         self.gij = np.where(choice, case1, case2)
         self.gijTorch = torch.from_numpy(self.gij)
+        
+    @staticmethod
+    def move_ctr(targets):
+        num=np.array([0.,0.,0.])
+        denom=0.
+        for t in targets:
+            c,m=t.mass()
+            num+=c*m
+            denom+=m
+        num/=denom
+        
+        for t in targets:
+            t.translate(-num)
+        return targets
         
     def setup_distance(self, link):
         if DistanceExact.mesh_paths is not None:
@@ -216,8 +230,7 @@ if __name__ == "__main__":
                                    [-1.0, 1.0, 1.0],
                                    [ 1.0,-1.0, 1.0],
                                    [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 1.5)
-                                   ]
+                                   [ 1.0, 1.0, 1.0]]) + 1.5)]
     metric = Metric(target)
     metric.setup_distance(hand)
     metric.draw_samples(.1, 0.5)
