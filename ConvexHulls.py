@@ -54,8 +54,18 @@ class ConvexHull(object):
         return trimesh.Trimesh(vertices=self.surface_vertices(), faces=self.surface_indices())
 
     def mass(self):
+        mass = 0.
         m = self.mesh()
-        return m.center_mass,m.mass
+        for i in range(m.face_normals.shape[0]):
+            n=m.face_normals[i]
+            p0=m.vertices[m.faces[i][0]]
+            p1=m.vertices[m.faces[i][1]]
+            p2=m.vertices[m.faces[i][2]]
+            if (p0-self.centroid).dot(n)<0.:
+                n=-n
+            area=np.linalg.norm(np.cross(p1-p0,p2-p0))/2
+            mass+=n.dot(p0)*area
+        return self.centroid,mass/3
 
     def translate(self, dt):
         self.points += dt

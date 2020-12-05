@@ -8,7 +8,7 @@ torch.set_default_dtype(torch.float64)
 
 
 class Metric(object):
-    def __init__(self, targets, count=100, friCoef=.7, res=3, M=None):
+    def __init__(self, targets, count=100, friCoef=2., res=3, M=None):
         self.targets = Metric.move_ctr(targets)
         from PoissonDiskSampling import sample_convex_hulls
         self.points, self.normals = sample_convex_hulls(self.targets, count)
@@ -23,12 +23,12 @@ class Metric(object):
         #compute gij
         f2w = np.zeros((self.points.shape[0],6,3), dtype=np.float64)
         f2w[:,0,0] = f2w[:,1,1] = f2w[:,2,2] = 1
-        f2w[:,2,1] = self.points[:,0]
-        f2w[:,1,2] =-self.points[:,0]
-        f2w[:,0,2] = self.points[:,1]
-        f2w[:,2,0] =-self.points[:,1]
-        f2w[:,1,0] = self.points[:,2]
-        f2w[:,0,1] =-self.points[:,2]
+        f2w[:,2+3,1] = self.points[:,0]
+        f2w[:,1+3,2] =-self.points[:,0]
+        f2w[:,0+3,2] = self.points[:,1]
+        f2w[:,2+3,0] =-self.points[:,1]
+        f2w[:,1+3,0] = self.points[:,2]
+        f2w[:,0+3,1] =-self.points[:,2]
         if M is not None:
             f2w = np.einsum("ij,kjl->kil", M, f2w)
         df2w = np.einsum("ij,kjl->kil", self.dirs, f2w)
@@ -40,6 +40,7 @@ class Metric(object):
         choice = self.mu * w_perp > w_para
         self.gij = np.where(choice, case1, case2)
         self.gijTorch = torch.from_numpy(self.gij)
+        print(np.amax(self.gij,axis=0)[351])
         
     @staticmethod
     def move_ctr(targets):
@@ -205,15 +206,6 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
 
 
 if __name__ == "__main__":
-    path = 'hand/BarrettHand/'
-    hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
-    print("hand.linknum=", hand.link_num)
-    if hand.use_eigen:
-        params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
-    else:
-        params = torch.rand((1, hand.extrinsic_size + hand.nr_dof()))
-    p, t = hand.forward(params)
-
     # create object
     target = [ConvexHull(np.array([[-1.0,-1.0,-1.0],
                                    [-1.0, 1.0,-1.0],
@@ -232,6 +224,16 @@ if __name__ == "__main__":
                                    [-1.0,-1.0, 1.0],
                                    [ 1.0, 1.0, 1.0]]) + 1.5)]
     metric = Metric(target)
+    
+    path = 'hand/BarrettHand/'
+    hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
+    print("hand.linknum=", hand.link_num)
+    if hand.use_eigen:
+        params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
+    else:
+        params = torch.rand((1, hand.extrinsic_size + hand.nr_dof()))
+    p, t = hand.forward(params)
+
     metric.setup_distance(hand)
     metric.draw_samples(.1, 0.5)
     print("torch: ",metric.compute_metric_torch(hand))
