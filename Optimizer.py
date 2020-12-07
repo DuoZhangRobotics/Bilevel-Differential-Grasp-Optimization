@@ -68,7 +68,7 @@ class Optimizer(object):
             # record/print
             self.objectives.append(obj)
             self.grad_norms.append(np.max(np.abs(jacobian)))
-            print(f"Iter{i:3d}: obj={self.objectives[-1]:3.6f} grad={self.grad_norms[-1]:3.6f} x={self.params[0][:, :3].detach().numpy()} dist={torch.norm(self.params[0][:, :3] - torch.ones((1, 3))).detach().numpy()} s={s:3.6f}")
+            print(f"Iter{i:3d}: obj={self.objectives[-1]:3.6f} grad={self.grad_norms[-1]:3.6f} x={self.params[0][:, :3].detach().numpy()} dist={torch.norm(self.params[0][:, :3] - 1. * torch.ones((1, 3))).detach().numpy()} s={s:3.6f}")
 
             # convergence check
             if self.grad_norms[-1] < tolg:

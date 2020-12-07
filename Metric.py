@@ -3,13 +3,15 @@ from ConvexHulls import ConvexHull
 import scipy, trimesh, torch, math
 from Hand import Hand
 import numpy as np
+import torch.nn.functional as F
 
 torch.set_default_dtype(torch.float64)
 
 
 class Metric(object):
     def __init__(self, targets, count=100, friCoef=2., res=3, M=None):
-        self.targets = Metric.move_ctr(targets)
+        self.targets, move_dist = Metric.move_ctr(targets)
+        # self.targets = targets
         from PoissonDiskSampling import sample_convex_hulls
         self.points, self.normals = sample_convex_hulls(self.targets, count)
         self.pointsTorch = torch.from_numpy(self.points)
@@ -40,19 +42,28 @@ class Metric(object):
         choice = self.mu * w_perp > w_para
         self.gij = np.where(choice, case1, case2)
         self.gijTorch = torch.from_numpy(self.gij)
-        
+        self.targets = self.move_back(self.targets, move_dist)
+        self.points += move_dist
+
     @staticmethod
     def move_ctr(targets):
-        num=np.array([0.,0.,0.])
+        move_dist=np.array([0.,0.,0.])
         denom=0.
         for t in targets:
             c,m=t.mass()
-            num+=c*m
+
+            move_dist+=c*m
             denom+=m
-        num/=denom
+        move_dist/=denom
         
         for t in targets:
-            t.translate(-num)
+            t.translate(-move_dist)
+        return targets, move_dist
+    
+    @staticmethod
+    def move_back(targets, move_dist):
+        for t in targets:
+            t.translate(move_dist)
         return targets
         
     def setup_distance(self, link):
@@ -85,14 +96,18 @@ class Metric(object):
                     ret += self.compute_dist_torch(c)
             return ret
         
-    def compute_metric_torch(self, hand, alpha=.1):
+    def compute_metric_torch(self, hand, alpha=.1, soft_version=False):
         dists_value = self.compute_dist_torch(hand)
         dists_value = torch.exp(dists_value * -alpha)
         # exp_dists_max = torch.max(dists_value, axis=0)[0]
         # exp_dists_sum = torch.sum(dists_value, axis=0)[0]
         exp_dists_sum = torch.sum(dists_value, axis=0)
         Q_value = torch.transpose(self.gijTorch,0,1) * exp_dists_sum
-        return torch.mean(torch.max(Q_value, axis=0)[0])
+        if soft_version:
+            print(F.softmin(torch.max(F.softmax(Q_value, dim=1), dim=1)[0], dim=0))
+            return torch.min(F.softmin(torch.max(F.softmax(Q_value, dim=1), axis=1)[0], dim=0))
+        else:
+            return torch.mean(torch.max(Q_value, axis=1)[0])
 
     def compute_dist_numpy(self, link):
         if isinstance(link, Hand):
@@ -213,7 +228,7 @@ if __name__ == "__main__":
                                    [-1.0, 1.0, 1.0],
                                    [ 1.0,-1.0, 1.0],
                                    [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 1.0),
+                                   [ 1.0, 1.0, 1.0]]) + 2.0),
               ConvexHull(np.array([[-1.0,-1.0,-1.0],
                                    [-1.0, 1.0,-1.0],
                                    [ 1.0,-1.0,-1.0],
@@ -221,7 +236,7 @@ if __name__ == "__main__":
                                    [-1.0, 1.0, 1.0],
                                    [ 1.0,-1.0, 1.0],
                                    [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 1.5)]
+                                   [ 1.0, 1.0, 1.0]]) + 2.5)]
     metric = Metric(target)
     
     path = 'hand/BarrettHand/'

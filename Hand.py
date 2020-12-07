@@ -151,6 +151,7 @@ class Link:
         # print(mesh)
         self.hull = ConvexHull(mesh.vertices)
         self.mesh = self.hull.mesh()
+        self.mesh.centroid.flags.writeable=True
         self.centroid = torch.tensor(self.mesh.centroid, dtype=torch.double)
         # print(self.mesh)
         # for facet in self.mesh.facets:

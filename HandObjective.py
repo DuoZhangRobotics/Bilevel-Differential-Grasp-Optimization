@@ -155,7 +155,7 @@ class HandObjective(object):
         
         return objective
 
-    def Q_metric_objective(self, params, gamma, alpha):
+    def Q_metric_objective(self, params, gamma, alpha, soft_version=False):
         p, t = self.hand.forward(params[:, :self.front])
 
         #collision objective
@@ -166,7 +166,7 @@ class HandObjective(object):
             objective = 0.
 
         # Q metric objective
-        Q_metric = -1 * self.metric.compute_metric_torch(self.hand)
+        Q_metric = -1 * self.metric.compute_metric_torch(self.hand,alpha=alpha, soft_version=soft_version)
         
         objective = objective + Q_metric
         

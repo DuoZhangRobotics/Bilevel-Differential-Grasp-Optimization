@@ -11,7 +11,8 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha", type=float, default=10)
-    parser.add_argument("--gamma", type=float, default=0.001)
+    parser.add_argument("--gamma", type=float, default=0.0001)
+    parser.add_argument("--soft_version", type=bool, default=False)
     args = parser.parse_args()
     path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
@@ -51,12 +52,14 @@ if __name__ == "__main__":
     obj = HandObjective(hand, target, metric)
     gamma = torch.tensor(args.gamma, dtype=torch.double)
     alpha = torch.tensor(args.alpha, dtype=torch.double)
+    soft_version = args.soft_version
     print("GAMMA = ", gamma)
     print("ALPHA = ", alpha)
+    print("SOFT VERSION: ", soft_version)
     def obj_func(param, hand_target):
-        return obj.Q_metric_objective(param, gamma, alpha)
+        return obj.Q_metric_objective(param, gamma, alpha, soft_version)
 
     optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
-    optimizer.optimize(niters=10000, plot_interval=1000)
+    optimizer.optimize(niters=10000, plot_interval=500)
     optimizer.plot_meshes()
     optimizer.plot_history().savefig("history.png")
