@@ -73,7 +73,8 @@ class Optimizer(object):
             # convergence check
             if self.grad_norms[-1] < tolg:
                 print("Converged!")
-                
+                self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+                self.plot_meshes()
                 import os
                 if not os.path.exists('./log'):
                     os.mkdir('./log')
@@ -100,6 +101,14 @@ class Optimizer(object):
             hessian = torch.tensor(self.make_positive_definite(hessian), dtype=data_type)
             hessian = hessian.detach().numpy()
             return hessian, scipy.linalg.cho_factor(hessian)
+    
+    # @staticmethod
+    # def make_positive_definite(hessian, min_condition=0.00001):
+    #     eigenvalues, eigenvectors = np.linalg.eig(hessian)
+    #     tau = np.zeros_like(eigenvectors)
+    #     tau[min_condition > eigenvalues] = min_condition - eigenvalues[min_condition > eigenvalues]
+    #     return eigenvectors @ np.diag(eigenvalues + tau) @ np.transpose(eigenvectors)
+
 
     def make_positive_definite(self, hessian, min_cond=0.00001):
         eigenvalues, eigenvectors = np.linalg.eig(hessian)

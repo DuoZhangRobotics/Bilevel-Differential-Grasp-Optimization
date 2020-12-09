@@ -104,8 +104,10 @@ class Metric(object):
         exp_dists_sum = torch.sum(dists_value, axis=0)
         Q_value = torch.transpose(self.gijTorch,0,1) * exp_dists_sum
         if soft_version:
-            print(F.softmin(torch.max(F.softmax(Q_value, dim=1), dim=1)[0], dim=0))
-            return torch.min(F.softmin(torch.max(F.softmax(Q_value, dim=1), axis=1)[0], dim=0))
+            # print(F.softmin(torch.max(F.softmax(Q_value, dim=1), dim=1)[0], dim=0))
+            Q_softmax = torch.diag(Q_value @ F.softmax(alpha * Q_value, dim=1).T).reshape((-1, 1))
+            Q_softmin = Q_softmax.T @ F.softmin(-alpha * Q_softmax, dim=0)
+            return torch.squeeze(Q_softmin)
         else:
             return torch.mean(torch.max(Q_value, axis=1)[0])
 
@@ -250,4 +252,4 @@ if __name__ == "__main__":
 
     metric.setup_distance(hand)
     metric.draw_samples(.1, 0.5)
-    print("torch: ",metric.compute_metric_torch(hand))
+    print("torch: ",metric.compute_metric_torch(hand, soft_version=True))
