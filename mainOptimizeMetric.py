@@ -13,6 +13,9 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=10)
     parser.add_argument("--gamma", type=float, default=0.0001)
     parser.add_argument("--soft_version", type=bool, default=False)
+    parser.add_argument("--min_version", type=bool, default=False)
+    parser.add_argument("--centroid_version", type=bool, default=False)
+
     args = parser.parse_args()
     path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
@@ -53,11 +56,22 @@ if __name__ == "__main__":
     gamma = torch.tensor(args.gamma, dtype=torch.double)
     alpha = torch.tensor(args.alpha, dtype=torch.double)
     soft_version = args.soft_version
+    min_version = args.min_version
+    centroid_version = args.centroid_version
+
     print("GAMMA = ", gamma)
     print("ALPHA = ", alpha)
     print("SOFT VERSION: ", soft_version)
+    print("MIN VERSION: ", min_version)
+    print("CENTROID VERSION: ", centroid_version)
+
+
     def obj_func(param, hand_target):
-        return obj.Q_metric_objective(param, gamma, alpha, soft_version)
+        return obj.Q_metric_objective(param, gamma=gamma,
+                                             alpha=alpha, 
+                                             soft_version=soft_version, 
+                                             min_version=min_version, 
+                                             centroid_version=centroid_version)
 
     optimizer = Optimizer(obj_func, params=[obj.params, obj], method='Newton')
     optimizer.optimize(niters=100000, plot_interval=10000)

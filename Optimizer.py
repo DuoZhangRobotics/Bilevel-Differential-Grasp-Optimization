@@ -42,6 +42,8 @@ class Optimizer(object):
                                                            scale=scale, s=last_s)
             if s is None:
                 print("Line-Search failed!")
+                self.meshes.append(self.params[1].hand.draw(scale_factor=1, show_to_screen=False, use_torch=True))
+                self.plot_meshes()
                 break
 
             # Riemann optimization: chart reset
@@ -101,6 +103,7 @@ class Optimizer(object):
             hessian = torch.tensor(self.make_positive_definite(hessian), dtype=data_type)
             hessian = hessian.detach().numpy()
             return hessian, scipy.linalg.cho_factor(hessian)
+    
     
     # @staticmethod
     # def make_positive_definite(hessian, min_condition=0.00001):

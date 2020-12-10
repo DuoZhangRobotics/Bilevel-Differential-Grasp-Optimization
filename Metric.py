@@ -1,6 +1,9 @@
 from DistanceExact import DistanceExact
 from ConvexHulls import ConvexHull
-import scipy, trimesh, torch, math
+import scipy
+import trimesh
+import torch
+import math
 from Hand import Hand
 import numpy as np
 import torch.nn.functional as F
@@ -16,64 +19,67 @@ class Metric(object):
         self.points, self.normals = sample_convex_hulls(self.targets, count)
         self.pointsTorch = torch.from_numpy(self.points)
         self.mu = friCoef
-        
-        #sample directions  
+
+        # sample directions
         from Directions import Directions
         self.dirs = Directions(res=res, dim=6).dirs
-        self.dirs = np.array(self.dirs,dtype=np.float64)
-        
-        #compute gij
-        f2w = np.zeros((self.points.shape[0],6,3), dtype=np.float64)
-        f2w[:,0,0] = f2w[:,1,1] = f2w[:,2,2] = 1
-        f2w[:,2+3,1] = self.points[:,0]
-        f2w[:,1+3,2] =-self.points[:,0]
-        f2w[:,0+3,2] = self.points[:,1]
-        f2w[:,2+3,0] =-self.points[:,1]
-        f2w[:,1+3,0] = self.points[:,2]
-        f2w[:,0+3,1] =-self.points[:,2]
+        self.dirs = np.array(self.dirs, dtype=np.float64)
+
+        # compute gij
+        f2w = np.zeros((self.points.shape[0], 6, 3), dtype=np.float64)
+        f2w[:, 0, 0] = f2w[:, 1, 1] = f2w[:, 2, 2] = 1
+        f2w[:, 2+3, 1] = self.points[:, 0]
+        f2w[:, 1+3, 2] = -self.points[:, 0]
+        f2w[:, 0+3, 2] = self.points[:, 1]
+        f2w[:, 2+3, 0] = -self.points[:, 1]
+        f2w[:, 1+3, 0] = self.points[:, 2]
+        f2w[:, 0+3, 1] = -self.points[:, 2]
         if M is not None:
             f2w = np.einsum("ij,kjl->kil", M, f2w)
         df2w = np.einsum("ij,kjl->kil", self.dirs, f2w)
         w_perp = np.einsum("ijk,ik->ij", df2w, self.normals)
-        w_para = np.linalg.norm(df2w - np.einsum("ij,il->ijl", w_perp, self.normals),axis=2)
-        
+        w_para = np.linalg.norm(
+            df2w - np.einsum("ij,il->ijl", w_perp, self.normals), axis=2)
+
         case1 = w_perp + w_para**2 / w_perp
-        case2 = np.maximum(0 , w_perp + self.mu * w_para)
+        case2 = np.maximum(0, w_perp + self.mu * w_para)
         choice = self.mu * w_perp > w_para
         self.gij = np.where(choice, case1, case2)
         self.gijTorch = torch.from_numpy(self.gij)
         self.targets = self.move_back(self.targets, move_dist)
         self.points += move_dist
+        self.pointsTorch = torch.from_numpy(self.points)
 
     @staticmethod
     def move_ctr(targets):
-        move_dist=np.array([0.,0.,0.])
-        denom=0.
+        move_dist = np.array([0., 0., 0.])
+        denom = 0.
         for t in targets:
-            c,m=t.mass()
+            c, m = t.mass()
 
-            move_dist+=c*m
-            denom+=m
-        move_dist/=denom
-        
+            move_dist += c*m
+            denom += m
+        move_dist /= denom
+
         for t in targets:
             t.translate(-move_dist)
         return targets, move_dist
-    
+
     @staticmethod
     def move_back(targets, move_dist):
         for t in targets:
             t.translate(move_dist)
         return targets
-        
+
     def setup_distance(self, link):
         if DistanceExact.mesh_paths is not None:
             pass
         elif isinstance(link, Hand):
             meshes = self.setup_distance(link.palm)
             DistanceExact.mesh_paths = []
-            for idm,m in enumerate(meshes):
-                DistanceExact.mesh_paths.append(link.hand_path+'/link'+str(idm)+'.obj')
+            for idm, m in enumerate(meshes):
+                DistanceExact.mesh_paths.append(
+                    link.hand_path+'/link'+str(idm)+'.obj')
                 m.export(DistanceExact.mesh_paths[-1])
         else:
             ret = [link.mesh]
@@ -81,7 +87,23 @@ class Metric(object):
                 for c in link.children:
                     ret += self.setup_distance(c)
             return ret
-        
+
+    def compute_centroid_dist_torch(self, root, p, start):
+        centroid0 = torch.mean(p[:, :, start: start + len(root.mesh.vertices)], dim=2)
+        norms = torch.zeros((1, self.pointsTorch.shape[0]), dtype=torch.double)
+        norm = torch.zeros((1, 1), dtype=torch.double)
+        for point in self.pointsTorch:
+            norm = torch.cat((norm, torch.norm(centroid0 - point).reshape((1, 1))), dim=1)
+        norm = norm[:, 1:]
+        norms = torch.cat((norms, norm), dim=0)
+        norms = norms[1:, :]
+        start += len(root.mesh.vertices)
+        if root.children:
+            for child in root.children:
+                tmp_norm, start = self.compute_centroid_dist_torch(child, p, start)
+                norms = torch.cat((norms, tmp_norm), dim=0)
+        return norms, start
+
     def compute_dist_torch(self, link):
         self.setup_distance(link)
         if isinstance(link, Hand):
@@ -90,35 +112,60 @@ class Metric(object):
             return DistanceExact.apply(pss)[0]
         else:
             dhr, dht = torch.split(link.joint_transform_torch, [3, 1], dim=2)
-            ret = [(torch.matmul(torch.transpose(dhr,1,2), torch.unsqueeze(self.pointsTorch,2) - dht)).permute(2,1,0)]
+            ret = [(torch.matmul(torch.transpose(dhr, 1, 2), torch.unsqueeze(
+                self.pointsTorch, 2) - dht)).permute(2, 1, 0)]
             if link.children:
                 for c in link.children:
                     ret += self.compute_dist_torch(c)
             return ret
-        
-    def compute_metric_torch(self, hand, alpha=.1, soft_version=False):
+
+    def compute_centroid_metric_torch(self, hand, p, alpha=.1, soft_version=False, min_version=False):
+        dists_value, _ = self.compute_centroid_dist_torch(hand.palm, p, 0)
+        dists_value = torch.exp(dists_value * -alpha)
+        exp_dists_sum = torch.sum(dists_value, axis=0)
+        Q_value = torch.transpose(self.gijTorch, 0, 1) * exp_dists_sum
+        if soft_version:
+            # print(F.softmin(torch.max(F.softmax(Q_value, dim=1), dim=1)[0], dim=0))
+            Q_softmax = torch.diag(
+                Q_value @ F.softmax(alpha * Q_value, dim=1).T).reshape((-1, 1))
+            Q_softmin = Q_softmax.T @ F.softmin(-alpha * Q_softmax, dim=0)
+            return torch.squeeze(Q_softmin)
+        else:
+            if min_version:
+                return torch.min(torch.max(Q_value, axis=1)[0])
+            else:
+                return torch.mean(torch.max(Q_value, axis=1)[0])
+
+
+    def compute_metric_torch(self, hand, alpha=.1, soft_version=False, min_version=False):
         dists_value = self.compute_dist_torch(hand)
+        # print("dist_value.shape = ", dists_value.shape)
         dists_value = torch.exp(dists_value * -alpha)
         # exp_dists_max = torch.max(dists_value, axis=0)[0]
         # exp_dists_sum = torch.sum(dists_value, axis=0)[0]
         exp_dists_sum = torch.sum(dists_value, axis=0)
-        Q_value = torch.transpose(self.gijTorch,0,1) * exp_dists_sum
+        Q_value = torch.transpose(self.gijTorch, 0, 1) * exp_dists_sum
         if soft_version:
             # print(F.softmin(torch.max(F.softmax(Q_value, dim=1), dim=1)[0], dim=0))
-            Q_softmax = torch.diag(Q_value @ F.softmax(alpha * Q_value, dim=1).T).reshape((-1, 1))
+            Q_softmax = torch.diag(
+                Q_value @ F.softmax(alpha * Q_value, dim=1).T).reshape((-1, 1))
             Q_softmin = Q_softmax.T @ F.softmin(-alpha * Q_softmax, dim=0)
             return torch.squeeze(Q_softmin)
         else:
-            return torch.mean(torch.max(Q_value, axis=1)[0])
+            if min_version:
+                return torch.min(torch.max(Q_value, axis=1)[0])
+            else:
+                return torch.mean(torch.max(Q_value, axis=1)[0])
 
     def compute_dist_numpy(self, link):
         if isinstance(link, Hand):
             return self.compute_dist_numpy(link.palm)
         else:
             #print("loaded mesh with %d vertices %d faces!"%(len(link.mesh.vertices),len(link.mesh.faces)))
-            trans = link.joint_transform_torch.numpy()[0,:,:]
-            pss = trans[:3,:3].T @ (self.points - trans[:3,3]).T
-            ret = [[math.sqrt(link.hull.distance_to(pss[:,i])[0]) for i in range(pss.shape[1])]]
+            trans = link.joint_transform_torch.numpy()[0, :, :]
+            pss = trans[:3, :3].T @ (self.points - trans[:3, 3]).T
+            ret = [[math.sqrt(link.hull.distance_to(pss[:, i])[0])
+                    for i in range(pss.shape[1])]]
             if link.children:
                 for c in link.children:
                     ret += self.compute_dist_numpy(c)
@@ -130,24 +177,26 @@ class Metric(object):
         exp_dists_max = np.amax(dists_value, axis=0)
         Q_value = self.gij * np.expand_dims(exp_dists_max, axis=1)
         return np.mean(np.amax(Q_value, axis=1), axis=0)
-    
+
     def draw_samples(self, scale, length):
         # show hand
         import vtk
         from Hand import vtk_render, vtk_add_from_hand
         renderer = vtk.vtkRenderer()
-        vtk_add_from_hand([t.mesh() for t in self.targets], renderer, 1.0, use_torch=True)
+        vtk_add_from_hand([t.mesh() for t in self.targets],
+                          renderer, 1.0, use_torch=True)
         vtk_add_metric_samples(renderer, self, scale, length)
         vtk_render(renderer, axes=True)
+
 
 def vtk_add_metric_samples(renderer, metric, scale, length):
     import vtk
     for i in range(metric.points.shape[0]):
-        #point
+        # point
         sphere = vtk.vtkSphereSource()
-        sphere.SetCenter(metric.points[i,0],
-                         metric.points[i,1],
-                         metric.points[i,2])
+        sphere.SetCenter(metric.points[i, 0],
+                         metric.points[i, 1],
+                         metric.points[i, 2])
         sphere.SetRadius(scale)
         sphere.SetThetaResolution(24)
         sphere.SetPhiResolution(24)
@@ -165,12 +214,12 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         normal.SetTipResolution(100)
         normal.SetShaftResolution(100)
         # Generate a random start and end point
-        startPoint=[metric.points[i,0],
-                    metric.points[i,1],
-                    metric.points[i,2]]
-        endPoint=[metric.points[i,0]+metric.normals[i,0]*length,
-                  metric.points[i,1]+metric.normals[i,1]*length,
-                  metric.points[i,2]+metric.normals[i,2]*length]
+        startPoint = [metric.points[i, 0],
+                      metric.points[i, 1],
+                      metric.points[i, 2]]
+        endPoint = [metric.points[i, 0]+metric.normals[i, 0]*length,
+                    metric.points[i, 1]+metric.normals[i, 1]*length,
+                    metric.points[i, 2]+metric.normals[i, 2]*length]
         rng = vtk.vtkMinimalStandardRandomSequence()
         rng.SetSeed(8775070)  # For testing.
         # Compute a basis
@@ -220,29 +269,29 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         renderer.AddActor(normalActor)
 
 
-
 if __name__ == "__main__":
     # create object
-    target = [ConvexHull(np.array([[-1.0,-1.0,-1.0],
-                                   [-1.0, 1.0,-1.0],
-                                   [ 1.0,-1.0,-1.0],
-                                   [ 1.0, 1.0,-1.0],
+    target = [ConvexHull(np.array([[-1.0, -1.0, -1.0],
+                                   [-1.0, 1.0, -1.0],
+                                   [1.0, -1.0, -1.0],
+                                   [1.0, 1.0, -1.0],
                                    [-1.0, 1.0, 1.0],
-                                   [ 1.0,-1.0, 1.0],
-                                   [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 2.0),
-              ConvexHull(np.array([[-1.0,-1.0,-1.0],
-                                   [-1.0, 1.0,-1.0],
-                                   [ 1.0,-1.0,-1.0],
-                                   [ 1.0, 1.0,-1.0],
+                                   [1.0, -1.0, 1.0],
+                                   [-1.0, -1.0, 1.0],
+                                   [1.0, 1.0, 1.0]]) + 2.0),
+              ConvexHull(np.array([[-1.0, -1.0, -1.0],
+                                   [-1.0, 1.0, -1.0],
+                                   [1.0, -1.0, -1.0],
+                                   [1.0, 1.0, -1.0],
                                    [-1.0, 1.0, 1.0],
-                                   [ 1.0,-1.0, 1.0],
-                                   [-1.0,-1.0, 1.0],
-                                   [ 1.0, 1.0, 1.0]]) + 2.5)]
+                                   [1.0, -1.0, 1.0],
+                                   [-1.0, -1.0, 1.0],
+                                   [1.0, 1.0, 1.0]]) + 2.5)]
     metric = Metric(target)
-    
+
     path = 'hand/BarrettHand/'
-    hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
+    hand = Hand(path, scale=0.01, use_joint_limit=False,
+                use_quat=False, use_eigen=False, use_contacts=False)
     print("hand.linknum=", hand.link_num)
     if hand.use_eigen:
         params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
@@ -252,4 +301,4 @@ if __name__ == "__main__":
 
     metric.setup_distance(hand)
     metric.draw_samples(.1, 0.5)
-    print("torch: ",metric.compute_metric_torch(hand, soft_version=True))
+    print("torch: ", metric.compute_centroid_metric_torch(hand, p))
