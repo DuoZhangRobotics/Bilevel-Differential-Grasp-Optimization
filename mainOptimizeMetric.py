@@ -15,15 +15,29 @@ if __name__ == "__main__":
     parser.add_argument("--soft_version", type=bool, default=False)
     parser.add_argument("--min_version", type=bool, default=False)
     parser.add_argument("--centroid_version", type=bool, default=False)
-
+    parser.add_argument("--sample_count", type=int, default=100)
     args = parser.parse_args()
+
+    gamma = torch.tensor(args.gamma, dtype=torch.double)
+    alpha = torch.tensor(args.alpha, dtype=torch.double)
+    soft_version = args.soft_version
+    min_version = args.min_version
+    centroid_version = args.centroid_version
+    sample_count = args.sample_count
+    print("GAMMA = ", gamma)
+    print("ALPHA = ", alpha)
+    print("SOFT VERSION: ", soft_version)
+    print("MIN VERSION: ", min_version)
+    print("CENTROID VERSION: ", centroid_version)
+    print("SAMPLE COUNT: ", sample_count)
+
     path = 'hand/BarrettHand/'
     hand = Hand(path, scale=0.01, use_joint_limit=False, use_quat=False, use_eigen=False, use_contacts=False)
     if hand.use_eigen:
         params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
     else:
         params = torch.rand((1, hand.extrinsic_size + hand.nr_dof()))
-    p, t = hand.forward(params)
+    p, lsp, t = hand.forward(params)
 
     # create object
     target = [ConvexHull(np.array([[-0.5,-0.5,-0.5],
@@ -53,17 +67,6 @@ if __name__ == "__main__":
     #     else:
     #         print("torch: ",metric.compute_metric_torch(hand))
     obj = HandObjective(hand, target, metric)
-    gamma = torch.tensor(args.gamma, dtype=torch.double)
-    alpha = torch.tensor(args.alpha, dtype=torch.double)
-    soft_version = args.soft_version
-    min_version = args.min_version
-    centroid_version = args.centroid_version
-
-    print("GAMMA = ", gamma)
-    print("ALPHA = ", alpha)
-    print("SOFT VERSION: ", soft_version)
-    print("MIN VERSION: ", min_version)
-    print("CENTROID VERSION: ", centroid_version)
 
 
     def obj_func(param, hand_target):
@@ -77,3 +80,10 @@ if __name__ == "__main__":
     optimizer.optimize(niters=100000, plot_interval=10000)
     optimizer.plot_meshes()
     optimizer.plot_history().savefig("history.png")
+    print("GAMMA = ", gamma)
+    print("ALPHA = ", alpha)
+    print("SOFT VERSION: ", soft_version)
+    print("MIN VERSION: ", min_version)
+    print("CENTROID VERSION: ", centroid_version)
+    print("SAMPLE COUNT: ", sample_count)
+

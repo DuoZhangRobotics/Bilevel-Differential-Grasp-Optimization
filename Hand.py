@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 import random
 
+
 torch.set_default_dtype(torch.float64)
 
 
@@ -147,12 +148,18 @@ def write_vtk(polydata, name):
 
 
 class Link:
-    def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, use_contacts=False):
+    def __init__(self, mesh: trimesh.Trimesh, parent, transform, dhParams, sample_count=100, use_contacts=False):
         # print(mesh)
         self.hull = ConvexHull(mesh.vertices)
         self.mesh = self.hull.mesh()
-        self.mesh.centroid.flags.writeable=True
-        self.centroid = torch.tensor(self.mesh.centroid, dtype=torch.double)
+        from PoissonDiskSampling import sample_convex_hulls
+        self.sample_count = sample_count
+        self.points, self.normals = sample_convex_hulls([self.hull], self.sample_count)
+        self.pointsTorch = torch.from_numpy(self.points)
+        # self.mesh.centroid.flags.writeable=True
+        # self.centroid = torch.tensor(self.mesh.centroid, dtype=torch.double)
+        self.centroid = torch.mean(torch.tensor(self.mesh.vertices, dtype=torch.double), dim=0)
+        # self.points_relative_to_centroid = self.pointsTorch - self.centroid
         # print(self.mesh)
         # for facet in self.mesh.facets:
         #     self.mesh.visual.face_colors[facet] = trimesh.visual.random_color()
@@ -257,21 +264,27 @@ class Link:
             self.joint_transform_torch = torch.cat([jr, jt], dim=2)
         # compute ret
         eep = self.end_effector
+
         # for ee in self.end_effector:
         #     eep.append(ee.tolist())
         eep = torch.transpose(torch.tensor(eep), 0, 1).type(jt.type())
         retv = torch.matmul(jr, eep) + jt
+        linked_sampled_points = torch.matmul(jr, self.pointsTorch.T) + jt
         rett = [self.joint_transform_torch]
         # descend
         if self.children:
             for c in self.children:
-                cv, ct = c.forward(root_trans, dofs)
+                cv, clsp, ct = c.forward(root_trans, dofs)
                 if retv is None:
                     retv = cv
                 elif cv is not None:
                     retv = torch.cat([retv, cv], dim=2)
+                if linked_sampled_points is None:
+                    linked_sampled_points = clsp
+                elif clsp is not None:
+                    linked_sampled_points = torch.cat((linked_sampled_points, clsp), dim=2)
                 rett += ct
-        return retv, rett
+        return retv, linked_sampled_points, rett
 
     def draw(self, use_torch=False):
         if self.mesh:
@@ -334,7 +347,7 @@ class Link:
 
 
 class Hand(torch.nn.Module):
-    def __init__(self, hand_path, scale, use_joint_limit=True, use_quat=True, use_eigen=False, use_contacts=False):
+    def __init__(self, hand_path, scale, sample_count=100, use_joint_limit=True, use_quat=True, use_eigen=False, use_contacts=False):
         super(Hand, self).__init__()
         self.build_tensors()
         self.hand_path = hand_path
@@ -343,6 +356,8 @@ class Hand(torch.nn.Module):
         self.use_eigen = use_eigen
         self.use_contacts = use_contacts
         self.eg_num = 0
+        self.sample_count = 100 
+
         if self.use_quat:
             self.extrinsic_size = 7
         else:
@@ -361,7 +376,7 @@ class Hand(torch.nn.Module):
                     scale)
         # build links
         transform = transforms3d.affines.compose(np.zeros(3), np.eye(3, 3), [1, 1, 1])
-        self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None, use_contacts=use_contacts)
+        self.palm = Link(self.linkMesh[self.root[0].text[:-4]], None, transform, None, sample_count=self.sample_count, use_contacts=use_contacts)
         if self.use_contacts:
             for i in range(len(self.contacts[-1, 0])):
                 self.palm.add_end_effector(self.contacts[-1, 0][i][0], self.contacts[-1, 0][i][1])
@@ -436,8 +451,7 @@ class Hand(torch.nn.Module):
             for link in chain.iter('link'):
                 xml_name = re.split(r'[.]', link.text)
                 if link.attrib['dynamicJointType'] == 'Universal':
-                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i], joint_trans[i + 1]],
-                                  use_contacts=use_contacts)
+                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i], joint_trans[i + 1]], sample_count=self.sample_count, use_contacts=use_contacts)
                     if self.use_contacts:
                         if self.contacts[chain_index, link_index]:
                             for j in range(len(self.contacts[chain_index, link_index])):
@@ -446,7 +460,7 @@ class Hand(torch.nn.Module):
                     i = i + 2
                     link_index += 1
                 else:
-                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i]])
+                    parent = Link(self.linkMesh[xml_name[0]], parent, transform, [joint_trans[i]], sample_count=self.sample_count)
                     if self.use_contacts:
                         if self.contacts[chain_index, link_index]:
                             for j in range(len(self.contacts[chain_index, link_index])):
@@ -722,9 +736,9 @@ class Hand(torch.nn.Module):
         root_transform = torch.cat((R, t.view([-1, 3, 1])), dim=2)
         # root_transform = self.compose_torch_in_forward(t, R, torch.ones(3, dtype=torch.double))
         # print(f'root transform  with torch= {root_transform}')
-        retp, rett = self.palm.forward(root_transform, d)
+        retp, lsp, rett = self.palm.forward(root_transform, d)
         rett = torch.cat(rett, dim=2)
-        return retp, rett
+        return retp, lsp, rett
 
     @staticmethod
     def compose_torch_in_forward(T: torch.tensor, R: torch.tensor, Z: torch.tensor):

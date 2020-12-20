@@ -21,7 +21,7 @@ class HandObjective(object):
             self.param_size = self.hand.extrinsic_size + self.hand.nr_dof() + 3 * self.hand.link_num * len(self.target)
             self.front = self.hand.extrinsic_size + self.hand.nr_dof()
         self.params = torch.zeros((1, self.param_size), dtype=data_type)
-        self.p, _ = self.hand.forward(torch.zeros((1, self.front)))
+        self.p, _, _ = self.hand.forward(torch.zeros((1, self.front)))
         self.rotation_matrix = torch.eye(3, dtype=data_type).repeat((self.hand.link_num * len(self.target), 1, 1))
         self._initialize_params(self.hand.palm, self.target, 0, 0)
         self.chart_reset(self.hand.palm, 0)
@@ -139,7 +139,7 @@ class HandObjective(object):
         return norm, start
 
     def hand_objective(self, params, gamma, normCoef=1.):
-        p, t = self.hand.forward(params[:, :self.front])
+        p, lsp, t = self.hand.forward(params[:, :self.front])
         
         #collision objective
         if gamma>0.:
@@ -156,7 +156,7 @@ class HandObjective(object):
         return objective
 
     def Q_metric_objective(self, params, gamma, alpha, soft_version=False, min_version=False, centroid_version=False):
-        p, _ = self.hand.forward(params[:, :self.front])
+        p, lsp, _ = self.hand.forward(params[:, :self.front])
 
         #collision objective
         if gamma>0.:
@@ -167,9 +167,9 @@ class HandObjective(object):
 
         # Q metric objective
         if centroid_version:
-            Q_metric = -1 * self.metric.compute_centroid_metric_torch(self.hand, p, alpha=alpha, soft_version=soft_version, min_version=min_version)
+            Q_metric = -1 * self.metric.compute_centroid_metric_torch(self.hand, lsp, alpha=alpha, soft_version=soft_version, min_version=min_version)
         else:
-            Q_metric = -1 * self.metric.compute_metric_torch(self.hand,alpha=alpha, soft_version=soft_version, min_version=min_version)
+            Q_metric = -1 * self.metric.compute_metric_torch(self.hand, lsp, alpha=alpha, soft_version=soft_version, min_version=min_version)
         
         objective = objective + Q_metric
         

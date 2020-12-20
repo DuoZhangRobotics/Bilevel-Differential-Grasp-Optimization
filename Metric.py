@@ -4,7 +4,8 @@ import scipy
 import trimesh
 import torch
 import math
-from Hand import Hand
+import random
+from Hand import Hand, Link
 import numpy as np
 import torch.nn.functional as F
 
@@ -88,19 +89,32 @@ class Metric(object):
                     ret += self.setup_distance(c)
             return ret
 
-    def compute_centroid_dist_torch(self, root, p, start):
-        centroid0 = torch.mean(p[:, :, start: start + len(root.mesh.vertices)], dim=2)
-        norms = torch.zeros((1, self.pointsTorch.shape[0]), dtype=torch.double)
-        norm = torch.zeros((1, 1), dtype=torch.double)
+    def compute_centroid_dist_torch(self, root: Link, lsp, start):
+        # vertices = p[:, :, start: start + len(root.mesh.vertices)]
+        vertices = torch.squeeze(lsp[:, :, start: start + root.sample_count]).T
+
+        # centroid0 = torch.mean(vertices, dim=2)
+        # id = random.sample(range(vertices.shape[2]), 100)
+        # root_sampled_points = torch.squeeze(vertices[:, :, torch.tensor(id)]).T
+        norms = torch.zeros((1, self.pointsTorch.shape[0], root.sample_count), dtype=torch.double)
+        norm = torch.zeros((1, 1, root.sample_count), dtype=torch.double)
         for point in self.pointsTorch:
-            norm = torch.cat((norm, torch.norm(centroid0 - point).reshape((1, 1))), dim=1)
-        norm = norm[:, 1:]
+            rep_p = torch.ones_like(vertices) * point
+            # sum_norm = torch.norm(centroid0 - point).reshape((1, 1, -1))
+            sum_norm = torch.norm(vertices - rep_p, dim=1).reshape((1, 1, -1))
+            # sum_norm = torch.zeros((1, 1, 1))
+            # for lsp in root_sampled_points:
+            #     sum_norm = torch.cat((sum_norm, torch.norm(lsp - point).reshape((1, 1, 1))), dim=2)
+            # sum_norm = sum_norm[:, :, 1:]
+            norm = torch.cat((norm, sum_norm), dim=1)
+        norm = norm[:, 1:, :]
         norms = torch.cat((norms, norm), dim=0)
-        norms = norms[1:, :]
-        start += len(root.mesh.vertices)
+        norms = norms[1:, :, :]
+        start += root.sample_count
+        # start += root.mesh.vertices
         if root.children:
             for child in root.children:
-                tmp_norm, start = self.compute_centroid_dist_torch(child, p, start)
+                tmp_norm, start = self.compute_centroid_dist_torch(child, lsp, start)
                 norms = torch.cat((norms, tmp_norm), dim=0)
         return norms, start
 
@@ -121,7 +135,7 @@ class Metric(object):
 
     def compute_centroid_metric_torch(self, hand, p, alpha=.1, soft_version=False, min_version=False):
         dists_value, _ = self.compute_centroid_dist_torch(hand.palm, p, 0)
-        dists_value = torch.exp(dists_value * -alpha)
+        dists_value = torch.sum(torch.exp(dists_value * -alpha), dim=2)
         exp_dists_sum = torch.sum(dists_value, axis=0)
         Q_value = torch.transpose(self.gijTorch, 0, 1) * exp_dists_sum
         if soft_version:
@@ -268,6 +282,13 @@ def vtk_add_metric_samples(renderer, metric, scale, length):
         normalActor.GetProperty().SetColor(255.0 / 255, 0.0 / 255, 0.0 / 255)
         renderer.AddActor(normalActor)
 
+def get_links(root: Link):
+    links = [root.hull]
+    if root.children:
+        for child in root.children:
+            links += get_links(child)
+    return links
+
 
 if __name__ == "__main__":
     # create object
@@ -290,15 +311,23 @@ if __name__ == "__main__":
     metric = Metric(target)
 
     path = 'hand/BarrettHand/'
-    hand = Hand(path, scale=0.01, use_joint_limit=False,
+    hand = Hand(path, scale=0.1, use_joint_limit=False,
                 use_quat=False, use_eigen=False, use_contacts=False)
-    print("hand.linknum=", hand.link_num)
-    if hand.use_eigen:
-        params = torch.rand((1, hand.extrinsic_size + hand.eg_num))
-    else:
-        params = torch.rand((1, hand.extrinsic_size + hand.nr_dof()))
-    p, t = hand.forward(params)
 
+    # links = get_links(hand.palm)
+    # for link in links:
+    #     metric = Metric([link])
+    #     metric.draw_samples(.1, 0.5)
+    
+    # exit(1)
+    
+    if hand.use_eigen:
+        params = torch.zeros((1, hand.extrinsic_size + hand.eg_num))
+    else:
+        params = torch.zeros((1, hand.extrinsic_size + hand.nr_dof()))
+    p, lsp, t = hand.forward(params)
+    print("p.shape = ", p.shape)
+    # print("lsp.shape = ", link_sampled_points.shape)
     metric.setup_distance(hand)
     metric.draw_samples(.1, 0.5)
-    print("torch: ", metric.compute_centroid_metric_torch(hand, p))
+    print("torch: ", metric.compute_centroid_metric_torch(hand, p, 0))
