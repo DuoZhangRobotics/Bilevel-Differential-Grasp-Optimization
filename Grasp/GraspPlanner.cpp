@@ -293,7 +293,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<
 {
   x=x.cwiseMin(_u).cwiseMax(_l);
   T E,E2,gNorm,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1;
-  scalarD maxConditionNumber=1000;
+  scalarD maxConditionNumber=1e5f;
   Mat3XT G,tmpG;
   MatT h,H,tmpH;
   Vec g,gRes,xTmp;
@@ -421,6 +421,11 @@ template <typename T>
 T GraspPlanner<T>::area() const
 {
   return _rad*_rad*M_PI;
+}
+template <typename T>
+T GraspPlanner<T>::rad() const
+{
+  return _rad;
 }
 //ArticulatedObjective
 template <typename T>

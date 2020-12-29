@@ -16,6 +16,7 @@ public:
   MetricEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T alpha,METRIC_TYPE m,T coef);
   virtual int operator()(const PBDArticulatedGradientInfo<T>& info,T& e,Mat3XT* g,MatT* h) override;
 protected:
+  T activation(T param,T* D=NULL,T* DD=NULL) const;
   T _alpha,_coef;
   METRIC_TYPE _type;
 };

@@ -15,11 +15,16 @@ template <typename T>
 void GraspQualityMetric<T>::reset(ObjMesh& obj,T rad,sizeType dRes,const Mat6T& M,T mu)
 {
   //move to centroid
+  obj.smooth();
   obj.makeUniform();
-  if(obj.getVolume()<0)
+  obj.smooth();
+  if(obj.getVolume()<0) {
     obj.insideOut();
+    obj.smooth();
+  }
   obj.getPos()=-obj.getVolumeCentroid();
   obj.applyTrans();
+  obj.smooth();
   _m=obj;
   //sample
   _rad=rad;

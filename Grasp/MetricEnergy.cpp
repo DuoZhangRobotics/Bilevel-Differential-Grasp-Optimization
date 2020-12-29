@@ -3,7 +3,6 @@
 
 USE_PRJ_NAMESPACE
 
-//LogBarrierEnergy
 template <typename T>
 MetricEnergy<T>::MetricEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T alpha,METRIC_TYPE m,T coef)
   :ArticulatedObjective<T>(planner,obj),_alpha(alpha),_coef(coef),_type(m) {}
@@ -23,7 +22,7 @@ int MetricEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,M
       Mat3XT p=ROTI(info._TM,i)*pn.first+CTRI(info._TM,i)*Vec::Ones(pn.first.cols()).transpose();
       for(sizeType j=0; j<p.cols(); j++) {
         T len=std::sqrt((p.col(j)-po).squaredNorm());
-        w[k]+=std::exp(-_alpha*len)*area;
+        w[k]+=activation(len)*area;
       }
     }
   }
@@ -51,16 +50,17 @@ int MetricEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,M
         const std::pair<Mat3XT,Mat3XT>& pn=_planner.pnss()[i];
         Mat3XT p=ROTI(info._TM,i)*pn.first+CTRI(info._TM,i)*Vec::Ones(pn.first.cols()).transpose();
         for(sizeType j=0; j<p.cols(); j++) {
-          T len=std::sqrt((p.col(j)-po).squaredNorm());
-          T expVal=std::exp(-_alpha*len),coef=expVal*_alpha*area*gw[k];
+          T len=std::sqrt((p.col(j)-po).squaredNorm()),D,DD;
+          activation(len,&D,&DD);
+          T coef=D*area*gw[k];
           Vec3T dpUnit=(p.col(j)-po)/len;
-          Vec3T G=dpUnit*-coef;
+          Vec3T G=dpUnit*coef;
           if(g) {
             CTRI(*g,i)+=G;
             ROTI(*g,i)+=G*pn.first.col(j).transpose();
           }
           if(h) {
-            Mat3T H=dpUnit*dpUnit.transpose()*(coef*(_alpha+1/len))-Mat3T::Identity()*(coef/len);
+            Mat3T H=dpUnit*dpUnit.transpose()*(DD*area*gw[k]-coef/len)+Mat3T::Identity()*(coef/len);
             Vec4T cH(pn.first.col(j)[0],pn.first.col(j)[1],pn.first.col(j)[2],1);
             Eigen::Map<Eigen::Matrix<T,12,12>> hBlk(&(h->coeffRef(0,i*12)));
             for(sizeType r=0; r<4; r++)
@@ -73,6 +73,28 @@ int MetricEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,M
   }
   return 0;
 }
+template <typename T>
+T MetricEnergy<T>::activation(T param,T* D,T* DD) const
+{
+//#define EXP_ACTIVATION
+#ifdef EXP_ACTIVATION
+  T ret=std::exp(-_alpha*param);
+  if(D)
+    *D=-_alpha*ret;
+  if(DD)
+    *DD=_alpha*_alpha*ret;
+  return ret;
+#else
+  param+=_planner.rad();
+  T ret=1/_alpha/param;
+  if(D)
+    *D=-1/_alpha/(param*param);
+  if(DD)
+    *DD=2/_alpha/(param*param*param);
+  return ret;
+#endif
+}
+
 //instance
 PRJ_BEGIN
 template class MetricEnergy<double>;

@@ -5,7 +5,6 @@
 
 USE_PRJ_NAMESPACE
 
-//LogBarrierEnergy
 template <typename T>
 LogBarrierObjEnergy<T>::LogBarrierObjEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T d0,T mu):ArticulatedObjective<T>(planner,obj),_d0(d0),_mu(mu) {}
 template <typename T>

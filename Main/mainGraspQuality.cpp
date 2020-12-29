@@ -19,6 +19,9 @@ int main(int argn,char** argc)
   } else {
     std::ifstream is(path.c_str());
     m.read(is,false,false);
+    scale/=m.getBB().getExtent().maxCoeff();
+    m.getScale()=scale;
+    m.applyTrans();
   }
 
   std::experimental::filesystem::v1::path pathIO(path);

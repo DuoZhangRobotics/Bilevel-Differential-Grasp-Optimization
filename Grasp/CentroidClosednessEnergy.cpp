@@ -4,7 +4,6 @@
 
 USE_PRJ_NAMESPACE
 
-//LogBarrierEnergy
 template <typename T>
 CentroidClosednessEnergy<T>::CentroidClosednessEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T coef):ArticulatedObjective<T>(planner,obj),_coef(coef)
 {

@@ -39,8 +39,9 @@ public:
   void writeLocalVTK(const std::string& path,T len) const;
   void writeLimitsVTK(const std::string& path) const;
   Vec optimize(const Vec& init,GraspQualityMetric<T>& obj,T d0=1,T alpha=1,METRIC_TYPE m=NO_METRIC,T coefM=1000,T coefOC=1,T coefCC=1,T coefO=1e-3f,T coefS=1e-3f) const;
-  Vec optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,sizeType maxIter=1000,T gThres=1e-4f,T alphaThres=1e-4f,bool callback=true) const;
+  Vec optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,sizeType maxIter=1000,T gThres=1e-7f,T alphaThres=1e-6f,bool callback=true) const;
   T area() const;
+  T rad() const;
 protected:
   std::vector<std::shared_ptr<ObjMeshGeomCellExact>> _distExact;
   ArticulatedBody _body;

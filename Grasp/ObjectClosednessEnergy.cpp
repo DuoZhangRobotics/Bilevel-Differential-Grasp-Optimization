@@ -5,7 +5,6 @@
 
 USE_PRJ_NAMESPACE
 
-//LogBarrierEnergy
 template <typename T>
 ObjectClosednessEnergy<T>::ObjectClosednessEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T coef):ArticulatedObjective<T>(planner,obj),_coef(_planner.area()*coef) {}
 template <typename T>

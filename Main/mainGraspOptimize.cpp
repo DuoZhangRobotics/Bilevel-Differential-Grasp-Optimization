@@ -55,7 +55,7 @@ int main(int argn,char** argc)
   planner.writeVTK(x0,pathIO.filename().string(),1);
   planner.writeLocalVTK(pathIO.filename().string(),1);
   planner.writeLimitsVTK("limits");
-  Vec x1=planner.optimize(x0,obj,3,20,Q_INF_MEAN,-1000,0,0,1e-2f,0);
+  Vec x1=planner.optimize(x0,obj,1,10,NO_METRIC,-100,1000,0,1e-2f,0);
   planner.writeVTK(x0,"beforeOptimize",1);
   planner.writeVTK(x1,"afterOptimize",1);
   obj.writeVTK("object",1);
