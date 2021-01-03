@@ -270,7 +270,7 @@ void GraspPlanner<T>::writeLimitsVTK(const std::string& path) const
   }
 }
 template <typename T>
-typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(const Vec& init,GraspQualityMetric<T>& obj,T d0,T alpha,METRIC_TYPE m,T coefM,T coefOC,T coefCC,T coefO,T coefS) const
+typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(const Vec& init, GraspQualityMetric<T>& obj,T d0,T alpha,METRIC_TYPE m,T coefM,T coefOC,T coefCC,T coefO,T coefS) const
 {
   std::vector<std::shared_ptr<ArticulatedObjective<T>>> objs;
   if(m!=NO_METRIC)

@@ -1,3 +1,7 @@
+/**
+  **  Get the robot hand prepared, including poission sampling from the surface of the hand.
+*/
+
 #include <Grasp/GraspPlanner.h>
 #include <Grasp/CentroidClosednessEnergy.h>
 #include <Grasp/ObjectClosednessEnergy.h>
@@ -11,12 +15,20 @@ USE_PRJ_NAMESPACE
 typedef double T;
 typedef GraspQualityMetric<T>::Vec Vec;
 typedef GraspQualityMetric<T>::Vec3T Vec3T;
+
+/**
+    Function Command Line Input:
+        @param argc[1]: URDF file path of robot hand //**[.urdf file]
+        @param argc[2]: density for sampling points on the surface of each link of the robot hand //**[how many points need to be sampled from each link]
+        @param argc[3]: target object file //** [.obj file]
+    Function Output:
+        ** Write processed hand to .dat file for optimization
+*/
 int main(int argn,char** argc)
 {
   mpfr_set_default_prec(1024U);
   RandEngine::useDeterministic();
   RandEngine::seed(0);
-
   ASSERT_MSG(argn==4,"mainGraspPlan: [urdf path] [sample density] [obj path]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
@@ -32,6 +44,7 @@ int main(int argn,char** argc)
     planner.SerializableBase::read(pathIO.string());
   } else {
     planner.reset(path,1.0f/density);
+    //* sample points
     planner.fliterSample([&](sizeType lid,const Vec3T&,const Vec3T& n)->bool{
       if(lid==1)
         return n.dot(Vec3T(0,0,1))>0.9f;

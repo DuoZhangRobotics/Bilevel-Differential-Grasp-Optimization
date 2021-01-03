@@ -1,3 +1,7 @@
+/**
+ * * Use the hand.dat and obj.dat to optimize the grasp pose
+*/
+
 #include <Grasp/GraspPlanner.h>
 #include <Grasp/CentroidClosednessEnergy.h>
 #include <Grasp/ObjectClosednessEnergy.h>
@@ -10,8 +14,17 @@ USE_PRJ_NAMESPACE
 typedef double T;
 typedef GraspQualityMetric<T>::Vec Vec;
 typedef GraspQualityMetric<T>::Vec3T Vec3T;
+
+/**
+    Function Command Line Input:
+        @param argc[1]: Target Object file 
+        @param argc[2]: density for sampling points on the surface of target object
+        @param argc[3]: target object file
+  
+*/
 int main(int argn,char** argc)
 {
+  std::cout << "RUNNING..." <<  std::endl;
   mpfr_set_default_prec(1024U);
   RandEngine::useDeterministic();
   RandEngine::seed(0);
@@ -22,6 +35,7 @@ int main(int argn,char** argc)
   std::string pathObj(argc[3]);
 
   //load hand
+  std::cout << path << std::endl;
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
   pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density));
@@ -42,7 +56,7 @@ int main(int argn,char** argc)
     });
     planner.SerializableBase::write(pathIO.string());
   }
-
+  std::cout << "SUCCESSFULLY READ HAND" << std::endl;
   //test objective
   GraspQualityMetric<T> obj;
   obj.SerializableBase::read(pathObj);
@@ -55,7 +69,7 @@ int main(int argn,char** argc)
   planner.writeVTK(x0,pathIO.filename().string(),1);
   planner.writeLocalVTK(pathIO.filename().string(),1);
   planner.writeLimitsVTK("limits");
-  Vec x1=planner.optimize(x0,obj,1,10,NO_METRIC,-100,1000,0,1e-2f,0);
+  Vec x1=planner.optimize(x0,obj,1,10,Q_1,-100,1000,0,1e-2f,0);
   planner.writeVTK(x0,"beforeOptimize",1);
   planner.writeVTK(x1,"afterOptimize",1);
   obj.writeVTK("object",1);
