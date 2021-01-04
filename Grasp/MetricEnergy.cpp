@@ -2,7 +2,14 @@
 #include <stack>
 
 USE_PRJ_NAMESPACE
-
+/**
+ * *Input:
+ * @param planner: Grasp planner //Type: GraspPlanner
+ * @param obj: Target object //Type: GraspQualityMetric 
+ * @param alpha: Coefficient of distance, exp(-alpha * d) in Q metric //Type: T
+ * @param coef: Coefficient of objective function //Type: T
+ * *Intialize log barrier energy function
+*/
 template <typename T>
 MetricEnergy<T>::MetricEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T alpha,METRIC_TYPE m,T coef)
   :ArticulatedObjective<T>(planner,obj),_alpha(alpha),_coef(coef),_type(m) {}

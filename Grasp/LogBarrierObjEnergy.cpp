@@ -5,8 +5,17 @@
 
 USE_PRJ_NAMESPACE
 
+/**
+ * *Input:
+ * @param planner: Grasp planner //Type: GraspPlanner
+ * @param obj: Target object //Type: GraspQualityMetric 
+ * @param coef: Coefficient of objective function //Type: T
+ * *Intialize log barrier energy function
+*/
 template <typename T>
 LogBarrierObjEnergy<T>::LogBarrierObjEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T d0,T mu):ArticulatedObjective<T>(planner,obj),_d0(d0),_mu(mu) {}
+
+//* Get Log barrier energy between the robot hand and the object
 template <typename T>
 int LogBarrierObjEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,Mat3XT* g,MatT* h)
 {

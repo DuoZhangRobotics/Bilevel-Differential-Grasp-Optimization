@@ -4,6 +4,13 @@
 
 USE_PRJ_NAMESPACE
 
+/**
+ * *Input:
+ * @param planner: Grasp planner //Type: GraspPlanner
+ * @param obj: Target object //Type: GraspQualityMetric 
+ * @param coef: Coefficient of objective function //Type: T
+ * *Get Centroid
+*/
 template <typename T>
 CentroidClosednessEnergy<T>::CentroidClosednessEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T coef):ArticulatedObjective<T>(planner,obj),_coef(coef)
 {
@@ -14,8 +21,9 @@ CentroidClosednessEnergy<T>::CentroidClosednessEnergy(const GraspPlanner<T>& pla
     _centroid[i]=m.getVolumeCentroid().template cast<T>();
   }
 }
+//** Get Centroid Closeness Energy
 template <typename T>
-int CentroidClosednessEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,Mat3XT* g,MatT* h)
+int CentroidClosednessEnergy<T>::operator()(const PBDArticulatedGradientInfo<T>& info,T& e,Mat3XT* g, MatT* h)
 {
   for(sizeType i=0; i<(sizeType)_centroid.size(); i++)
     if(std::isfinite(_centroid[i][0])) {

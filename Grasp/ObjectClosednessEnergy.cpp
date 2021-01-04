@@ -5,6 +5,13 @@
 
 USE_PRJ_NAMESPACE
 
+/**
+ * *Input:
+ * @param planner: Grasp planner //Type: GraspPlanner
+ * @param obj: Target object //Type: GraspQualityMetric 
+ * @param coef: Coefficient of objective function //Type: T
+ * *Intialize closest distance objective function
+*/
 template <typename T>
 ObjectClosednessEnergy<T>::ObjectClosednessEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T coef):ArticulatedObjective<T>(planner,obj),_coef(_planner.area()*coef) {}
 template <typename T>

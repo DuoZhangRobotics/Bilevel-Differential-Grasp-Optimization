@@ -181,7 +181,7 @@ const ArticulatedBody& GraspPlanner<T>::body() const
   return _body;
 }
 template <typename T>
-const ObjMohGeomCellExact& GraspPlanner<T>::dist(sizeType jid) const
+const ObjMeshGeomCellExact& GraspPlanner<T>::dist(sizeType jid) const
 {
   return *(_distExact.at(jid));
 }
@@ -275,9 +275,10 @@ void GraspPlanner<T>::writeLimitsVTK(const std::string& path) const
  * @param obj: the grasp quality metric object, namely, the sampled target object. //Type GraspQualityMetric
  * @param d0: the parameter for clamped log barrier function //Type: T
  * @param alpha: the coefficient of distance in the exponetial decaied Q metric //Type: T
+ * @param m: the type of Q metric //Type: METRIC_TYPE
  * @param coefM: the coefficient of Q metric energy. //Type: T
  * @param coefOC: the coefficient of object closeness energy. //Type: T
- * @param coefCC: the coefficient of object closeness energy.//Type: T
+ * @param coefCC: the coefficient of centroid closeness energy.//Type: T
  * @param coefO: the coefficient of log barrier obj energy.//Type: T
  * @param coefS: the coefficient of log barrier self energy.//Type: T
  * Reture:

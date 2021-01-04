@@ -6,6 +6,13 @@
 
 USE_PRJ_NAMESPACE
 
+/**
+ * *Input:
+ * @param planner: Grasp planner //Type: GraspPlanner
+ * @param obj: Target object //Type: GraspQualityMetric 
+ * @param coef: Coefficient of objective function //Type: T
+ * *Intialize log barrier energy function among links of the robot hand
+*/
 template <typename T>
 LogBarrierSelfEnergy<T>::LogBarrierSelfEnergy(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj,T d0,T mu,bool allPairs)
   :ArticulatedObjective<T>(planner,obj),_allPairs(allPairs),_d0(d0),_mu(mu)

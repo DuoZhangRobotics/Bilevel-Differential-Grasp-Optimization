@@ -12,6 +12,14 @@ USE_PRJ_NAMESPACE
 template <typename T>
 GraspQualityMetric<T>::GraspQualityMetric() {}
 template <typename T>
+/**
+ * *Input:
+ * @param obj: target object //Type: ObjMesh
+ * @param rad: sample radius.  //Type: T
+ * @param dRes: numnbers of directions //Type: sizeType
+ * @param M: Metric given by user to scale wrench //Type: Mat6T
+ * @param mu: Friction Coefficient //Type: T
+*/
 void GraspQualityMetric<T>::reset(ObjMesh& obj,T rad,sizeType dRes,const Mat6T& M,T mu)
 {
   //move to centroid
@@ -62,6 +70,8 @@ void GraspQualityMetric<T>::reset(ObjMesh& obj,T rad,sizeType dRes,const Mat6T& 
   buildBVH<sizeType>(_bvh,3,-1);
   _distExact.reset(new ObjMeshGeomCellExact(ObjMeshGeomCell(Mat4::Identity(),obj,0,true)));
 }
+
+//* Read the target object
 template <typename T>
 bool GraspQualityMetric<T>::read(std::istream& is,IOData* dat)
 {
@@ -83,6 +93,8 @@ bool GraspQualityMetric<T>::read(std::istream& is,IOData* dat)
   _rad=rad;
   return is.good();
 }
+
+//* Write the processed target object
 template <typename T>
 bool GraspQualityMetric<T>::write(std::ostream& os,IOData* dat) const
 {
@@ -143,6 +155,8 @@ const std::vector<Node<sizeType,BBox<scalar>>>& GraspQualityMetric<T>::getBVH() 
 {
   return _bvh;
 }
+
+//* Compute Q metric
 template <typename T>
 T GraspQualityMetric<T>::computeQInfMean(const Vec& w,Vec* g) const
 {

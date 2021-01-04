@@ -26,7 +26,6 @@ typedef GraspQualityMetric<T>::Vec3T Vec3T;
 */
 int main(int argn,char** argc)
 {
-  std::cout << "RUNNING..." <<  std::endl;
   mpfr_set_default_prec(1024U);
   RandEngine::useDeterministic();
   RandEngine::seed(0);
@@ -37,7 +36,6 @@ int main(int argn,char** argc)
   std::string pathObj(argc[3]);
 
   //load hand
-  std::cout << path << std::endl;
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
   // don't directly use [hand]_[density].dat, use [hand].urdf
@@ -59,7 +57,6 @@ int main(int argn,char** argc)
     });
     planner.SerializableBase::write(pathIO.string());
   }
-  std::cout << "SUCCESSFULLY READ HAND" << std::endl;
   //test objective
   GraspQualityMetric<T> obj;
   obj.SerializableBase::read(pathObj);
@@ -72,7 +69,7 @@ int main(int argn,char** argc)
   planner.writeVTK(x0,pathIO.filename().string(),1);
   planner.writeLocalVTK(pathIO.filename().string(),1);
   planner.writeLimitsVTK("limits");
-  Vec x1=planner.optimize(x0,obj,1,10,Q_1,-100,1000,0,1e-2f,0);
+  Vec x1=planner.optimize(x0,obj,1,1,Q_1,-100,0,0,1e-5f,1e-6f);
   planner.writeVTK(x0,"beforeOptimize",1);
   planner.writeVTK(x1,"afterOptimize",1);
   obj.writeVTK("object",1);
