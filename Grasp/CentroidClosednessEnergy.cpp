@@ -1,8 +1,3 @@
-/*
-
-*/
-
-
 #include "CentroidClosednessEnergy.h"
 #include <CommonFile/geom/StaticGeom.h>
 #include <stack>

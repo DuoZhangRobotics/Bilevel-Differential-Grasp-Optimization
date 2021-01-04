@@ -181,7 +181,7 @@ const ArticulatedBody& GraspPlanner<T>::body() const
   return _body;
 }
 template <typename T>
-const ObjMeshGeomCellExact& GraspPlanner<T>::dist(sizeType jid) const
+const ObjMohGeomCellExact& GraspPlanner<T>::dist(sizeType jid) const
 {
   return *(_distExact.at(jid));
 }
@@ -269,6 +269,20 @@ void GraspPlanner<T>::writeLimitsVTK(const std::string& path) const
     }
   }
 }
+/**
+ * Input:
+ * @param init: the initial paramters of extrinsic and intrisic parameters of the robot hand, //Type Vec
+ * @param obj: the grasp quality metric object, namely, the sampled target object. //Type GraspQualityMetric
+ * @param d0: the parameter for clamped log barrier function //Type: T
+ * @param alpha: the coefficient of distance in the exponetial decaied Q metric //Type: T
+ * @param coefM: the coefficient of Q metric energy. //Type: T
+ * @param coefOC: the coefficient of object closeness energy. //Type: T
+ * @param coefCC: the coefficient of object closeness energy.//Type: T
+ * @param coefO: the coefficient of log barrier obj energy.//Type: T
+ * @param coefS: the coefficient of log barrier self energy.//Type: T
+ * Reture:
+ * *Optimal parameters
+*/
 template <typename T>
 typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(const Vec& init, GraspQualityMetric<T>& obj,T d0,T alpha,METRIC_TYPE m,T coefM,T coefOC,T coefCC,T coefO,T coefS) const
 {
@@ -288,6 +302,17 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(const Vec& init, GraspQu
   x=optimizeNewton(x,objs);
   return _A*x+_b;
 }
+/**
+ * Input:
+ * @param x: parameters to be optimized. //Type: T
+ * @param obj: objective function. //Type: std::vector<std::shared_ptr<ArticulatedObjective<T>>>
+ * @param maxIter: maximum optimization iterations. //Type: sizeType
+ * @param gThres: Gradient Threshold for stopping the line search //Type: T
+ * @param alphaThres: parameter for wolfe condition //Type: T
+ * @param callback: call back
+ * Return:
+ * *Optimized Parameters
+*/ 
 template <typename T>
 typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,sizeType maxIter,T gThres,T alphaThres,bool callback) const
 {

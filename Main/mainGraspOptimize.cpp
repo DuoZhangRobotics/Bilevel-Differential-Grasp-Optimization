@@ -20,7 +20,9 @@ typedef GraspQualityMetric<T>::Vec3T Vec3T;
         @param argc[1]: Target Object file 
         @param argc[2]: density for sampling points on the surface of target object
         @param argc[3]: target object file
-  
+
+    Function Output:
+    **  Result of hand after optimization written to folder "after optimization"
 */
 int main(int argn,char** argc)
 {
@@ -38,6 +40,7 @@ int main(int argn,char** argc)
   std::cout << path << std::endl;
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
+  // don't directly use [hand]_[density].dat, use [hand].urdf
   pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density));
   pathIO.replace_extension(".dat");
   GraspPlanner<T> planner;
