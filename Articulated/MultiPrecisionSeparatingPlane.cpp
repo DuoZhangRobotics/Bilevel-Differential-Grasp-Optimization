@@ -1,5 +1,6 @@
 #include "MultiPrecisionSeparatingPlane.h"
 #include <Utils/RotationUtil.h>
+#include <Eigen/Eigen>
 
 USE_PRJ_NAMESPACE
 
@@ -9,6 +10,7 @@ MultiPrecisionSeparatingPlane<T>::MultiPrecisionSeparatingPlane(Options& ops,Vec
 {
   MultiPrecisionLQP<T>::_H.setZero(1,1);
   MultiPrecisionLQP<T>::_c.setZero(4);
+  MultiPrecisionLQP<T>::_forceSPD=false;
 }
 template <typename T>
 void MultiPrecisionSeparatingPlane<T>::clearPoints()
@@ -41,7 +43,7 @@ void MultiPrecisionSeparatingPlane<T>::resetPoints(const Mat3XT& pssL,const Mat3
   }
 }
 template <typename T>
-T MultiPrecisionSeparatingPlane<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h) const
+T MultiPrecisionSeparatingPlane<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h,bool forceSPD) const
 {
   T ret=0;
   Vec4T dE;
@@ -68,10 +70,12 @@ T MultiPrecisionSeparatingPlane<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h)
       if(h) {
         *h+=DD*dE*dE.transpose();
         //we avoid this block to make positive definite
-        //dN=D*pL*sgn;
-        //for(sizeType r=0; r<3; r++)
-        //  for(sizeType c=0; c<3; c++)
-        //    h->coeffRef(r,c)+=((cross<T>(dR[r])*cross<T>(dR[c])+cross<T>(ddR[r*3+c]))*n).dot(dN);
+        if(!forceSPD) {
+          dN=D*pL*sgn;
+          for(sizeType r=0; r<3; r++)
+            for(sizeType c=0; c<3; c++)
+              h->coeffRef(r,c)+=((cross<T>(dR[r])*cross<T>(dR[c])+cross<T>(ddR[r*3+c]))*n).dot(dN);
+        }
       }
     }
   return ret;
@@ -124,6 +128,25 @@ template <typename T>
 void MultiPrecisionSeparatingPlane<T>::limitAlpha(T& alpha,const Vec&,const Vec&) const
 {
   alpha=std::min<T>(alpha,1);
+}
+template <typename T>
+bool MultiPrecisionSeparatingPlane<T>::solveDx(T,T,const Vec&,Vec& dx,const DMat& h,const Vec& g) const
+{
+  Eigen::SelfAdjointEigenSolver<Matd> eig(h.unaryExpr([&](const T& in) {
+    return (scalarD)std::to_double(in);
+  }),Eigen::ComputeEigenvectors);
+  DMat EVec=eig.eigenvectors().unaryExpr([&](const T& in) {
+    return T(in);
+  });
+  scalarD condNumber=eig.eigenvalues().maxCoeff()*1e-5f;
+  Vec EVal=eig.eigenvalues().cwiseMax(std::max<scalarD>(condNumber,1e-15f)).unaryExpr([&](const T& in) {
+    return T(in);
+  });
+
+  dx=EVec.transpose()*g;
+  dx.array()/=EVal.array();
+  dx=-EVec*dx;
+  return true;
 }
 //instance
 PRJ_BEGIN

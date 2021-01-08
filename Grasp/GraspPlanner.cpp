@@ -4,10 +4,10 @@
 #include <Articulated/ArticulatedUtils.h>
 #include <Articulated/ArticulatedLoader.h>
 #include <Articulated/MultiPrecisionLQP.h>
-#include <CommonFile/geom/ObjMeshGeomCell.h>
 #include <CommonFile/ParallelPoissonDiskSampling.h>
 #include <Environment/ObjMeshGeomCellExact.h>
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Environment/ConvexHullExact.h>
+#include "PrimalDualQInfMetricEnergy.h"
 #include "CentroidClosednessEnergy.h"
 #include "ObjectClosednessEnergy.h"
 #include "LogBarrierObjEnergy.h"
@@ -18,16 +18,62 @@
 
 USE_PRJ_NAMESPACE
 
+//GraspPlannerParameter
+GraspPlannerParameter::GraspPlannerParameter(Options& ops)
+{
+  REGISTER_FLOAT_TYPE("d0",GraspPlannerParameter,double,t._d0)
+  REGISTER_FLOAT_TYPE("alpha",GraspPlannerParameter,double,t._alpha)
+  REGISTER_INT_TYPE("metric",GraspPlannerParameter,sizeType,t._metric)
+  REGISTER_INT_TYPE("activation",GraspPlannerParameter,sizeType,t._activation)
+  REGISTER_FLOAT_TYPE("normalExtrude",GraspPlannerParameter,double,t._normalExtrude)
+  REGISTER_FLOAT_TYPE("coefM",GraspPlannerParameter,double,t._coefM)
+  REGISTER_FLOAT_TYPE("coefOC",GraspPlannerParameter,double,t._coefOC)
+  REGISTER_FLOAT_TYPE("coefCC",GraspPlannerParameter,double,t._coefCC)
+  REGISTER_FLOAT_TYPE("coefO",GraspPlannerParameter,double,t._coefO)
+  REGISTER_FLOAT_TYPE("coefS",GraspPlannerParameter,double,t._coefS)
+  REGISTER_FLOAT_TYPE("useGJK",GraspPlannerParameter,bool,t._useGJK)
+  //solver
+  REGISTER_FLOAT_TYPE("rho0",GraspPlannerParameter,double,t._rho0)
+  REGISTER_FLOAT_TYPE("thres",GraspPlannerParameter,double,t._thres)
+  REGISTER_FLOAT_TYPE("alphaThres",GraspPlannerParameter,double,t._alphaThres)
+  REGISTER_BOOL_TYPE("callback",GraspPlannerParameter,bool,t._callback)
+  REGISTER_INT_TYPE("maxIter",GraspPlannerParameter,sizeType,t._maxIter)
+  reset(ops);
+}
+void GraspPlannerParameter::reset(Options& ops)
+{
+  GraspPlannerParameter::initOptions(*this);
+  ops.setOptions(this);
+}
+void GraspPlannerParameter::initOptions(GraspPlannerParameter& sol)
+{
+  sol._d0=1;
+  sol._alpha=1e-3f;
+  sol._metric=Q_INF_CONSTRAINT;
+  sol._activation=SQR_EXP_ACTIVATION;
+  sol._normalExtrude=1;
+  sol._coefM=-100;
+  sol._coefOC=0;
+  sol._coefCC=0;
+  sol._coefO=10;
+  sol._coefS=1;
+  sol._useGJK=false;
+  //solver
+  sol._rho0=1;
+  sol._thres=1e-10f;
+  sol._alphaThres=1e-20f;
+  sol._callback=true;
+  sol._maxIter=2000;
+}
 //GraspPlanner
 template <typename T>
 GraspPlanner<T>::GraspPlanner() {}
 template <typename T>
-void GraspPlanner<T>::reset(const std::string& path,T rad)
+void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
 {
-  _body=ArticulatedLoader().readURDF(path,true,true);
+  _body=ArticulatedLoader().readURDF(path,convex,true);
   ArticulatedUtils(_body).addBase(3,Vec3d::Zero());
   ArticulatedUtils(_body).simplify(10);
-  _distExact.resize(_body.nrJ());
   _pnss.resize(_body.nrJ());
   _rad=rad;
   //reset geom
@@ -55,9 +101,14 @@ void GraspPlanner<T>::reset(const std::string& path,T rad)
   _l=l.template cast<T>();
   _u=u.template cast<T>();
   //distExact
-  for(sizeType i=0; i<(sizeType)_distExact.size(); i++) {
-    _distExact[i].reset(new ObjMeshGeomCellExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
-    //sample
+  _distExact.resize(_body.nrJ());
+  for(sizeType i=0; i<_body.nrJ(); i++)
+    if(convex)
+      _distExact[i].reset(new ConvexHullExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
+    else _distExact[i].reset(new ObjMeshGeomCellExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
+  //sample
+  PBDArticulatedGradientInfo<T> info(_body,Vec::Zero(_body.nrDOF()));
+  for(sizeType i=0; i<_body.nrJ(); i++) {
     _body.getGeom().getG(i).getMesh(m);
     if(m.getV().empty())
       continue;
@@ -65,12 +116,20 @@ void GraspPlanner<T>::reset(const std::string& path,T rad)
     sampler.setRadius(std::to_double(_rad));
     sampler.sample(m);
     //pss
+    sizeType k=0;
     _pnss[i].first.resize(3,sampler.getPSet().size());
     _pnss[i].second.resize(3,sampler.getPSet().size());
     for(sizeType j=0; j<sampler.getPSet().size(); j++) {
-      _pnss[i].first.col(j)=sampler.getPSet()[j]._pos.template cast<T>();
-      _pnss[i].second.col(j)=sampler.getPSet()[j]._normal.template cast<T>();
+      Vec3T v=sampler.getPSet()[j]._pos.template cast<T>();
+      Vec3T n=sampler.getPSet()[j]._normal.template cast<T>();
+      if(!validSample(i,info,ROTI(info._TM,i)*v+CTRI(info._TM,i)))
+        continue;
+      _pnss[i].first.col(k)=v;
+      _pnss[i].second.col(k)=n;
+      k++;
     }
+    _pnss[i].first=_pnss[i].first.block(0,0,3,k).eval();
+    _pnss[i].second=_pnss[i].second.block(0,0,3,k).eval();
   }
 }
 template <typename T>
@@ -91,6 +150,7 @@ void GraspPlanner<T>::fliterSample(std::function<bool(sizeType lid,const Vec3T& 
 template <typename T>
 bool GraspPlanner<T>::read(std::istream& is,IOData* dat)
 {
+  registerType<ConvexHullExact>(dat);
   registerType<ObjMeshGeomCellExact>(dat);
   registerType<GraspPlanner<T>>(dat);
   readBinaryData(_distExact,is,dat);
@@ -124,6 +184,7 @@ bool GraspPlanner<T>::read(std::istream& is,IOData* dat)
 template <typename T>
 bool GraspPlanner<T>::write(std::ostream& os,IOData* dat) const
 {
+  registerType<ConvexHullExact>(dat);
   registerType<ObjMeshGeomCellExact>(dat);
   registerType<GraspPlanner<T>>(dat);
   writeBinaryData(_distExact,os,dat);
@@ -270,91 +331,82 @@ void GraspPlanner<T>::writeLimitsVTK(const std::string& path) const
   }
 }
 template <typename T>
-typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(const Vec& init,GraspQualityMetric<T>& obj,T d0,T alpha,METRIC_TYPE m,T coefM,T coefOC,T coefCC,T coefO,T coefS) const
+typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& init,GraspQualityMetric<T>& obj,GraspPlannerParameter& ops)
 {
   std::vector<std::shared_ptr<ArticulatedObjective<T>>> objs;
-  if(m!=NO_METRIC)
-    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(*this,obj,alpha,m,coefM)));
-  if(coefOC>0)
-    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new ObjectClosednessEnergy<T>(*this,obj,coefOC)));
-  if(coefCC>0)
-    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new CentroidClosednessEnergy<T>(*this,obj,coefCC)));
-  if(coefO>0)
-    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new LogBarrierObjEnergy<T>(*this,obj,_rad*d0,coefO)));
-  if(coefS>0)
-    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new LogBarrierSelfEnergy<T>(*this,obj,_rad*d0,coefS)));
+  if(ops._metric==Q_1 || ops._metric==Q_INF || ops._metric==Q_INF_BARRIER)
+    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(*this,obj,ops._d0,ops._alpha,ops._coefM,(METRIC_TYPE)ops._metric,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
+  if(ops._metric==Q_INF_CONSTRAINT)
+    objs.push_back(std::shared_ptr<PrimalDualQInfMetricEnergy<T>>(new PrimalDualQInfMetricEnergy<T>(*this,obj,ops._alpha,ops._coefM,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
+  if(ops._coefOC>0)
+    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new ObjectClosednessEnergy<T>(*this,obj,ops._coefOC)));
+  if(ops._coefCC>0)
+    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new CentroidClosednessEnergy<T>(*this,obj,ops._coefCC)));
+  if(ops._coefO>0)
+    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new LogBarrierObjEnergy<T>(*this,obj,_rad*ops._d0,ops._coefO,ops._useGJK)));
+  if(ops._coefS>0)
+    objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new LogBarrierSelfEnergy<T>(*this,obj,_rad*ops._d0,ops._coefS)));
+
   Vec x;
   SolveNewton<T>::template solveNewton<Vec>(_A.transpose()*_A,_A.transpose()*(_b-init),x,true);
-  x=optimizeNewton(x,objs);
-  return _A*x+_b;
+  sizeType nAdd=nrAdditionalDOF(objs);
+  if(nAdd>0) {
+    x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
+    _b=concat<Vec,Vec>(_b,Vec::Zero(nAdd));
+    _A=concatDiag<T,0,sizeType>(_A.sparseView(),MatT::Identity(nAdd,nAdd).eval().sparseView());
+    _l=concat<Vec,Vec>(_l,Vec::Constant(nAdd,-qpOASES::INFTY));
+    _u=concat<Vec,Vec>(_u,Vec::Constant(nAdd,qpOASES::INFTY));
+  }
+  if(debug)
+    debugSystem(x,objs);
+  else x=optimizeNewton(x,objs,ops);
+  if(nAdd>0) {
+    _b=_b.segment(0,_b.size()-nAdd).eval();
+    _A=_A.block(0,0,_A.rows()-nAdd,_A.cols()-nAdd).eval();
+    _l=_l.segment(0,_l.size()-nAdd).eval();
+    _u=_u.segment(0,_u.size()-nAdd).eval();
+  }
+  return _A*x.segment(0,_A.cols())+_b;
 }
 template <typename T>
-typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,sizeType maxIter,T gThres,T alphaThres,bool callback) const
+typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops) const
 {
-  x=x.cwiseMin(_u).cwiseMax(_l);
-  T E,E2,gNorm,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1;
-  scalarD maxConditionNumber=1e5f;
-  Mat3XT G,tmpG;
-  MatT h,H,tmpH;
-  Vec g,gRes,xTmp;
   Cold d;
-  for(sizeType it=0; it<maxIter; it++) {
+  T e,e2,m,m2;
+  MatT h,cjac;
+  Vec g,c,c2,xTmp;
+  scalarD maxConditionNumber=1e5f,minDiagonalValue=1e-5f;
+  Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> hAdjusted;
+  T dNorm,cNorm,cNorm2,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1,rho=ops._rho0,gamma=0.1f;
+  PBDArticulatedGradientInfo<T> info;
+  bool tmpUseGJK=ops._useGJK;
+
+  for(sizeType it=0; it<ops._maxIter; it++) {
     //assemble
-    {
-      PBDArticulatedGradientInfo<T> info(_body,_A*x+_b);
-      bool valid=true;
-      E=0;
-      G.setZero(3,_body.nrJ()*4);
-      H.setZero(12,_body.nrJ()*12);
-      for(sizeType i=0; i<(sizeType)objs.size() && valid; i++)
-        if(objs[i]->operator()(info,E,&G,&H)<0) {
-          valid=false;
-          break;
-        }
-      if(!valid) {
-        if(callback) {
-          INFOV("Iter=%d failed(invalid configuration)",it)
-        }
-        return Vec::Zero(0);
+    if(!assemble(x,info,true,objs,e,&g,&h,&c,&cjac)) {
+      if(ops._callback) {
+        INFOV("Iter=%d failed(invalid configuration)",it)
       }
-      g.setZero(_body.nrDOF());
-      h.setZero(_body.nrDOF(),_body.nrDOF());
-      info.DTG(_body,mapM(tmpG=G),mapV(g));
-      info.toolAB(_body,mapCM(tmpH=H),mapM(tmpG=G),mapM(h));
-      //handle mimic
-      g=_A.transpose()*g;
-      h=_A.transpose()*(h*_A);
-    }
-    //termination & callback
-    gRes=g; //account for joint limits
-    for(sizeType i=0; i<gRes.size(); i++)
-      if(x[i]<=_l[i]) {
-        if(gRes[i]>0)
-          gRes[i]=0;
-      } else if(x[i]>=_u[i]) {
-        if(gRes[i]<0)
-          gRes[i]=0;
-      }
-    gNorm=std::sqrt(gRes.squaredNorm());
-    if(gNorm<gThres) {
-      if(callback) {
-        INFOV("Iter=%d succeed(gNorm=%f<gThres=%f)",it,std::to_double(gNorm),std::to_double(gThres))
-      }
-      break;
-    } else if(callback) {
-      //we print the base for debug
-      INFOV("Iter=%d E=%f gNorm=%f base=%f,%f,%f",
-            it,std::to_double(E),std::to_double(gNorm),
-            std::to_double(x[0]),std::to_double(x[1]),std::to_double(x[2]))
+      return Vec::Zero(0);
     }
     //solve
     {
+      Cold cld;
+      Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> cjacd;
       Eigen::SelfAdjointEigenSolver<Matd> eig(h.unaryExpr([&](const T& in) {
         return (scalarD)std::to_double(in);
       }),Eigen::ComputeEigenvectors);
-      scalarD minEv=eig.eigenvalues().cwiseAbs().maxCoeff()/maxConditionNumber;
+      scalarD minEv=std::max<scalarD>(eig.eigenvalues().cwiseAbs().maxCoeff()/maxConditionNumber,minDiagonalValue);
       Cold ev=eig.eigenvalues().array().max(minEv).matrix();
-      Matd hAdjusted=eig.eigenvectors()*ev.asDiagonal()*eig.eigenvectors().transpose();
+      hAdjusted=eig.eigenvectors()*ev.asDiagonal()*eig.eigenvectors().transpose();
+      if(c.size()>0) {
+        cjacd=cjac.unaryExpr([&](const T& in) {
+          return (scalarD)std::to_double(in);
+        });
+        cld=-c.unaryExpr([&](const T& in) {
+          return (scalarD)std::to_double(in);
+        });
+      }
       //respect joint limits
       Cold ld=(_l-x).unaryExpr([&](const T& in) {
         return (scalarD)std::to_double(in);
@@ -364,33 +416,53 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<
         return (scalarD)std::to_double(in);
       });
       qpOASES::int_t nWSR=10000;
-      qpOASES::SQProblem prob(g.size(),0);
-      prob.init(hAdjusted.data(),gAdjusted.data(),NULL,ld.data(),ud.data(),NULL,NULL,nWSR);
+      qpOASES::SQProblem prob(g.size(),c.size());
+      if(c.size()>0)
+        prob.init(hAdjusted.data(),gAdjusted.data(),cjacd.data(),ld.data(),ud.data(),cld.data(),NULL,nWSR);
+      else prob.init(hAdjusted.data(),gAdjusted.data(),NULL,ld.data(),ud.data(),NULL,NULL,nWSR);
       if(!prob.isSolved()) {
-        if(callback) {
+        if(ops._callback) {
           INFOV("Iter=%d failed(qpOASES failed)",it)
         }
+        break;
       } else {
         d.resize(x.size());
         prob.getPrimalSolution(d.data());
-        //T moveBase=std::sqrt(d.segment<3>(0).squaredNorm());
-        //if(moveBase>_rad)
-        //  d*=std::to_double(_rad/moveBase);
       }
     }
+    //termination & callback
+    dNorm=d.norm();
+    cNorm=-c.cwiseMin(0).sum();
+    if(dNorm<ops._thres && cNorm<ops._thres) {
+      if(ops._callback) {
+        INFOV("Iter=%d succeed(dNorm=%f<thres=%f,cNorm=%f<thres=%f)",it,std::to_double(dNorm),std::to_double(ops._thres),std::to_double(cNorm),std::to_double(ops._thres))
+      }
+      break;
+    } else if(ops._callback) {
+      INFOV("Iter=%d E=%f dNorm=%f cNorm=%f alpha=%f rho=%f",it,std::to_double(e),std::to_double(dNorm),std::to_double(cNorm),std::to_double(alpha),std::to_double(rho))
+    }
+    //merit-function parameter
+    if(c.size()>0) {
+      T D=d.template cast<T>().dot(g);//+0.5f*d.dot(hAdjusted*d);
+      if(D>0)
+        rho=std::max(rho,D/((1-gamma)*cNorm));
+      //replace g with directional derivative
+      for(sizeType i=0; i<c.size(); i++)
+        if(c[i]<0)
+          g-=cjac.row(i).transpose()*rho;
+    }
     //line search
-    while(alpha>alphaThres) {
+    m=e+cNorm*rho;
+    ops._useGJK=true;
+    while(alpha>ops._alphaThres) {
       xTmp=x+d.template cast<T>()*alpha;
-      PBDArticulatedGradientInfo<T> info(_body,_A*xTmp+_b);
-      bool valid=true;
-      E2=0;
-      G.setZero(3,_body.nrJ()*4);
-      for(sizeType i=0; i<(sizeType)objs.size() && valid; i++)
-        if(objs[i]->operator()(info,E2,NULL,NULL)<0) {
-          valid=false;
-          break;
-        }
-      if(!valid || E2>=E+g.dot(d.template cast<T>())*alpha*coefWolfe) {
+      if(!assemble(xTmp,info,false,objs,e2,NULL,NULL,&c2)) {
+        alpha*=alphaDec;
+        continue;
+      }
+      cNorm2=-c2.cwiseMin(0).sum();
+      m2=e2+cNorm2*rho;
+      if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
         alpha*=alphaDec;
         continue;
       } else {
@@ -399,23 +471,130 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<
         break;
       }
     }
-    if(alpha<alphaThres) {
-      if(callback) {
-        INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(alphaThres))
+    ops._useGJK=tmpUseGJK;
+    if(alpha<ops._alphaThres) {
+      if(ops._callback) {
+        INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(ops._alphaThres))
       }
       break;
     }
     //update plane
-    {
-      PBDArticulatedGradientInfo<T> info(_body,_A*x+_b);
-      for(sizeType i=0; i<(sizeType)objs.size(); i++) {
-        LogBarrierSelfEnergy<T>* ESelf=dynamic_cast<LogBarrierSelfEnergy<T>*>(objs[i].get());
-        if(ESelf)
-          ESelf->updatePlanes(info);
-      }
+    for(sizeType i=0; i<(sizeType)objs.size(); i++) {
+      LogBarrierSelfEnergy<T>* ESelf=dynamic_cast<LogBarrierSelfEnergy<T>*>(objs[i].get());
+      if(ESelf)
+        ESelf->updatePlanes(info);
     }
   }
   return x;
+}
+template <typename T>
+bool GraspPlanner<T>::assemble(Vec x,PBDArticulatedGradientInfo<T>& info,bool update,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,T& e,Vec* g,MatT* h,Vec* c,MatT* cjac) const
+{
+  x=_A*x+_b;
+  info.reset(_body,x);
+  sizeType nCons=nrCons(objs),nDOF=_body.nrDOF();
+  ParallelMatrix<Mat3XT> G;
+  ParallelMatrix<Mat12XT> H;
+  ParallelMatrix<T> E(0);
+  if(g) {
+    G.assign(Mat3XT::Zero(3,_body.nrJ()*4));
+    g->setZero(x.size());
+  }
+  if(h) {
+    H.assign(Mat12XT::Zero(12,_body.nrJ()*12));
+    h->setZero(x.size(),x.size());
+  }
+  bool valid=true;
+  for(sizeType i=0,offC=nDOF; i<(sizeType)objs.size() && valid; i++) {
+    objs[i]->setUpdateCache(update);
+    if(objs[i]->operator()(x,info,offC,E,g?&G:NULL,h?&H:NULL,g,h)<0) {
+      valid=false;
+      break;
+    }
+    offC+=objs[i]->nrAdditionalDOF();
+  }
+  if(!valid)
+    return false;
+  //assemble body gradient / hessian
+  Mat3XT tmpG;
+  Mat12XT tmpH;
+  e=E.getValue();
+  if(g) {
+    tmpG=G.getMatrix();
+    info.DTG(_body,mapM(tmpG),mapV(*g));
+    *g=_A.transpose()**g;
+  }
+  if(h) {
+    tmpH=H.getMatrix();
+    Eigen::Map<const MatT,0,Eigen::OuterStride<>> HMap(tmpH.data(),tmpH.rows(),tmpH.cols(),tmpH.outerStride());
+    info.toolAB(_body,HMap,mapM(tmpG=G.getMatrix()),mapM(*h));
+    *h=_A.transpose()*(*h*_A);
+  }
+  //assemble constraint (jacobian)
+  if(c || cjac) {
+    if(c)
+      c->setZero(nCons);
+    if(cjac)
+      cjac->setZero(nCons,x.size());
+    if(nCons>0)
+      for(sizeType i=0,offR=0,offC=nDOF; i<(sizeType)objs.size(); i++) {
+        objs[i]->setUpdateCache(update);
+        objs[i]->cons(x,info,offR,offC,*c,cjac);
+        offC+=objs[i]->nrAdditionalDOF();
+        offR+=objs[i]->nrCons();
+      }
+    if(cjac)
+      *cjac*=_A;
+  }
+  return true;
+}
+template <typename T>
+void GraspPlanner<T>::debugSystem(const Vec& x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs) const
+{
+  DEFINE_NUMERIC_DELTA_T(T)
+  Vec dx=Vec::Random(x.size());
+  PBDArticulatedGradientInfo<T> info;
+  //first evaluate
+  T e;
+  Vec g,c;
+  MatT h,cjac;
+  assemble(x,info,true,objs,e,&g,&h,&c,&cjac);
+  //second evaluate
+  T e2;
+  Vec g2,c2;
+  assemble(x+dx*DELTA,info,false,objs,e2,&g2,NULL,&c2,NULL);
+  //compare
+  DEBUG_GRADIENT("GraspPlanner-G",g.dot(dx),g.dot(dx)-(e2-e)/DELTA)
+  DEBUG_GRADIENT("GraspPlanner-H",std::sqrt((h*dx).squaredNorm()),std::sqrt((h*dx-(g2-g)/DELTA).squaredNorm()))
+  if(nrCons(objs)>0) {
+    DEBUG_GRADIENT("GraspPlanner-CJac",std::sqrt((cjac*dx).squaredNorm()),std::sqrt((cjac*dx-(c2-c)/DELTA).squaredNorm()))
+  }
+}
+template <typename T>
+sizeType GraspPlanner<T>::nrAdditionalDOF(std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs) const
+{
+  sizeType ret=0;
+  for(sizeType i=0; i<(sizeType)objs.size(); i++)
+    ret+=objs[i]->nrAdditionalDOF();
+  return ret;
+}
+template <typename T>
+sizeType GraspPlanner<T>::nrCons(std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs) const
+{
+  sizeType ret=0;
+  for(sizeType i=0; i<(sizeType)objs.size(); i++)
+    ret+=objs[i]->nrCons();
+  return ret;
+}
+template <typename T>
+const typename GraspPlanner<T>::MatT& GraspPlanner<T>::A() const
+{
+  return _A;
+}
+template <typename T>
+const typename GraspPlanner<T>::Vec& GraspPlanner<T>::b() const
+{
+  return _b;
 }
 template <typename T>
 T GraspPlanner<T>::area() const
@@ -427,87 +606,27 @@ T GraspPlanner<T>::rad() const
 {
   return _rad;
 }
-//ArticulatedObjective
 template <typename T>
-ArticulatedObjective<T>::ArticulatedObjective(const GraspPlanner<T>& planner,const GraspQualityMetric<T>& obj):_planner(planner),_obj(obj) {}
-template <typename T>
-int ArticulatedObjective<T>::operator()(const Vec& x,T& e,Vec* g,MatT* h)
+bool GraspPlanner<T>::validSample(sizeType l,const PBDArticulatedGradientInfo<T>& info,const Vec3T& p) const
 {
-  PBDArticulatedGradientInfo<T> info(_planner.body(),x.segment(0,_planner.body().nrDOF()));
-  Mat3XT G,tmpG;
-  MatT H,tmpH;
-  if(g)
-    G.setZero(3,_planner.body().nrJ()*4);
-  if(h)
-    H.setZero(12,_planner.body().nrJ()*12);
-  int ret=operator()(info,e,g?&G:NULL,h?&H:NULL);
-  if(ret<0)
-    return ret;
-  if(g)
-    info.DTG(_planner.body(),mapM(tmpG=G),mapV(*g));
-  if(h)
-    info.toolAB(_planner.body(),mapCM(tmpH=H),mapM(tmpG=G),mapM(h));
-  return ret;
-}
-template <typename T>
-void ArticulatedObjective<T>::debug(const Vec& x)
-{
-  sizeType nDOF=_planner.body().nrDOF();
-  DEFINE_NUMERIC_DELTA_T(T)
-  T e=0,e2=0;
-  MatT h=MatT::Zero(nDOF,nDOF);
-  Vec g=Vec::Zero(nDOF),g2=Vec::Zero(nDOF);
-  Vec dx=Vec::Random(nDOF);
-  if(operator()(x,e,&g,&h)<0) {
-    std::ostringstream oss;
-    for(sizeType i=0; i<x.size(); i++)
-      oss << x[i] << " ";
-    WARNINGV("Invalid debug position (x=%s)",oss.str().c_str())
-    return;
+  Vec3T n,normal;
+  Mat3T hessian;
+  Vec2i feat;
+  for(sizeType i=0; i<_body.nrJ(); i++) {
+    ASSERT_MSG(l>=0 && l<_body.nrJ(),"Invalid joint id")
+    if(_body.joint(i)._parent!=l && _body.joint(l)._parent!=i)
+      continue;
+    Vec3T pi=ROTI(info._TM,i).transpose()*(p-CTRI(info._TM,i));
+    if(!_distExact[i]->empty() && _distExact[i]->template closest<T>(pi,n,normal,hessian,feat)<=0)
+      return false;
   }
-  operator()(x+dx*DELTA,e2,&g2);
-  DEBUG_GRADIENT("ArticulatedObjective-G",g.dot(dx),g.dot(dx)-(e2-e)/DELTA)
-  DEBUG_GRADIENT("ArticulatedObjective-H",std::sqrt((h*dx).squaredNorm()),std::sqrt((h*dx-(g2-g)/DELTA).squaredNorm()))
-}
-template <typename T>
-std::vector<KDOP18<scalar>> ArticulatedObjective<T>::updateBVH(const PBDArticulatedGradientInfo<T>& info) const
-{
-  const std::vector<Node<std::shared_ptr<StaticGeomCell>,BBox<scalar>>>& bvhHand=_planner.body().getGeom().getBVH();
-  std::vector<KDOP18<scalar>> ret(bvhHand.size());
-  for(sizeType i=0; i<(sizeType)bvhHand.size(); i++)
-    if(bvhHand[i]._cell) {
-      Vec3 pos;
-      BBox<scalar> bb;
-      Mat3 R=ROTI(info._TM,i).unaryExpr([&](const T& in) {
-        return (scalar)std::to_double(in);
-      });
-      Vec3 t=CTRI(info._TM,i).unaryExpr([&](const T& in) {
-        return (scalar)std::to_double(in);
-      });
-      for(sizeType x=0; x<2; x++) {
-        pos[0]=x==0?bvhHand[i]._bb._minC[0]:bvhHand[i]._bb._maxC[0];
-        for(sizeType y=0; y<2; y++) {
-          pos[1]=y==0?bvhHand[i]._bb._minC[1]:bvhHand[i]._bb._maxC[1];
-          for(sizeType z=0; z<2; z++) {
-            pos[2]=z==0?bvhHand[i]._bb._minC[2]:bvhHand[i]._bb._maxC[2];
-            ret[i].setUnion(R*pos+t);
-          }
-        }
-      }
-    } else {
-      ret[i]=ret[bvhHand[i]._l];
-      ret[i].setUnion(ret[bvhHand[i]._r]);
-    }
-  return ret;
+  return true;
 }
 //instance
 PRJ_BEGIN
 template class GraspPlanner<double>;
-template class ArticulatedObjective<double>;
 #ifdef ALL_TYPES
 template class GraspPlanner<__float128>;
-template class ArticulatedObjective<__float128>;
 template class GraspPlanner<mpfr::mpreal>;
-template class ArticulatedObjective<mpfr::mpreal>;
 #endif
 PRJ_END

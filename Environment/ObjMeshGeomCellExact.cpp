@@ -73,7 +73,7 @@ bool ObjMeshGeomCellExact::empty() const
 {
   return _bvh.empty();
 }
-bool ObjMeshGeomCellExact::closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,Vec2i& feat) const
+bool ObjMeshGeomCellExact::closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,Vec2i& feat,bool,std::vector<PT,Eigen::aligned_allocator<PT>>*) const
 {
   Vec2i featTmp;
   PT cp,cpTmp,bTmp;
@@ -99,6 +99,8 @@ bool ObjMeshGeomCellExact::closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,V
       //make feature id Unique
       if(featTmp[1]>=0 && featTmp[0]>featTmp[1])
         std::swap(featTmp[0],featTmp[1]);
+      else if(featTmp[0]==-1)
+        featTmp[1]=node._cell;
       //update distance
       if(featTmp[0]>=0 && feat==featTmp) {
         //update due to same feature

@@ -8,15 +8,20 @@ typedef double T;
 typedef GraspQualityMetric<T>::Vec Vec;
 int main(int argn,char** argc)
 {
-  ASSERT_MSG(argn==4,"mainGraspQuality: [ObjMesh path] [radius of disk] [scale]")
+  ASSERT_MSG(argn>=4,"mainGraspQuality: [ObjMesh path] [radius of disk] [scale] [scaleY]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   T scale=std::atof(argc[3]);
+  T scaleY=std::atof(argn>4?argc[4]:argc[3]);
 
   ObjMesh m;
-  if(beginsWith(path,"cube")) {
+  if(beginsWith(path,"cube"))
     MakeMesh::makeBox3D(m,Vec3::Constant(scale));
-  } else {
+  else if(beginsWith(path,"sphere"))
+    MakeMesh::makeSphere3D(m,scale,16);
+  else if(beginsWith(path,"cylinder"))
+    MakeMesh::makeCylinder3D(m,scale,scaleY,16);
+  else {
     std::ifstream is(path.c_str());
     m.read(is,false,false);
     scale/=m.getBB().getExtent().maxCoeff();

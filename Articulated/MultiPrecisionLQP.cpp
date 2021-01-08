@@ -25,6 +25,7 @@ struct MultiPrecisionLQPTraits<double>
     REGISTER_FLOAT_TYPE("c2",MultiPrecisionLQP<double>,double,t._c2)
 
     REGISTER_BOOL_TYPE("callback",MultiPrecisionLQP<double>,bool,t._callback)
+    REGISTER_BOOL_TYPE("forceSPD",MultiPrecisionLQP<double>,bool,t._forceSPD)
     REGISTER_BOOL_TYPE("highPrec",MultiPrecisionLQP<double>,bool,t._highPrec)
     REGISTER_INT_TYPE("maxIter",MultiPrecisionLQP<double>,sizeType,t._maxIter)
   }
@@ -46,6 +47,7 @@ struct MultiPrecisionLQPTraits<double>
     sol._c2=1.0f;
 
     sol._callback=true;
+    sol._forceSPD=true;
     sol._highPrec=true;
     sol._maxIter=10000;
   }
@@ -71,6 +73,7 @@ struct MultiPrecisionLQPTraits<__float128>
     REGISTER_FLOAT128_TYPE("c2",MultiPrecisionLQP<__float128>,__float128,t._c2)
 
     REGISTER_BOOL_TYPE("callback",MultiPrecisionLQP<__float128>,bool,t._callback)
+    REGISTER_BOOL_TYPE("forceSPD",MultiPrecisionLQP<__float128>,bool,t._forceSPD)
     REGISTER_BOOL_TYPE("highPrec",MultiPrecisionLQP<__float128>,bool,t._highPrec)
     REGISTER_INT_TYPE("maxIter",MultiPrecisionLQP<__float128>,sizeType,t._maxIter)
   }
@@ -92,6 +95,7 @@ struct MultiPrecisionLQPTraits<__float128>
     sol._c2=1.0f;
 
     sol._callback=true;
+    sol._forceSPD=true;
     sol._highPrec=false;
     sol._maxIter=10000;
   }
@@ -117,6 +121,7 @@ struct MultiPrecisionLQPTraits<mpfr::mpreal>
     REGISTER_MPFR_TYPE("c2",MultiPrecisionLQP<mpfr::mpreal>,mpfr::mpreal,t._c2)
 
     REGISTER_BOOL_TYPE("callback",MultiPrecisionLQP<mpfr::mpreal>,bool,t._callback)
+    REGISTER_BOOL_TYPE("forceSPD",MultiPrecisionLQP<mpfr::mpreal>,bool,t._forceSPD)
     REGISTER_BOOL_TYPE("highPrec",MultiPrecisionLQP<mpfr::mpreal>,bool,t._highPrec)
     REGISTER_INT_TYPE("maxIter",MultiPrecisionLQP<mpfr::mpreal>,sizeType,t._maxIter)
   }
@@ -138,6 +143,7 @@ struct MultiPrecisionLQPTraits<mpfr::mpreal>
     sol._c2=1.0f;
 
     sol._callback=true;
+    sol._forceSPD=true;
     sol._highPrec=false;
     sol._maxIter=10000;
   }
@@ -190,7 +196,7 @@ typename MultiPrecisionLQP<T>::Vec MultiPrecisionLQP<T>::solve(bool& succ,const 
   }
   //main loop
   for(sizeType it=0;; it++) {
-    f=computeFGH(mu,w,&g,&h);
+    f=computeFGH(mu,w,&g,&h,_forceSPD);
     vio=std::sqrt(g.squaredNorm());
     if(mu==_muFinal && vio<_tolGFinal) {
       if(_callback) {
@@ -201,19 +207,9 @@ typename MultiPrecisionLQP<T>::Vec MultiPrecisionLQP<T>::solve(bool& succ,const 
       break;
     }
     //newton
-    if(vio>_tolGFirstOrder)
-      dx=-g;
-    else {
-      bool succ=false;
-      while(!succ) {
-        if(_H.size()==0)
-          succ=SolveNewtonLP<T>::solveNewton(mu,w,g,dx,_foot);
-        else succ=SolveNewton<T>::solveNewton(h,g,dx,_highPrec);
-        if(!succ)
-          h+=MatT::Identity(_H.rows(),_H.cols())*_H.diagonal().unaryExpr([&](const T& in) {
-          return (T)std::abs(in);
-        }).maxCoeff();
-      }
+    if(!solveDx(vio,mu,w,dx,h,g)) {
+      std::cout << "Iteration " << it << ": solver failed" << std::endl;
+      return w;
     }
     //limit alpha
     limitAlpha(alpha,w,dx);
@@ -315,7 +311,7 @@ void MultiPrecisionLQP<T>::debugGradient()
   while(true) {
     DMat h,ih;
     Vec w=sampleValidW(),g,g2,dw=Vec::Random(_c.size());
-    T f=computeFGH(_muInit,w,&g,&h);
+    T f=computeFGH(_muInit,w,&g,&h,false);
     T f2=computeFGH(_muInit,w+dw*DELTA,&g2);
     if(!std::isfinite(f))
       continue;
@@ -386,7 +382,7 @@ void MultiPrecisionLQP<T>::readAndTestProb(const std::string& path)
   solve(succ);
 }
 template <typename T>
-T MultiPrecisionLQP<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h) const
+T MultiPrecisionLQP<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h,bool) const
 {
   Vec Hw;
   if(_H.size()==0)
@@ -456,6 +452,19 @@ void MultiPrecisionLQP<T>::limitAlpha(T& alpha,const Vec& w,const Vec& dx) const
     if(dxSum>0)
       alpha=std::min(alpha,(1-wSeg.sum()-_margin)/dxSum);
   }
+}
+template <typename T>
+bool MultiPrecisionLQP<T>::solveDx(T vio,T mu,const Vec& w,Vec& dx,const DMat& h,const Vec& g) const
+{
+  bool succ=true;
+  if(vio>_tolGFirstOrder)
+    dx=-g;
+  else {
+    if(_H.size()==0)
+      succ=SolveNewtonLP<T>::solveNewton(mu,w,g,dx,_foot);
+    else succ=SolveNewton<T>::solveNewton(h,g,dx,_highPrec);
+  }
+  return succ;
 }
 //instance
 template class MultiPrecisionLQP<double>;

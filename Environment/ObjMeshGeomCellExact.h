@@ -21,9 +21,9 @@ struct ALIGN_16 ObjMeshGeomCellExact : public SerializableBase
   virtual std::string type() const override;
   const BBoxExact& getBB() const;
   bool empty() const;
-  virtual bool closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,Vec2i& feat) const;
+  virtual bool closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,Vec2i& feat,bool cache=false,std::vector<PT,Eigen::aligned_allocator<PT>>* history=NULL) const;
   template <typename T2>
-  T2 closest(const Eigen::Matrix<T2,3,1>& pt,Eigen::Matrix<T2,3,1>& n,Eigen::Matrix<T2,3,1>& normal,Eigen::Matrix<T2,3,3>& hessian,Vec2i& feat) const
+  T2 closest(const Eigen::Matrix<T2,3,1>& pt,Eigen::Matrix<T2,3,1>& n,Eigen::Matrix<T2,3,1>& normal,Eigen::Matrix<T2,3,3>& hessian,Vec2i& feat,bool cache=false,std::vector<Eigen::Matrix<T2,3,1>,Eigen::aligned_allocator<Eigen::Matrix<T2,3,1>>>* history=NULL) const
   {
     bool inside;
     MAT3 hessianR;
@@ -32,7 +32,14 @@ struct ALIGN_16 ObjMeshGeomCellExact : public SerializableBase
       castRational(t,ret);
       return ret;
     }),nR,normalR;
-    inside=closest(ptR,nR,normalR,hessianR,feat);
+    std::vector<PT,Eigen::aligned_allocator<PT>> historyT2;
+    inside=closest(ptR,nR,normalR,hessianR,feat,cache,history?&historyT2:NULL);
+    if(history) {
+      history->resize(historyT2.size());
+      for(sizeType i=0; i<(sizeType)history->size(); i++)
+        history->at(i)=castRational<Eigen::Matrix<T2,3,1>,PT>(historyT2[i]);
+    }
+    inside=closest(ptR,nR,normalR,hessianR,feat,cache,history?&historyT2:NULL);
     //cast
     n=castRational<Eigen::Matrix<T2,3,1>,PT>(nR);
     normal=castRational<Eigen::Matrix<T2,3,1>,PT>(normalR);
@@ -54,8 +61,8 @@ struct ALIGN_16 ObjMeshGeomCellExact : public SerializableBase
     }
     return nLen;
   }
-  void writePointDistVTK(const std::string& path,sizeType res=10) const;
-  void debugPointDist(sizeType nrIter=100) const;
+  virtual void writePointDistVTK(const std::string& path,sizeType res=10) const;
+  virtual void debugPointDist(sizeType nrIter=100) const;
   ObjMesh getMesh() const;
 protected:
   ALIGN_16 std::vector<TriangleExact> _tss;

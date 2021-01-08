@@ -23,7 +23,6 @@ template <typename T>
 struct SolveNewton
 {
   DECL_MAP_TYPES_T
-  typedef Eigen::Matrix<double,-1,-1> Matd;
 public:
   template <typename RHS>
   static bool solveLU(const DMat& h,const RHS& g,RHS& dx,bool highPrec) {
@@ -35,26 +34,11 @@ public:
       LUPSolve<RHS>(LU,P,dx=-g);
       return true;
     } else {
-      return solveRefinement<Eigen::PartialPivLU<Matd>,RHS>(h,g,dx);
+      return solveRefinementLU<RHS>(h,g,dx);
     }
   }
   template <typename RHS>
-  static bool solveNewton(const DMat& h,const RHS& g,RHS& dx,bool highPrec) {
-    if(highPrec==1) {
-      dx=-g;
-      DMat hTmp=h;
-      LTDL(hTmp);
-      for(sizeType i=0; i<hTmp.rows(); i++)
-        if(hTmp(i,i)<=0)
-          return false;
-      LTDLSolve<RHS>(hTmp,dx);
-      return true;
-    } else {
-      return solveRefinement<Eigen::LDLT<Matd>,RHS>(h,g,dx);
-    }
-  }
-  template <typename FACTOR,typename RHS>
-  static bool solveRefinement(const DMat& h,const RHS& g,RHS& dx)
+  static bool solveRefinementLU(const DMat& h,const RHS& g,RHS& dx)
   {
     //scale
     T maxG=0,maxH=0;
@@ -75,13 +59,63 @@ public:
     if(maxG>0) {
       //factorize low-precision
       Matd hL=(h/maxH).unaryExpr([&](const T& in) {
-        return (double)std::to_double(in);
+        return (scalarD)std::to_double(in);
       });
-      FACTOR factor(hL);
+      Eigen::PartialPivLU<Matd> factor(hL);
       //solve low-precision
       dx=-g/maxG;
       dx=factor.solve(dx.unaryExpr([&](const T& in) {
-        return (double)std::to_double(in);
+        return (scalarD)std::to_double(in);
+      })).template cast<T>()*(maxG/maxH);
+    } else dx.setZero(g.rows(),g.cols());
+    return true;
+  }
+  template <typename RHS>
+  static bool solveNewton(const DMat& h,const RHS& g,RHS& dx,bool highPrec) {
+    if(highPrec==1) {
+      dx=-g;
+      DMat hTmp=h;
+      LTDL(hTmp);
+      for(sizeType i=0; i<hTmp.rows(); i++)
+        if(hTmp(i,i)<=0)
+          return false;
+      LTDLSolve<RHS>(hTmp,dx);
+      return true;
+    } else {
+      return solveRefinementNewton<RHS>(h,g,dx);
+    }
+  }
+  template <typename RHS>
+  static bool solveRefinementNewton(const DMat& h,const RHS& g,RHS& dx)
+  {
+    //scale
+    T maxG=0,maxH=0;
+    for(sizeType i=0; i<g.size(); i++) {
+      //g
+      for(sizeType j=0; j<g.cols(); j++) {
+        T gAbs=std::abs(g(i,j));
+        if(gAbs>maxG)
+          maxG=gAbs;
+      }
+      //h
+      for(sizeType j=0; j<h.cols(); j++) {
+        T hAbs=std::abs(h(i,j));
+        if(hAbs>maxH)
+          maxH=hAbs;
+      }
+    }
+    if(maxG>0) {
+      //factorize low-precision
+      Matd hL=(h/maxH).unaryExpr([&](const T& in) {
+        return (scalarD)std::to_double(in);
+      });
+      Eigen::LDLT<Matd> factor(hL);
+      if(factor.info()!=Eigen::Success)
+        return false;
+      //solve low-precision
+      dx=-g/maxG;
+      dx=factor.solve(dx.unaryExpr([&](const T& in) {
+        return (scalarD)std::to_double(in);
       })).template cast<T>()*(maxG/maxH);
     } else dx.setZero(g.rows(),g.cols());
     return true;
@@ -201,7 +235,6 @@ template <typename T>
 struct SolveNewtonLP
 {
   DECL_MAP_TYPES_T
-  typedef Eigen::Matrix<double,-1,-1> Matd;
 public:
   template <typename RHS>
   static bool solveNewton(T mu,const Vec& w,const RHS& g,RHS& dx,const Coli& foot) {
@@ -225,9 +258,9 @@ public:
   }
 };
 template <>
-struct SolveNewton<double>
+struct SolveNewton<scalarD>
 {
-  typedef double T;
+  typedef scalarD T;
   DECL_MAP_TYPES_T
 public:
   template <typename RHS>
@@ -281,11 +314,12 @@ public:
   sizeType maxIter() const;
   void writeProb(const std::string& path) const;
   void readAndTestProb(const std::string& path);
-  virtual T computeFGH(T mu,const Vec& w,Vec* g=NULL,DMat* h=NULL) const;
+  virtual T computeFGH(T mu,const Vec& w,Vec* g=NULL,DMat* h=NULL,bool forceSPD=true) const;
 protected:
   virtual void initialGuess(Vec& w) const;
   virtual void printConstraints(const Vec& w) const;
   virtual void limitAlpha(T& alpha,const Vec& w,const Vec& dx) const;
+  virtual bool solveDx(T vio,T mu,const Vec& w,Vec& dx,const DMat& h,const Vec& g) const;
   //data
   Coli _foot;
   DMat _H;
@@ -295,7 +329,7 @@ protected:
   T _alphaInc,_alphaDec,_tolAlpha;
   T _tolG,_tolGFinal,_tolGFirstOrder;
   T _c1,_c2;    //Wolfe-Condition
-  bool _callback,_highPrec;
+  bool _callback,_forceSPD,_highPrec;
   sizeType _maxIter;
 };
 

@@ -15,17 +15,18 @@ class GraspQualityMetric : public SerializableBase
 public:
   DECL_MAP_TYPES_T
   GraspQualityMetric();
-  void reset(ObjMesh& obj,T rad,sizeType dRes=4,const Mat6T& M=Mat6T::Identity(),T mu=0.7f);
+  void reset(ObjMesh& obj,T rad,sizeType dRes=4,const Mat6T& M=Mat6T::Identity(),T mu=0.1f,bool torque=false);
   bool read(std::istream& is,IOData* dat) override;
   bool write(std::ostream& os,IOData* dat) const override;
   std::shared_ptr<SerializableBase> copy() const override;
   std::string type() const override;
-  void writeVTK(const std::string& path,T len) const;
   const std::vector<Node<sizeType,BBox<scalar>>>& getBVH() const;
-  T computeQInfMean(const Vec& w,Vec* g=NULL) const;
+  void writeVTK(const std::string& path,T len,T normalExtrude=0) const;
+  T computeQInfBarrier(const Vec& w,T r,T d0,Vec* g=NULL) const;
   T computeQInf(const Vec& w,Vec* g=NULL) const;
   T computeQ1(const Vec& w,Vec* g=NULL) const;
   const ObjMeshGeomCellExact& dist() const;
+  Mat3XT pss(T normalExtrude) const;
   const Mat3XT& pss() const;
   const Mat3XT& nss() const;
   const MatT& gij() const;
