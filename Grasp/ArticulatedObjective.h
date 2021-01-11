@@ -29,7 +29,7 @@ public:
   virtual sizeType nrAdditionalDOF() const;
   virtual sizeType nrCons() const;
   virtual std::string name() const=0;
-  void debug(Vec x);
+  void debug(Vec x,T deltaCustom=0);
 protected:
   std::vector<KDOP18<scalar>> updateBVH(const PBDArticulatedGradientInfo<T>& info) const;
   const GraspPlanner<T>& _planner;

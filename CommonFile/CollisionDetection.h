@@ -281,6 +281,7 @@ public:
   bool read(std::istream& is);
   bool closest(const PT& pt,PT& n,PT* normal) const;
   bool intersect(const PT& a,const PT& b) const;
+  T distTo(const Sphere<T>& other) const;
   //data
   ALIGN_16 PT _ctr;
   ALIGN_16 T _rad;

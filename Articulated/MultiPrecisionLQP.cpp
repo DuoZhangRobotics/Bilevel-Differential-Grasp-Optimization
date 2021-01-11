@@ -5,31 +5,31 @@ PRJ_BEGIN
 
 //parameters
 template <>
-struct MultiPrecisionLQPTraits<double>
+struct MultiPrecisionLQPTraits<scalarD>
 {
   static void registerOptions(Options& ops)
   {
-    REGISTER_FLOAT_TYPE("muInit",MultiPrecisionLQP<double>,double,t._muInit)
-    REGISTER_FLOAT_TYPE("muDec",MultiPrecisionLQP<double>,double,t._muDec)
-    REGISTER_FLOAT_TYPE("muFinal",MultiPrecisionLQP<double>,double,t._muFinal)
-    REGISTER_FLOAT_TYPE("margin",MultiPrecisionLQP<double>,double,t._margin)
+    REGISTER_FLOAT_TYPE("muInit",MultiPrecisionLQP<scalarD>,scalarD,t._muInit)
+    REGISTER_FLOAT_TYPE("muDec",MultiPrecisionLQP<scalarD>,scalarD,t._muDec)
+    REGISTER_FLOAT_TYPE("muFinal",MultiPrecisionLQP<scalarD>,scalarD,t._muFinal)
+    REGISTER_FLOAT_TYPE("margin",MultiPrecisionLQP<scalarD>,scalarD,t._margin)
 
-    REGISTER_FLOAT_TYPE("alphaInc",MultiPrecisionLQP<double>,double,t._alphaInc)
-    REGISTER_FLOAT_TYPE("alphaDec",MultiPrecisionLQP<double>,double,t._alphaDec)
-    REGISTER_FLOAT_TYPE("tolAlpha",MultiPrecisionLQP<double>,double,t._tolAlpha)
+    REGISTER_FLOAT_TYPE("alphaInc",MultiPrecisionLQP<scalarD>,scalarD,t._alphaInc)
+    REGISTER_FLOAT_TYPE("alphaDec",MultiPrecisionLQP<scalarD>,scalarD,t._alphaDec)
+    REGISTER_FLOAT_TYPE("tolAlpha",MultiPrecisionLQP<scalarD>,scalarD,t._tolAlpha)
 
-    REGISTER_FLOAT_TYPE("tolG",MultiPrecisionLQP<double>,double,t._tolG)
-    REGISTER_FLOAT_TYPE("tolGFinal",MultiPrecisionLQP<double>,double,t._tolGFinal)
-    REGISTER_FLOAT_TYPE("tolGFirstOrder",MultiPrecisionLQP<double>,double,t._tolGFirstOrder)
-    REGISTER_FLOAT_TYPE("c1",MultiPrecisionLQP<double>,double,t._c1)
-    REGISTER_FLOAT_TYPE("c2",MultiPrecisionLQP<double>,double,t._c2)
+    REGISTER_FLOAT_TYPE("tolG",MultiPrecisionLQP<scalarD>,scalarD,t._tolG)
+    REGISTER_FLOAT_TYPE("tolGFinal",MultiPrecisionLQP<scalarD>,scalarD,t._tolGFinal)
+    REGISTER_FLOAT_TYPE("tolGFirstOrder",MultiPrecisionLQP<scalarD>,scalarD,t._tolGFirstOrder)
+    REGISTER_FLOAT_TYPE("c1",MultiPrecisionLQP<scalarD>,scalarD,t._c1)
+    REGISTER_FLOAT_TYPE("c2",MultiPrecisionLQP<scalarD>,scalarD,t._c2)
 
-    REGISTER_BOOL_TYPE("callback",MultiPrecisionLQP<double>,bool,t._callback)
-    REGISTER_BOOL_TYPE("forceSPD",MultiPrecisionLQP<double>,bool,t._forceSPD)
-    REGISTER_BOOL_TYPE("highPrec",MultiPrecisionLQP<double>,bool,t._highPrec)
-    REGISTER_INT_TYPE("maxIter",MultiPrecisionLQP<double>,sizeType,t._maxIter)
+    REGISTER_BOOL_TYPE("callback",MultiPrecisionLQP<scalarD>,bool,t._callback)
+    REGISTER_BOOL_TYPE("forceSPD",MultiPrecisionLQP<scalarD>,bool,t._forceSPD)
+    REGISTER_BOOL_TYPE("highPrec",MultiPrecisionLQP<scalarD>,bool,t._highPrec)
+    REGISTER_INT_TYPE("maxIter",MultiPrecisionLQP<scalarD>,sizeType,t._maxIter)
   }
-  static void initOptions(MultiPrecisionLQP<double>& sol)
+  static void initOptions(MultiPrecisionLQP<scalarD>& sol)
   {
     sol._muInit=1e-1f;
     sol._muDec=0.1f;
@@ -357,10 +357,10 @@ void MultiPrecisionLQP<T>::writeProb(const std::string& path) const
   std::ofstream os(path,std::ios::binary);
   writeBinaryData(_foot,os);
   Matd H=_H.unaryExpr([&](const T& in) {
-    return (double)std::to_double(in);
+    return (scalarD)std::to_double(in);
   });
   Cold c=_c.unaryExpr([&](const T& in) {
-    return (double)std::to_double(in);
+    return (scalarD)std::to_double(in);
   });
   writeBinaryData(H,os);
   writeBinaryData(c,os);

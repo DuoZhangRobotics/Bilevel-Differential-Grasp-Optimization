@@ -1,4 +1,5 @@
 #include <Grasp/GraspPlanner.h>
+#include <Grasp/PrimalDualQInfMetricEnergyFGT.h>
 #include <Grasp/PrimalDualQInfMetricEnergy.h>
 #include <Grasp/CentroidClosednessEnergy.h>
 #include <Grasp/ObjectClosednessEnergy.h>
@@ -65,6 +66,7 @@ int main(int argn,char** argc)
   MetricEnergy<T>(planner,obj,0,0.1f,10,Q_INF,SQR_EXP_ACTIVATION,1).debug(x0);
   MetricEnergy<T>(planner,obj,0,0.1f,10,Q_INF_BARRIER,SQR_EXP_ACTIVATION,1).debug(x0);
   PrimalDualQInfMetricEnergy<T>(planner,obj,0.1f,10,SQR_EXP_ACTIVATION,1).debug(x0);
+  PrimalDualQInfMetricEnergyFGT<T>(planner,obj,0.1f,10,1).debug(x0,1e-3f);
   CentroidClosednessEnergy<T>(planner,obj,10).debug(x0);
   ObjectClosednessEnergy<T>(planner,obj,10).debug(x0);
   LogBarrierObjEnergy<T>(planner,obj,0.1,10,false).debug(x0);

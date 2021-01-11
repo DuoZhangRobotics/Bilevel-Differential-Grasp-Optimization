@@ -24,6 +24,7 @@ struct GraspPlannerParameter
   scalarD _alpha;
   sizeType _metric,_activation;
   scalarD _normalExtrude;
+  scalarD _FGTThres;
   scalarD _coefM;
   scalarD _coefOC;
   scalarD _coefCC;

@@ -7,35 +7,38 @@
 #include <CommonFile/ParallelPoissonDiskSampling.h>
 #include <Environment/ObjMeshGeomCellExact.h>
 #include <Environment/ConvexHullExact.h>
+#include <Eigen/Eigen>
+#include <qpOASES.hpp>
+//energy
+#include "PrimalDualQInfMetricEnergyFGT.h"
 #include "PrimalDualQInfMetricEnergy.h"
 #include "CentroidClosednessEnergy.h"
 #include "ObjectClosednessEnergy.h"
 #include "LogBarrierObjEnergy.h"
 #include "LogBarrierSelfEnergy.h"
 #include "MetricEnergy.h"
-#include <Eigen/Eigen>
-#include <qpOASES.hpp>
 
 USE_PRJ_NAMESPACE
 
 //GraspPlannerParameter
 GraspPlannerParameter::GraspPlannerParameter(Options& ops)
 {
-  REGISTER_FLOAT_TYPE("d0",GraspPlannerParameter,double,t._d0)
-  REGISTER_FLOAT_TYPE("alpha",GraspPlannerParameter,double,t._alpha)
+  REGISTER_FLOAT_TYPE("d0",GraspPlannerParameter,scalarD,t._d0)
+  REGISTER_FLOAT_TYPE("alpha",GraspPlannerParameter,scalarD,t._alpha)
   REGISTER_INT_TYPE("metric",GraspPlannerParameter,sizeType,t._metric)
   REGISTER_INT_TYPE("activation",GraspPlannerParameter,sizeType,t._activation)
-  REGISTER_FLOAT_TYPE("normalExtrude",GraspPlannerParameter,double,t._normalExtrude)
-  REGISTER_FLOAT_TYPE("coefM",GraspPlannerParameter,double,t._coefM)
-  REGISTER_FLOAT_TYPE("coefOC",GraspPlannerParameter,double,t._coefOC)
-  REGISTER_FLOAT_TYPE("coefCC",GraspPlannerParameter,double,t._coefCC)
-  REGISTER_FLOAT_TYPE("coefO",GraspPlannerParameter,double,t._coefO)
-  REGISTER_FLOAT_TYPE("coefS",GraspPlannerParameter,double,t._coefS)
+  REGISTER_FLOAT_TYPE("normalExtrude",GraspPlannerParameter,scalarD,t._normalExtrude)
+  REGISTER_FLOAT_TYPE("FGTThres",GraspPlannerParameter,scalarD,t._FGTThres)
+  REGISTER_FLOAT_TYPE("coefM",GraspPlannerParameter,scalarD,t._coefM)
+  REGISTER_FLOAT_TYPE("coefOC",GraspPlannerParameter,scalarD,t._coefOC)
+  REGISTER_FLOAT_TYPE("coefCC",GraspPlannerParameter,scalarD,t._coefCC)
+  REGISTER_FLOAT_TYPE("coefO",GraspPlannerParameter,scalarD,t._coefO)
+  REGISTER_FLOAT_TYPE("coefS",GraspPlannerParameter,scalarD,t._coefS)
   REGISTER_FLOAT_TYPE("useGJK",GraspPlannerParameter,bool,t._useGJK)
   //solver
-  REGISTER_FLOAT_TYPE("rho0",GraspPlannerParameter,double,t._rho0)
-  REGISTER_FLOAT_TYPE("thres",GraspPlannerParameter,double,t._thres)
-  REGISTER_FLOAT_TYPE("alphaThres",GraspPlannerParameter,double,t._alphaThres)
+  REGISTER_FLOAT_TYPE("rho0",GraspPlannerParameter,scalarD,t._rho0)
+  REGISTER_FLOAT_TYPE("thres",GraspPlannerParameter,scalarD,t._thres)
+  REGISTER_FLOAT_TYPE("alphaThres",GraspPlannerParameter,scalarD,t._alphaThres)
   REGISTER_BOOL_TYPE("callback",GraspPlannerParameter,bool,t._callback)
   REGISTER_INT_TYPE("maxIter",GraspPlannerParameter,sizeType,t._maxIter)
   reset(ops);
@@ -52,6 +55,7 @@ void GraspPlannerParameter::initOptions(GraspPlannerParameter& sol)
   sol._metric=Q_INF_CONSTRAINT;
   sol._activation=SQR_EXP_ACTIVATION;
   sol._normalExtrude=1;
+  sol._FGTThres=1e-6f;
   sol._coefM=-100;
   sol._coefOC=0;
   sol._coefCC=0;
@@ -338,6 +342,8 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
     objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(*this,obj,ops._d0,ops._alpha,ops._coefM,(METRIC_TYPE)ops._metric,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
   if(ops._metric==Q_INF_CONSTRAINT)
     objs.push_back(std::shared_ptr<PrimalDualQInfMetricEnergy<T>>(new PrimalDualQInfMetricEnergy<T>(*this,obj,ops._alpha,ops._coefM,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
+  if(ops._metric==Q_INF_CONSTRAINT_FGT)
+    objs.push_back(std::shared_ptr<PrimalDualQInfMetricEnergyFGT<T>>(new PrimalDualQInfMetricEnergyFGT<T>(*this,obj,ops._alpha,ops._coefM,_rad*ops._normalExtrude,ops._FGTThres)));
   if(ops._coefOC>0)
     objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new ObjectClosednessEnergy<T>(*this,obj,ops._coefOC)));
   if(ops._coefCC>0)

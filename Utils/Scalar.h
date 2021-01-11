@@ -6,6 +6,8 @@
 
 namespace std
 {
+double to_double(char a);
+double to_double(unsigned char a);
 double to_double(float a);
 double to_double(double a);
 double to_double(sizeType a);

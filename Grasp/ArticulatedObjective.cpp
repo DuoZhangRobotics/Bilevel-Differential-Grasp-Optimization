@@ -57,11 +57,13 @@ sizeType ArticulatedObjective<T>::nrCons() const
   return 0;
 }
 template <typename T>
-void ArticulatedObjective<T>::debug(Vec x)
+void ArticulatedObjective<T>::debug(Vec x,T deltaCustom)
 {
   sizeType nDOFBody=_planner.body().nrDOF();
   sizeType nDOF=nDOFBody+nrAdditionalDOF();
   DEFINE_NUMERIC_DELTA_T(T)
+  if(deltaCustom>0)
+    DELTA=deltaCustom;
   Vec dx=Vec::Random(nDOF);
   if(x.size()<nDOF)
     x=concat<Vec,Vec>(x,Vec::Zero(nDOF-x.size()));

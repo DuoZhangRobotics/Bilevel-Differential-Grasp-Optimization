@@ -5,6 +5,12 @@
 
 namespace std
 {
+double to_double(char a) {
+  return a;
+}
+double to_double(unsigned char a) {
+  return a;
+}
 double to_double(float a) {
   return a;
 }
