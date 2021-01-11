@@ -4,6 +4,23 @@
 
 USE_PRJ_NAMESPACE
 
+template <typename T>
+struct AtomicAdd
+{
+  static void eval(T& A,T B) {
+    OMP_CRITICAL_ {
+      A+=B;
+    }
+  }
+};
+template <>
+struct AtomicAdd<scalarD>
+{
+  static void eval(scalarD& A,scalarD B) {
+    OMP_ATOMIC_
+    A+=B;
+  }
+};
 #define SY_COND (Sy?Sy->coeff(idy):1)
 template <typename T>
 FGTTreeNode<T>::FGTTreeNode() {}
@@ -378,16 +395,12 @@ void FGTTreeNode<T>::taylor(Vec& G,MatX4T* DGDT,const Vec* Sy,const Mat3XT& y,co
           T coefCache=cache(0,a0)*cache(1,a1)*cache(2,a2)*coef;
           if(DGDT) {
             for(sizeType r=0,offr=off2*3; r<3; r++,offr++) {
-              OMP_ATOMIC_
-              M[r][off2]+=ylH[r]*coefCache;
-              for(sizeType c=0; c<4; c++) {
-                OMP_ATOMIC_
-                DMDT(offr,c)+=dy[r]*ylH[c]*coefCache;
-              }
+              AtomicAdd<T>::eval(M[r][off2],ylH[r]*coefCache);
+              for(sizeType c=0; c<4; c++)
+                AtomicAdd<T>::eval(DMDT(offr,c),dy[r]*ylH[c]*coefCache);
             }
           }
-          OMP_ATOMIC_
-          M[3][off2]+=coefCache;
+          AtomicAdd<T>::eval(M[3][off2],coefCache);
         }
   }
 

@@ -11,7 +11,7 @@ template typename BBox<T,DIM>::BBox<T,DIM>& BBox<T,DIM>::copy<scalarD>(const BBo
 
 //this is a workaround for fast gauss transform used in GraspPlanner
 #ifdef ALL_TYPES
-DEF_BBOX(__float128,2)
+DEF_BBOX(__float128,3)
 DEF_BBOX(mpfr::mpreal,3)
 template class Sphere<__float128>;
 template class Sphere<mpfr::mpreal>;
