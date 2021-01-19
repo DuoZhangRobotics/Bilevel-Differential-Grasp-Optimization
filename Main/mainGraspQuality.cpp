@@ -31,7 +31,13 @@ int main(int argn,char** argc)
 
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
-  pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density));
+  if (argn < 4){
+      pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density) + "_" + std::to_string(scale) + ".tmp");
+  }
+  else{
+      pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density) + "_" + std::to_string(scale) + "_" + std::to_string(scaleY) + ".tmp");
+  }
+
   pathIO.replace_extension(".dat");
   GraspQualityMetric<T> q;
   if(exists(pathIO.string())) {

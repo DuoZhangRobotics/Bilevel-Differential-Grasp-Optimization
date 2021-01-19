@@ -27,6 +27,7 @@ void ArticulatedUtils::assemble(const tinyxml2::XMLElement& pt)
   std::vector<TransInfo> infos;
   assembleJoints(*getChild(pt,"joint"),infos);
   //apply X0
+
   for(sizeType i=0; i<(sizeType)_body.nrJ(); i++) {
     Joint& J=_body.joint(i);
     const ObjMesh mesh=J.getMesh(Joint::MESH);

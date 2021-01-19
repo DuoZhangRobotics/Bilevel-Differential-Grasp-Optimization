@@ -76,6 +76,7 @@ template <typename T>
 void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
 {
   _body=ArticulatedLoader().readURDF(path,convex,true);
+  std::cout <<"BODY READ: " << _body.nrDOF() <<std::endl;
   ArticulatedUtils(_body).addBase(3,Vec3d::Zero());
   ArticulatedUtils(_body).simplify(10);
   _pnss.resize(_body.nrJ());
@@ -104,6 +105,7 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
   _b=b.template cast<T>();
   _l=l.template cast<T>();
   _u=u.template cast<T>();
+
   //distExact
   _distExact.resize(_body.nrJ());
   for(sizeType i=0; i<_body.nrJ(); i++)
@@ -111,14 +113,17 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
       _distExact[i].reset(new ConvexHullExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
     else _distExact[i].reset(new ObjMeshGeomCellExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
   //sample
+
   PBDArticulatedGradientInfo<T> info(_body,Vec::Zero(_body.nrDOF()));
   for(sizeType i=0; i<_body.nrJ(); i++) {
     _body.getGeom().getG(i).getMesh(m);
     if(m.getV().empty())
       continue;
     ParallelPoissonDiskSampling sampler(3);
+
     sampler.setRadius(std::to_double(_rad));
     sampler.sample(m);
+
     //pss
     sizeType k=0;
     _pnss[i].first.resize(3,sampler.getPSet().size());
@@ -135,6 +140,8 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
     _pnss[i].first=_pnss[i].first.block(0,0,3,k).eval();
     _pnss[i].second=_pnss[i].second.block(0,0,3,k).eval();
   }
+  std::cout << "Done" << std::endl;
+
 }
 template <typename T>
 void GraspPlanner<T>::fliterSample(std::function<bool(sizeType lid,const Vec3T& p,const Vec3T& n)> f)

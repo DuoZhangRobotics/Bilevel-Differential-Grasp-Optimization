@@ -47,7 +47,7 @@ int main(int argn,char** argc)
   GraspQualityMetric<T> obj;
   obj.SerializableBase::read(pathObj);
   Vec x0=Vec::Zero(planner.body().nrDOF());
-  x0.template segment<3>(0)=Vec3T(0,0,-0.2f);
+  x0.template segment<3>(0)=Vec3T(1.1f, 0.5f, 0.7f);
   x0[5]=M_PI/2;
   x0[6]=0.5f;
   x0[9]=0.5f;
@@ -62,10 +62,10 @@ int main(int argn,char** argc)
   Options ops;
   GraspPlannerParameter param(ops);
   param._normalExtrude=10;
-  param._maxIter=500;
+  param._maxIter=15000;
   x0=planner.optimize(false,x0,obj,param);
   param._normalExtrude=2;
-  param._maxIter=500;
+  param._maxIter=15000;
   x0=planner.optimize(false,x0,obj,param);
   planner.writeVTK(x0,"afterOptimize",1);
   obj.writeVTK("object",1,planner.rad()*param._normalExtrude);

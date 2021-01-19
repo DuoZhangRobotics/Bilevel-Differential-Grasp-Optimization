@@ -178,16 +178,25 @@ ObjMesh ArticulatedLoader::readMesh(const std::experimental::filesystem::v1::pat
 void ArticulatedLoader::readLinks(Links& links,const tinyxml2::XMLElement& pt,const std::experimental::filesystem::v1::path& path,bool visualMesh)
 {
   for(const tinyxml2::XMLElement* v=pt.FirstChildElement(); v; v=v->NextSiblingElement()) {
+
     if(std::string(v->Name())=="gazebo")
+    {
       continue;
+    }
+
+    
     if(std::string(v->Name())=="link") {
       const tinyxml2::XMLElement& link=*v;
       if(!hasAttribute(link,"<xmlattr>.name"))
+      {
         continue;
+      }
+ 
       //name
       Joint joint;
       ObjMesh meshAll;
       joint._name=get<std::string>(link,"<xmlattr>.name");
+      std::cout << "name = " << joint._name << std::endl;
       //mesh
       for(const tinyxml2::XMLElement* g=link.FirstChildElement(); g; g=g->NextSiblingElement()) {
         if(visualMesh && std::string(g->Name())!="visual")
@@ -259,7 +268,35 @@ void ArticulatedLoader::readLinks(Links& links,const tinyxml2::XMLElement& pt,co
           joint._MCCT=R*MCCT*R.transpose()+mass*t*t.transpose();
         } else {
           WARNING("Using recomputed mass!")
-          joint.assemble(1);
+          std::cout << "Joint name is: " << joint._name << std::endl;
+          // if (joint._name == "thbase" || joint._name == "thhub")
+          // {
+          //   INFO("Using mass in URDF file!")
+          // Mat3d inertia;
+          // inertia(0,0)=get<scalar>(link,"inertial.inertia.<xmlattr>.ixx");
+          // inertia(1,1)=get<scalar>(link,"inertial.inertia.<xmlattr>.iyy");
+          // inertia(2,2)=get<scalar>(link,"inertial.inertia.<xmlattr>.izz");
+          // inertia(0,1)=inertia(1,0)=get<scalar>(link,"inertial.inertia.<xmlattr>.ixy");
+          // inertia(0,2)=inertia(2,0)=get<scalar>(link,"inertial.inertia.<xmlattr>.ixz");
+          // inertia(1,2)=inertia(2,1)=get<scalar>(link,"inertial.inertia.<xmlattr>.iyz");
+          // Mat3d MCCT=Mat3d::Identity()*inertia.trace()/2-inertia;
+          // Eigen::SelfAdjointEigenSolver<Mat3d> eig(MCCT);
+          // if(eig.eigenvalues().minCoeff()<0) {
+          //   std::cout << "Found negative MCCT tensor (link=" << joint._name << "): " << eig.eigenvalues().transpose() << std::endl;
+          // }
+          // //convert
+          // Mat3d R=RPY2Mat(parsePtreeDef<Vec3>(link,"inertial.origin.<xmlattr>.rpy",Vec3::Zero())).cast<scalarD>();
+          // Vec3d t=parsePtreeDef<Vec3>(link,"inertial.origin.<xmlattr>.xyz",Vec3::Zero()).cast<scalarD>();
+          // //build 6x6 matrix in body frame
+          // scalar mass=get<scalar>(link,"inertial.mass.<xmlattr>.value");
+          // joint._M=mass;
+          // joint._MC=mass*t;
+          // joint._MCCT=R*MCCT*R.transpose()+mass*t*t.transpose();
+          // }
+          // else
+          // {
+            joint.assemble(1);
+          // }
         }
       } else {
         joint._M=0;
@@ -267,7 +304,10 @@ void ArticulatedLoader::readLinks(Links& links,const tinyxml2::XMLElement& pt,co
         joint._MCCT.setZero();
       }
       links[joint._name]=joint;
-    } else readLinks(links,*v,path,visualMesh);
+    } else 
+    {
+      readLinks(links,*v,path,visualMesh);
+    }
   }
 }
 bool ArticulatedLoader::readRelations(Relations& relations,const tinyxml2::XMLElement& pt)
@@ -472,6 +512,7 @@ ArticulatedBody ArticulatedLoader::readURDF(const std::string& file,bool convex,
   if(convex)
     makeConvex(*(pt.RootElement()));
   //read links
+
   Links links;
   readLinks(links,*(pt.RootElement()),std::experimental::filesystem::v1::path(file).parent_path(),visualMesh);
   //read joints
@@ -500,6 +541,7 @@ ArticulatedBody ArticulatedLoader::readURDF(const std::string& file,bool convex,
       body._geom->addGeomCell(body.joint(i)._mesh);
   body._geom->assemble();
   //mimic
+
   for(const std::pair<std::string,std::vector<JointInfo>>& v:relations) {
     for(const JointInfo& c:v.second) {
       if(!c._mimic.empty()) {
