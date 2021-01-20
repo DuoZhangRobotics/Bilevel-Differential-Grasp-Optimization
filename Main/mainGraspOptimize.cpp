@@ -47,7 +47,7 @@ int main(int argn,char** argc)
   GraspQualityMetric<T> obj;
   obj.SerializableBase::read(pathObj);
   Vec x0=Vec::Zero(planner.body().nrDOF());
-  x0.template segment<3>(0)=Vec3T(1.1f, 0.5f, 0.7f);
+  x0.template segment<3>(0)=Vec3T(0.0f, -0.2f, -0.2f);
   x0[5]=M_PI/2;
   x0[6]=0.5f;
   x0[9]=0.5f;
