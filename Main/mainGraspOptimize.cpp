@@ -4,6 +4,8 @@
 #include <Grasp/LogBarrierObjEnergy.h>
 #include <Grasp/LogBarrierSelfEnergy.h>
 #include <Utils/Utils.h>
+#include <string>
+#include <fstream>
 
 USE_PRJ_NAMESPACE
 
@@ -16,11 +18,12 @@ int main(int argn,char** argc)
   RandEngine::useDeterministic();
   RandEngine::seed(0);
 
-  ASSERT_MSG(argn==4,"mainGraspPlan: [urdf path] [sample density] [obj path]")
+  ASSERT_MSG(argn==6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
-
+  std::string objName(argc[4]);
+  std::string objScale(argc[5]);
   //load hand
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
@@ -58,7 +61,10 @@ int main(int argn,char** argc)
   planner.writeVTK(x0,pathIO.filename().string(),1);
   planner.writeLocalVTK(pathIO.filename().string(),1);
   planner.writeLimitsVTK("limits");
-  planner.writeVTK(x0,"beforeOptimize",1);
+  std::string beforeOptimizeFileName = "beforeOptimize_" + objName + "_" + objScale;
+  planner.writeVTK(x0, beforeOptimizeFileName, 1);
+  std::ofstream initialParameters(beforeOptimizeFileName + "/initialParameters.txt");
+  for (const auto &e : x0) initialParameters << e << " ";
   Options ops;
   GraspPlannerParameter param(ops);
   param._normalExtrude=10;
@@ -67,7 +73,11 @@ int main(int argn,char** argc)
   param._normalExtrude=2;
   param._maxIter=15000;
   x0=planner.optimize(false,x0,obj,param);
-  planner.writeVTK(x0,"afterOptimize",1);
+  std::string afterOptimizeFileName = "afterOptimize_" + objName + "_" + objScale;
+  planner.writeVTK(x0, afterOptimizeFileName, 1);
   obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
+  std::ofstream afterOptimizeFile(afterOptimizeFileName + "/parameters.txt");
+  for (const auto &e : x0) afterOptimizeFile << e << " ";
+
   return 0;
 }
