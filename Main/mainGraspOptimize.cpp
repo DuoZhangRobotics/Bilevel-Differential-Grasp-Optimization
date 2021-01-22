@@ -12,18 +12,46 @@ USE_PRJ_NAMESPACE
 typedef double T;
 typedef GraspQualityMetric<T>::Vec Vec;
 typedef GraspQualityMetric<T>::Vec3T Vec3T;
+
+Vec initializeParams(std::string path, Vec &x)
+{
+    std::string line;
+    int i = 0;
+    std::ifstream fin;
+    fin.open((path));
+    float a;
+    std::cout << "Initial parameters are: ";
+    while (fin >> a)
+    {
+      x[i] = a;
+      std::cout << x[i] << " ";
+      i++;
+    }
+    std::cout << std::endl;
+    return x;
+}
+
 int main(int argn,char** argc)
 {
   mpfr_set_default_prec(1024U);
   RandEngine::useDeterministic();
   RandEngine::seed(0);
 
-  ASSERT_MSG(argn==6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale]")
+  ASSERT_MSG(argn>=6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [initial parameters]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
   std::string objName(argc[4]);
   std::string objScale(argc[5]);
+  std::string initParamsPath;
+  std::cout << "argn = " << argn << std::endl;
+  if (argn == 7)
+  {
+      std::string initParamPath(argc[6]);
+      initParamsPath = initParamPath;
+  }
+  else initParamsPath = "";
+  std::cout << initParamsPath << std::endl;
   //load hand
   std::experimental::filesystem::v1::path pathIO(path);
   pathIO.replace_extension("");
@@ -50,11 +78,19 @@ int main(int argn,char** argc)
   GraspQualityMetric<T> obj;
   obj.SerializableBase::read(pathObj);
   Vec x0=Vec::Zero(planner.body().nrDOF());
-  x0.template segment<3>(0)=Vec3T(0.0f, -0.2f, -0.21f);
-  x0[5]=M_PI/2;
-  x0[6]=0.5f;
-  x0[9]=0.5f;
+  if (initParamsPath != "")
+  {
+    x0 = initializeParams(initParamsPath, x0);
+  }
+  else
+  {
+    x0.template segment<3>(0)=Vec3T(0.0f, -0.23f, -0.19f);
+    x0[5]=M_PI/2;
+    x0[6]=0.5f;
+    x0[9]=0.5f;
 
+  }
+  x0[1] -= 0.1;
   pathIO=path;
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
