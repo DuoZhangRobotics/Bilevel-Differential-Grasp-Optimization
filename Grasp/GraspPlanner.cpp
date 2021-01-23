@@ -349,7 +349,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
     objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(*this,obj,ops._d0,ops._alpha,ops._coefM,(METRIC_TYPE)ops._metric,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
   if(ops._metric==Q_INF_CONSTRAINT)
     objs.push_back(std::shared_ptr<PrimalDualQInfMetricEnergy<T>>(new PrimalDualQInfMetricEnergy<T>(*this,obj,ops._alpha,ops._coefM,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
-  if(ops._metric==Q_INF_CONSTRAINT_FGT)
+  if(ops._metric==Q_INF_CONSTRAINT_FGT) 
     objs.push_back(std::shared_ptr<PrimalDualQInfMetricEnergyFGT<T>>(new PrimalDualQInfMetricEnergyFGT<T>(*this,obj,ops._alpha,ops._coefM,_rad*ops._normalExtrude,ops._FGTThres)));
   if(ops._coefOC>0)
     objs.push_back(std::shared_ptr<ArticulatedObjective<T>>(new ObjectClosednessEnergy<T>(*this,obj,ops._coefOC)));
