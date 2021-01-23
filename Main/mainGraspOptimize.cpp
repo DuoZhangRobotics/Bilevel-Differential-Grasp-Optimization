@@ -6,6 +6,8 @@
 #include <Utils/Utils.h>
 #include <string>
 #include <fstream>
+#include <chrono>
+
 
 USE_PRJ_NAMESPACE
 
@@ -37,17 +39,18 @@ int main(int argn,char** argc)
   RandEngine::useDeterministic();
   RandEngine::seed(0);
 
-  ASSERT_MSG(argn>=6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [initial parameters]")
+  ASSERT_MSG(argn>=6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [use_FGT] [initial parameters]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
   std::string objName(argc[4]);
   std::string objScale(argc[5]);
+  bool useFGT(argc[6]);
   std::string initParamsPath;
   std::cout << "argn = " << argn << std::endl;
-  if (argn == 7)
+  if (argn == 8)
   {
-      std::string initParamPath(argc[6]);
+      std::string initParamPath(argc[7]);
       initParamsPath = initParamPath;
   }
   else initParamsPath = "";
@@ -84,13 +87,12 @@ int main(int argn,char** argc)
   }
   else
   {
-    x0.template segment<3>(0)=Vec3T(0.0f, -0.23f, -0.19f);
+    x0.template segment<3>(0)=Vec3T(0.0f, 0.0f, -0.2f);
     x0[5]=M_PI/2;
     x0[6]=0.5f;
     x0[9]=0.5f;
 
   }
-  x0[1] -= 0.1;
   pathIO=path;
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
@@ -103,12 +105,17 @@ int main(int argn,char** argc)
   for (const auto &e : x0) initialParameters << e << " ";
   Options ops;
   GraspPlannerParameter param(ops);
+  if ( useFGT)  param._metric = Q_INF_CONSTRAINT_FGT;
   param._normalExtrude=10;
-  param._maxIter=15000;
+  param._maxIter=10;
+  auto start = std::chrono::high_resolution_clock::now();
   x0=planner.optimize(false,x0,obj,param);
   param._normalExtrude=2;
-  param._maxIter=15000;
+  param._maxIter=10;
   x0=planner.optimize(false,x0,obj,param);
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+  std::cout << "Optimization time using " << (useFGT?"FGT": "No FGT") << " is: " << duration.count() << std::endl;
   std::string afterOptimizeFileName = "afterOptimize_" + objName + "_" + objScale;
   planner.writeVTK(x0, afterOptimizeFileName, 1);
   obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
