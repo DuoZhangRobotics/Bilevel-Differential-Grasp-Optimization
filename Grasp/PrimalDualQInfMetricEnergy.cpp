@@ -14,6 +14,7 @@ int PrimalDualQInfMetricEnergy<T>::operator()(const Vec& x,const PBDArticulatedG
     gFinal->coeffRef(off)+=_coef;
   return 0;
 }
+// Constraints and Jacobian of constraints
 template <typename T>
 void PrimalDualQInfMetricEnergy<T>::cons(const Vec& x,const PBDArticulatedGradientInfo<T>& info,sizeType offr,sizeType offc,Vec& c,MatT* cjac)
 {

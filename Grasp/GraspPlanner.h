@@ -7,6 +7,23 @@
 #include <Articulated/PBDArticulatedGradientInfo.h>
 #include <Utils/ParallelVector.h>
 #include <Utils/Options.h>
+#include <Utils/Utils.h>
+#include <Utils/DebugGradient.h>
+#include <Articulated/ArticulatedUtils.h>
+#include <Articulated/ArticulatedLoader.h>
+#include <Articulated/MultiPrecisionLQP.h>
+#include <CommonFile/ParallelPoissonDiskSampling.h>
+#include <Environment/ObjMeshGeomCellExact.h>
+#include <Environment/ConvexHullExact.h>
+#include <Eigen/Eigen>
+#include <qpOASES.hpp>
+//energy
+#include "PrimalDualQInfMetricEnergyFGT.h"
+#include "PrimalDualQInfMetricEnergy.h"
+#include "CentroidClosednessEnergy.h"
+#include "ObjectClosednessEnergy.h"
+#include "LogBarrierObjEnergy.h"
+#include "LogBarrierSelfEnergy.h"
 
 PRJ_BEGIN
 
@@ -38,6 +55,20 @@ struct GraspPlannerParameter
   bool _callback;
   sizeType _maxIter;
 };
+
+template <typename T>
+struct QPInfo
+{
+  Cold d;
+  T e;
+  MatT h,cjac;
+  Vec g, c;
+  scalarD maxConditionNumber=1e5f,minDiagonalValue=1e-5f;
+  Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> hAdjusted;
+  PBDArticulatedGradientInfo<T> info;
+  bool solved;
+};
+
 template <typename T>
 class GraspPlanner : public SerializableBase
 {
@@ -59,8 +90,9 @@ public:
   void writeVTK(const Vec& x,const std::string& path,T len) const;
   void writeLocalVTK(const std::string& path,T len) const;
   void writeLimitsVTK(const std::string& path) const;
+  QPInfo* solveQP(QPInfo qpinfo);
   Vec optimize(bool debug,const Vec& init,GraspQualityMetric<T>& obj,GraspPlannerParameter& ops);
-  Vec optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops) const;
+  Vec optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops, bool maratos) const;
   bool assemble(Vec x,PBDArticulatedGradientInfo<T>& info,bool update,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,T& e,Vec* g=NULL,MatT* h=NULL,Vec* c=NULL,MatT* cjac=NULL) const;
   void debugSystem(const Vec& x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs) const;
   sizeType nrAdditionalDOF(std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs) const;
