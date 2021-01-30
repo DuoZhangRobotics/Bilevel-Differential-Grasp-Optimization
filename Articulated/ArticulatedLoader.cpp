@@ -196,7 +196,6 @@ void ArticulatedLoader::readLinks(Links& links,const tinyxml2::XMLElement& pt,co
       Joint joint;
       ObjMesh meshAll;
       joint._name=get<std::string>(link,"<xmlattr>.name");
-      std::cout << "name = " << joint._name << std::endl;
       //mesh
       for(const tinyxml2::XMLElement* g=link.FirstChildElement(); g; g=g->NextSiblingElement()) {
         if(visualMesh && std::string(g->Name())!="visual")
@@ -220,7 +219,9 @@ void ArticulatedLoader::readLinks(Links& links,const tinyxml2::XMLElement& pt,co
           mesh.getT()=scale.asDiagonal();
           mesh.applyTrans(Vec3::Zero());
         } else if(hasAttribute(meshPt,"geometry.box")) {
+          std::cout << "Box" << std::endl;
           Vec3 size=parsePtree<Vec3>(meshPt,"geometry.box.<xmlattr>.size");
+          std::cout << "size = " << size[0] << " " << size[1] << " " << size[2] << std::endl;
           MakeMesh::makeBox3D(mesh,size/2);
           joint._mesh=std::shared_ptr<ObjMeshGeomCell>(new ObjMeshGeomCell(T,mesh,0,true,false));
         } else if(hasAttribute(meshPt,"geometry.sphere")) {

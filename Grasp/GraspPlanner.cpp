@@ -76,7 +76,7 @@ template <typename T>
 void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
 {
   _body=ArticulatedLoader().readURDF(path,convex,true);
-  std::cout <<"BODY READ: " << _body.nrDOF() <<std::endl;
+  std::cout <<"BODY READ: " << _body.nrJ() <<std::endl;
   ArticulatedUtils(_body).addBase(3,Vec3d::Zero());
   ArticulatedUtils(_body).simplify(10);
   _pnss.resize(_body.nrJ());
@@ -85,6 +85,8 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
   ObjMesh m;
   _body.getGeom().clear();
   for(sizeType i=0; i<_body.nrJ(); i++) {
+    std::cout << "Joint Name = " << _body.joint(i)._name << std::endl;
+
     std::shared_ptr<StaticGeomCell> cell=_body.joint(i).getGeomPtr();
     if(!cell)
       cell.reset(new ObjMeshGeomCell(Mat4::Identity(),m,0));
@@ -105,14 +107,20 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
   _b=b.template cast<T>();
   _l=l.template cast<T>();
   _u=u.template cast<T>();
-
+  std::cout << "DistExact" << std::endl;
   //distExact
   _distExact.resize(_body.nrJ());
+    std::cout << "NRJ = " << _body.nrJ() << std::endl;
+
   for(sizeType i=0; i<_body.nrJ(); i++)
-    if(convex)
-      _distExact[i].reset(new ConvexHullExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
-    else _distExact[i].reset(new ObjMeshGeomCellExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));
+    if(convex){
+    std::cout << "Joint Name = " << _body.joint(i)._name << std::endl;
+      _distExact[i].reset(new ConvexHullExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));}
+    else {
+
+      _distExact[i].reset(new ObjMeshGeomCellExact(dynamic_cast<const ObjMeshGeomCell&>(_body.getGeom().getG(i))));}
   //sample
+
 
   PBDArticulatedGradientInfo<T> info(_body,Vec::Zero(_body.nrDOF()));
   for(sizeType i=0; i<_body.nrJ(); i++) {
@@ -140,7 +148,6 @@ void GraspPlanner<T>::reset(const std::string& path,T rad,bool convex)
     _pnss[i].first=_pnss[i].first.block(0,0,3,k).eval();
     _pnss[i].second=_pnss[i].second.block(0,0,3,k).eval();
   }
-  std::cout << "Done" << std::endl;
 
 }
 template <typename T>
@@ -372,7 +379,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
   }
   if(debug)
     debugSystem(x,objs);
-  else x=optimizeNewton(x,objs,ops, false);
+  else x=optimizeNewton(x,objs,ops);
   if(nAdd>0) {
     _b=_b.segment(0,_b.size()-nAdd).eval();
     _A=_A.block(0,0,_A.rows()-nAdd,_A.cols()-nAdd).eval();
@@ -382,16 +389,27 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
   return _A*x.segment(0,_A.cols())+_b;
 }
 template <typename T>
-QPInfo* GraspPlanner<T>::solveQP(QPInfo *qpinfo, Vec x, std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops){
-  if(!assemble(x, qpinfo->info,true, objs, qpinfo->e, &qpinfo->g,&qpinfo->h,&qpinfo->c,&qpinfo->cjac)) {
+typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops) const
+{
+  Cold d;
+  T e,e2,m,m2;
+  MatT h,cjac;
+  Vec g,c,c2,xTmp;
+  scalarD maxConditionNumber=1e5f,minDiagonalValue=1e-5f;
+  Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> hAdjusted;
+  T dNorm,cNorm,cNorm2,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1,rho=ops._rho0,gamma=0.1f;
+  PBDArticulatedGradientInfo<T> info;
+  bool tmpUseGJK=ops._useGJK;
 
+  for(sizeType it=0; it<ops._maxIter; it++) {
+    //assemble
+    if(!assemble(x,info,true,objs,e,&g,&h,&c,&cjac)) {
       if(ops._callback) {
-        INFOV("Iter=%d failed(invalid configuration)", it)
+        INFOV("Iter=%d failed(invalid configuration)",it)
       }
-      qpinfo->solved = false;
-      return qpinfo;
-  }
-  else
+      return Vec::Zero(0);
+    }
+    //solve
     {
       Cold cld;
       Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> cjacd;
@@ -401,11 +419,11 @@ QPInfo* GraspPlanner<T>::solveQP(QPInfo *qpinfo, Vec x, std::vector<std::shared_
       scalarD minEv=std::max<scalarD>(eig.eigenvalues().cwiseAbs().maxCoeff()/maxConditionNumber,minDiagonalValue);
       Cold ev=eig.eigenvalues().array().max(minEv).matrix();
       hAdjusted=eig.eigenvectors()*ev.asDiagonal()*eig.eigenvectors().transpose();
-      if(qpinfo->c.size()>0) {
-        cjacd=qpinfo->cjac.unaryExpr([&](const T& in) {
+      if(c.size()>0) {
+        cjacd=cjac.unaryExpr([&](const T& in) {
           return (scalarD)std::to_double(in);
         });
-        cld=-qpinfo->c.unaryExpr([&](const T& in) {
+        cld=-c.unaryExpr([&](const T& in) {
           return (scalarD)std::to_double(in);
         });
       }
@@ -414,293 +432,71 @@ QPInfo* GraspPlanner<T>::solveQP(QPInfo *qpinfo, Vec x, std::vector<std::shared_
         return (scalarD)std::to_double(in);
       }),ud=(_u-x).unaryExpr([&](const T& in) {
         return (scalarD)std::to_double(in);
-      }),gAdjusted=qpinfo->g.unaryExpr([&](const T& in) {
+      }),gAdjusted=g.unaryExpr([&](const T& in) {
         return (scalarD)std::to_double(in);
       });
       qpOASES::int_t nWSR=10000;
-      qpOASES::SQProblem prob(qpinfo->g.size(),qpinfo->c.size());
-      if(qpinfo->c.size()>0)
-        prob.init(qpinfo->hAdjusted.data(),qpinfo->gAdjusted.data(),cjacd.data(),ld.data(),ud.data(),cld.data(),NULL,nWSR);
-      else prob.init(qpinfo->hAdjusted.data(),qpinfo->gAdjusted.data(),NULL,ld.data(),ud.data(),NULL,NULL,nWSR);
+      qpOASES::SQProblem prob(g.size(),c.size());
+      if(c.size()>0)
+        prob.init(hAdjusted.data(),gAdjusted.data(),cjacd.data(),ld.data(),ud.data(),cld.data(),NULL,nWSR);
+      else prob.init(hAdjusted.data(),gAdjusted.data(),NULL,ld.data(),ud.data(),NULL,NULL,nWSR);
       if(!prob.isSolved()) {
         if(ops._callback) {
           INFOV("Iter=%d failed(qpOASES failed)",it)
         }
-        qpinfo->solved = false;
-        return qpinfo;
+        break;
       } else {
-        qpinfo->d.resize(x.size());
-        prob.getPrimalSolution(qpinfo->d.data());
-        qpinfo->solved = true;
+        d.resize(x.size());
+        prob.getPrimalSolution(d.data());
       }
-    
-    return qpinfo;
-}
-template <typename T>
-typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeNewton(Vec x,std::vector<std::shared_ptr<ArticulatedObjective<T>>>& objs,GraspPlannerParameter& ops, bool maratos) const
-{
-  // Cold d;
-  // T e,e2;
-  T e2;
-  T m,m1;
-  Vec c2;
-  // MatT h,cjac;
-  // Vec g,c,c2,xTmp;
-  // scalarD maxConditionNumber=1e5f,minDiagonalValue=1e-5f;
-  // Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> hAdjusted;
-  QPInfo * qpinfo;
-  T dNorm,cNorm,cNorm1,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1,rho=ops._rho0,gamma=0.1f;
-  // PBDArticulatedGradientInfo<T> info;
-  bool tmpUseGJK=ops._useGJK;
-
-  // for(sizeType it=0; it<ops._maxIter; it++) {
-  //   //assemble
-  //   //TODO: No need for all objs, just use log barrier and self log barrier
-  //   if(!assemble(x,info,true,objs,e,&g,&h,&c,&cjac)) {
-  //     if(ops._callback) {
-  //       INFOV("Iter=%d failed(invalid configuration)",it)
-  //     }
-  //     return Vec::Zero(0);
-  //   }
-  //   //solve
-  //   else
-  //   {
-  //     Cold cld;
-  //     Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> cjacd;
-  //     Eigen::SelfAdjointEigenSolver<Matd> eig(h.unaryExpr([&](const T& in) {
-  //       return (scalarD)std::to_double(in);
-  //     }),Eigen::ComputeEigenvectors);
-  //     scalarD minEv=std::max<scalarD>(eig.eigenvalues().cwiseAbs().maxCoeff()/maxConditionNumber,minDiagonalValue);
-  //     Cold ev=eig.eigenvalues().array().max(minEv).matrix();
-  //     hAdjusted=eig.eigenvectors()*ev.asDiagonal()*eig.eigenvectors().transpose();
-  //     if(c.size()>0) {
-  //       cjacd=cjac.unaryExpr([&](const T& in) {
-  //         return (scalarD)std::to_double(in);
-  //       });
-  //       cld=-c.unaryExpr([&](const T& in) {
-  //         return (scalarD)std::to_double(in);
-  //       });
-  //     }
-  //     //respect joint limits
-  //     Cold ld=(_l-x).unaryExpr([&](const T& in) {
-  //       return (scalarD)std::to_double(in);
-  //     }),ud=(_u-x).unaryExpr([&](const T& in) {
-  //       return (scalarD)std::to_double(in);
-  //     }),gAdjusted=g.unaryExpr([&](const T& in) {
-  //       return (scalarD)std::to_double(in);
-  //     });
-  //     qpOASES::int_t nWSR=10000;
-  //     qpOASES::SQProblem prob(g.size(),c.size());
-  //     if(c.size()>0)
-  //       prob.init(hAdjusted.data(),gAdjusted.data(),cjacd.data(),ld.data(),ud.data(),cld.data(),NULL,nWSR);
-  //     else prob.init(hAdjusted.data(),gAdjusted.data(),NULL,ld.data(),ud.data(),NULL,NULL,nWSR);
-  //     if(!prob.isSolved()) {
-  //       if(ops._callback) {
-  //         INFOV("Iter=%d failed(qpOASES failed)",it)
-  //       }
-  //       break;
-  //     } else {
-  //       d.resize(x.size());
-  //       prob.getPrimalSolution(d.data());
-  //     }
-  //   }
-    qpinfo = solveQP(qpinfo, x, obj, ops);
-    if (!qpinfo->solved) break;
+    }
     //termination & callback
-    dNorm=qpinfo->qpinfo->d.norm();
-    cNorm=-qpinfo->qpinfo->c.cwiseMin(0).sum();
+    dNorm=d.norm();
+    cNorm=-c.cwiseMin(0).sum();
     if(dNorm<ops._thres && cNorm<ops._thres) {
       if(ops._callback) {
         INFOV("Iter=%d succeed(dNorm=%f<thres=%f,cNorm=%f<thres=%f)",it,std::to_double(dNorm),std::to_double(ops._thres),std::to_double(cNorm),std::to_double(ops._thres))
       }
       break;
     } else if(ops._callback) {
-      INFOV("Iter=%d E=%f dNorm=%f cNorm=%f alpha=%f rho=%f",it,std::to_double(qpinfo->e),std::to_double(dNorm),std::to_double(cNorm),std::to_double(alpha),std::to_double(rho))
+      INFOV("Iter=%d E=%f dNorm=%f cNorm=%f alpha=%f rho=%f",it,std::to_double(e),std::to_double(dNorm),std::to_double(cNorm),std::to_double(alpha),std::to_double(rho))
     }
     //merit-function parameter
-    if(qpinfo->c.size()>0) {
-      T D=qpinfo->d.template cast<T>().dot(qpinfo->g);//+0.5f*d.dot(hAdjusted*d);
+    if(c.size()>0) {
+      T D=d.template cast<T>().dot(g);//+0.5f*d.dot(hAdjusted*d);
       if(D>0)
         rho=std::max(rho,D/((1-gamma)*cNorm));
       //replace g with directional derivative
-      for(sizeType i=0; i<qpinfo->c.size(); i++)
-        if(qpinfo->c[i]<0)
-          qpinfo->g-=qpinfo->cjac.row(i).transpose()*rho;
+      for(sizeType i=0; i<c.size(); i++)
+        if(c[i]<0)
+          g-=cjac.row(i).transpose()*rho;
     }
-    if(!maratos)
-    {
-      //line search
-      m=qpinfo->e+cNorm*rho;
-      ops._useGJK=true;
-      while(alpha>ops._alphaThres) {
-        Vec xTmp=x+qpinfo->d.template cast<T>()*alpha;
-        if(!assemble(xTmp,info,false,objs,e2,NULL,NULL,&c2)) {
-          alpha*=alphaDec;
-          continue;
-        }
-        cNorm1=-c2.cwiseMin(0).sum();
-        m1=e2+cNorm1*rho;
-        if(m1>=m+qpinfo->g.dot(qpinfo->d.template cast<T>())*alpha*coefWolfe) {
-          alpha*=alphaDec;
-          continue;
-        } else {
-          alpha=std::min<T>(alpha*alphaInc,1);
-          x=xTmp;
-          break;
-        }
+    //line search
+    m=e+cNorm*rho;
+    ops._useGJK=true;
+    while(alpha>ops._alphaThres) {
+      xTmp=x+d.template cast<T>()*alpha;
+      if(!assemble(xTmp,info,false,objs,e2,NULL,NULL,&c2)) {
+        alpha*=alphaDec;
+        continue;
       }
-      ops._useGJK=tmpUseGJK;
-      if(alpha<ops._alphaThres) {
-        if(ops._callback) {
-          INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(ops._alphaThres))
-        }
-        break;
-      }
-    }
-    else{
-      Vec xTmp;
-      m=qpinfo->e+cNorm*rho;
-      ops._useGJK=true;
-      while(alpha>ops._alphaThres) {
-        xTmp=x+qpinfo->d.template cast<T>()*alpha;
-        if(!assemble(xTmp,info,false,objs,e2,NULL,NULL,&c2)) {
-          alpha*=alphaDec;
-        }
-      }
-      if(alpha<ops._alphaThres) {
-        if(ops._callback) {
-          INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(ops._alphaThres))
-        }
-        break;
-      }
-      cNorm1=-c2.cwiseMin(0).sum();
-      m1=e2+cNorm1*rho;
-      T cNorm2, cNorm3, dNorm2, dNorm3;
-      if(m1>=m+qpinfo->g.dot(qpinfo->d.template cast<T>())*alpha*coefWolfe) {
-        //Compute a search direction pk+1 from xk+1;
-        QPInfo *qpinfo2;
-        qpinfo2 = solveQP(qpinfo2, xTmp, objs, ops);
-        if (!qpinfo2->solved) break;
-        dNorm2=qpinfo2->d.norm();
-        cNorm2=-qpinfo2->c.cwiseMin(0).sum();
-        if(qpinfo2->c.size()>0) {
-          T D=qpinfo2->d.template cast<T>().dot(qpinfo2->g);
-          if(D>0)
-            rho=std::max(rho,D/((1-gamma)*cNorm2));
-          //replace g with directional derivative
-          for(sizeType i=0; i<qpinfo2->c.size(); i++)
-            if(qpinfo2->c[i]<0)
-              qpinfo2->g-=qpinfo2->cjac.row(i).transpose()*rho;
-        }
-        T alphaTmp = alpha;
-        T e3, m2;
-        Vec c3;
-        while (alphaTmp>ops._alphaThres)
-        {
-          Vec xTmp2 = xTmp + qpinfo2->d.template cast<T>()*alphaTmp;
-
-          if (!assemble(xTmp2, info, false, objs, e3, NULL, NULL, &c3))
-          {
-            alphaTmp*=alphaDec;
-            continue;
-          }
-          cNorm3 = -c3.cwiseMin(0).sum();
-          m2 = e3 + cNorm3*rho;
-          if(m2>=m1+qpinfo2->g.dot(qpinfo2->d.template cast<T>())*alphaTmp*coefWolfe) {
-            alphaTmp*=alphaDec;
-            continue;
-          } 
-          else{
-            //TODO: Blalballa
-            if (m1 <= m || m2 <= m + coefWolfe * alpha * qpinfo->g.dot(qpinfo->d.template cast<T>()))
-            {
-              alpha=std::min<T>(alpha*alphaInc,1);
-              x=xTmp2;
-              break;
-            }
-            else if (m2 > m)
-            {
-              while(alpha>ops._alphaThres) {
-                Vec xTmp=x+qpinfo->d.template cast<T>()*alpha;
-                if(!assemble(xTmp,info,false,objs,e2,NULL,NULL,&c2)) {
-                  alpha*=alphaDec;
-                  continue;
-                }
-                cNorm1=-c2.cwiseMin(0).sum();
-                m1=e2+cNorm1*rho;
-                if(m1>=m+qpinfo->g.dot(qpinfo->d.template cast<T>())*alpha*coefWolfe) {
-                  alpha*=alphaDec;
-                  continue;
-                } else {
-                  alpha=std::min<T>(alpha*alphaInc,1);
-                  x=xTmp;
-                  break;
-                }
-              }
-              ops._useGJK=tmpUseGJK;
-              if(alpha<ops._alphaThres) {
-                if(ops._callback) {
-                  INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(ops._alphaThres))
-                }
-                break;
-              }
-            }
-            else
-            {
-              QPInfo *qpinfo3;
-              qpinfo3 = solveQP(qpinfo3, xTmp, objs, ops);
-              if (!qpinfo3->solved) break;
-              dNorm2=qpinfo3->d.norm();
-              cNorm2=-qpinfo3->c.cwiseMin(0).sum();
-              if(qpinfo3->c.size()>0) {
-                T D=qpinfo3->d.template cast<T>().dot(qpinfo3->g);
-                if(D>0)
-                  rho=std::max(rho,D/((1-gamma)*cNorm2));
-                //replace g with directional derivative
-                for(sizeType i=0; i<qpinfo3->c.size(); i++)
-                  if(qpinfo3->c[i]<0)
-                    qpinfo3->g-=qpinfo3->cjac.row(i).transpose()*rho;
-              }
-              T alphaTmp1 = alpha;
-              T e4, m3;
-              Vec c4;
-              T cNorm4;
-              while (alphaTmp>ops._alphaThres)
-              {
-                Vec xTmp3 = xTmp2 + qpinfo3->d.template cast<T>()*alphaTmp1;
-
-                if (!assemble(xTmp3, info, false, objs, e4, NULL, NULL, &c4))
-                {
-                  alphaTmp1*=alphaDec;
-                  continue;
-                }
-                cNorm4 = -c4.cwiseMin(0).sum();
-                m3 = e4 + cNorm4*rho;
-                if(m3>=m2+qpinfo2->g.dot(qpinfo3->d.template cast<T>())*alphaTmp1*coefWolfe) {
-                  alphaTmp1*=alphaDec;
-                  continue;
-                } 
-                else{
-                  alpha=std::min<T>(alphaTmp1*alphaInc,1);
-                  x=xTmp3;
-                  break;
-                }
-              }
-            }
-                  
-            
-            
-          }
-
-        }
-        
-
+      cNorm2=-c2.cwiseMin(0).sum();
+      m2=e2+cNorm2*rho;
+      if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
+        alpha*=alphaDec;
+        continue;
       } else {
         alpha=std::min<T>(alpha*alphaInc,1);
         x=xTmp;
         break;
       }
-
+    }
+    ops._useGJK=tmpUseGJK;
+    if(alpha<ops._alphaThres) {
+      if(ops._callback) {
+        INFOV("Iter=%d failed(alpha=%f<alphaThres=%f)",it,std::to_double(alpha),std::to_double(ops._alphaThres))
+      }
+      break;
     }
     //update plane
     for(sizeType i=0; i<(sizeType)objs.size(); i++) {

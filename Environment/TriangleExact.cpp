@@ -14,7 +14,7 @@ TriangleExact::TriangleExact(const TriangleTpl<scalar>& t):_vid(-1,-1,-1),_eNId(
   reset();
 }
 TriangleExact::TriangleExact(const PT& a,const PT& b,const PT& c):_vid(-1,-1,-1),_eNId(-1,-1,-1)
-{
+{ 
   _v[0]=a;
   _v[1]=b;
   _v[2]=c;
@@ -266,16 +266,24 @@ void TriangleExact::reset()
 {
   for(int d=0; d<3; d++) {
     _nO[d]=_v[(d+2)%3]-_v[(d+1)%3];
+
     _nOSqr[d]=_nO[d].dot(_nO[d]);
+
     T t=(_v[d]-_v[(d+1)%3]).dot(_nO[d])/_nOSqr[d];
+
     _n[d]=_v[(d+1)%3]+_nO[d]*t-_v[d];
+
   }
   _nt=(_v[1]-_v[0]).cross(_v[2]-_v[0]);
+
   _nTnN=(_nt*_nt.transpose())/_nt.squaredNorm();
+
   MAT2 M;
   M(0,0)= _nO[1].dot(_nO[2]);
   M(1,0)= _nO[2].dot(_nO[2]);
   M(0,1)=-_nO[1].dot(_nO[1]);
   M(1,1)=-_nO[2].dot(_nO[1]);
+
   _invM=M.inverse();
+
 }
