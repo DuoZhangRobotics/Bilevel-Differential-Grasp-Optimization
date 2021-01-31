@@ -1,7 +1,7 @@
 #include "ConvexLogBarrierSelfEnergy.h"
 #include <Articulated/MultiPrecisionSeparatingPlane.h>
 #include <Environment/ObjMeshGeomCellExact.h>
-#include <Optimizer/QCQPSolverMosek.h>
+#include <Optimizer/QCQPSolverQPOASES.h>
 #include "GraspPlanner.h"
 #include <Utils/CLog.h>
 #include <stack>
@@ -154,9 +154,9 @@ bool ConvexLogBarrierSelfEnergy<T>::initializePlane(sizeType idL,sizeType idR)
     ubA[k]=-1;
     k++;
   }
-  Vec g=Vec4T::Zero(),dwd;
+  Vec g=Vec4T::Zero(),dwd=Vec4T::Zero();
   MatT h=Mat4T::Identity();
-  QCQPSolverMosek<T> sol;
+  QCQPSolverQPOASES<T> sol;
   if(sol.solveQP(dwd,h,g,&A,NULL,NULL,&lbA,&ubA,std::vector<Coli,Eigen::aligned_allocator<Coli>>())!=QCQPSolver<T>::SOLVED)
     return false;
   else {
