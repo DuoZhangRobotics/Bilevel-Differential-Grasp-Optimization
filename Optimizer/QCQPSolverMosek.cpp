@@ -294,17 +294,17 @@ typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::solveL1QPTpl(Vec&,c
 }
 //helper
 template <typename T>
-typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const MatT&,bool) const
+typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void* task,const MatT& H,bool isA,bool callback) const
 {
   FUNCTION_NOT_IMPLEMENTED
   return QCQPSolver<T>::UNKNOWN;
 }
-template <typename T>
-typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const SMat&,bool) const
-{
-  FUNCTION_NOT_IMPLEMENTED
-  return QCQPSolver<T>::UNKNOWN;
-}
+// template <typename T>
+// typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void* task,const MatT& H,bool isA,bool callback) const
+// {
+//   FUNCTION_NOT_IMPLEMENTED
+//   return QCQPSolver<T>::UNKNOWN;
+// }
 #endif
 template <typename T>
 typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::solveQP(Vec& x,const MatT& H,const Vec& g,const MatT* cjac,const Vec* lb,const Vec* ub,const Vec* lbA,const Vec* ubA,const std::vector<Coli,Eigen::aligned_allocator<Coli>>& QCones,bool callback)
