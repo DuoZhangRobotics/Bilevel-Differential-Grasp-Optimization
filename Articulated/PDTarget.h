@@ -7,7 +7,7 @@
 PRJ_BEGIN
 
 struct ArticulatedBody;
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Utils/MapTypePragma.h>
 struct PDTarget : public SerializableBase
 {
 public:

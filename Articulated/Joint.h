@@ -3,7 +3,7 @@
 
 #include <CommonFile/ObjMesh.h>
 #include <CommonFile/StaticPool.h>
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Utils/MapTypePragma.h>
 #include <Utils/SparseUtils.h>
 
 PRJ_BEGIN

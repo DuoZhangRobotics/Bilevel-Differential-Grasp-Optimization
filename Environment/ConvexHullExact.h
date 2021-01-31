@@ -14,6 +14,8 @@ struct ALIGN_16 ConvexHullExact : public ObjMeshGeomCellExact
 {
   ConvexHullExact();
   ConvexHullExact(const ObjMeshGeomCell& exact);
+  ConvexHullExact(const ConvexHullExact& other);
+  ConvexHullExact& operator=(const ConvexHullExact& other);
   virtual ~ConvexHullExact();
   virtual bool read(std::istream& is,IOData* dat) override;
   virtual bool write(std::ostream& os,IOData* dat) const override;

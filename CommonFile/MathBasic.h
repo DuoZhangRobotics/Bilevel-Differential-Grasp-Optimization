@@ -101,27 +101,6 @@ struct ScalarUtil<double> {
     return std::numeric_limits<double>::quiet_NaN();
   }
 };
-#if defined(QUADMATH_SUPPORT) && defined(__GNUC__)
-template <>
-struct ScalarUtil<__float128> {
-  typedef __float128 T;
-  NAME_EIGEN_ROWCOL_ALLTYPES_SPECIALSIZE(Scalar)
-  NAME_EIGEN_MAT_ALLTYPES_SPECIALSIZE(Scalar)
-  NAME_EIGEN_SPECIAL_ALLTYPES_SPECIALSIZE(Scalar,,T)
-  FORCE_INLINE static T scalar_max() {
-    return std::numeric_limits<double>::max();
-  }
-  FORCE_INLINE static T scalar_eps() {
-    return 1E-20f;
-  }
-  FORCE_INLINE static T scalar_inf() {
-    return strtoflt128("INF",NULL);
-  }
-  FORCE_INLINE static T scalar_nanq() {
-    return strtoflt128("NAN",NULL);
-  }
-};
-#endif
 template <>
 struct ScalarUtil<char> {
   typedef char T;

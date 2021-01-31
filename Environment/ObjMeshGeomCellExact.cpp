@@ -71,7 +71,7 @@ const BBoxExact& ObjMeshGeomCellExact::getBB() const
 }
 bool ObjMeshGeomCellExact::empty() const
 {
-  return _bvh.empty();
+  return _vss.empty();
 }
 bool ObjMeshGeomCellExact::closest(const PT& pt,PT& n,PT& normal,MAT3& hessian,Vec2i& feat,bool,std::vector<PT,Eigen::aligned_allocator<PT>>*) const
 {

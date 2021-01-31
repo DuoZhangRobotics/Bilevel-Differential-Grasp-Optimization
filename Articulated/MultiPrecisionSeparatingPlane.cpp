@@ -1,5 +1,7 @@
 #include "MultiPrecisionSeparatingPlane.h"
 #include <Utils/RotationUtil.h>
+#include <Utils/Utils.h>
+#include <Utils/CLog.h>
 #include <Eigen/Eigen>
 
 USE_PRJ_NAMESPACE
@@ -43,6 +45,34 @@ void MultiPrecisionSeparatingPlane<T>::resetPoints(const Mat3XT& pssL,const Mat3
   }
 }
 template <typename T>
+void MultiPrecisionSeparatingPlane<T>::writeProb(const std::string& path) const
+{
+  std::ofstream os(path,std::ios::binary);
+  writeBinaryData(MultiPrecisionLQP<T>::_foot,os);
+  writeBinaryData(MultiPrecisionLQP<T>::_H,os);
+  writeBinaryData(MultiPrecisionLQP<T>::_c,os);
+  writeBinaryData(_pssL,os);
+  writeBinaryData(_pssR,os);
+  writeBinaryData(_plane,os);
+  writeBinaryData(_d0,os);
+}
+template <typename T>
+void MultiPrecisionSeparatingPlane<T>::readAndTestProb(const std::string& path)
+{
+  bool succ;
+  if(!exists(path))
+    return;
+  std::ifstream is(path,std::ios::binary);
+  readBinaryData(MultiPrecisionLQP<T>::_foot,is);
+  readBinaryData(MultiPrecisionLQP<T>::_H,is);
+  readBinaryData(MultiPrecisionLQP<T>::_c,is);
+  readBinaryData(_pssL,is);
+  readBinaryData(_pssR,is);
+  readBinaryData(_plane,is);
+  readBinaryData(_d0,is);
+  solve(succ);
+}
+template <typename T>
 T MultiPrecisionSeparatingPlane<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h,bool forceSPD) const
 {
   T ret=0;
@@ -57,7 +87,7 @@ T MultiPrecisionSeparatingPlane<T>::computeFGH(T mu,const Vec& w,Vec* g,DMat* h,
     for(const Vec3T& pL:(pass==0?_pssL:_pssR)) {
       T sgn=pass==0?1:-1;
       T tmp=(pL.dot(n)+w[3]+_plane[3])*sgn;
-      T D,DD,E=clog(tmp,&D,&DD,_d0,mu);
+      T D=0,DD=0,E=clog(tmp,&D,&DD,_d0,mu);
       if(!std::isfinite(E))
         return E;
       else if(E==0)
@@ -99,27 +129,6 @@ typename MultiPrecisionSeparatingPlane<T>::Vec4T MultiPrecisionSeparatingPlane<T
   return _plane=Vec4T(n[0],n[1],n[2],_plane[3]+ret[3]);
 }
 template <typename T>
-T MultiPrecisionSeparatingPlane<T>::clog(T d,T* D,T* DD,T d0,T coef)
-{
-  if(d<=0)
-    return ScalarUtil<T>::scalar_nanq();
-  else if(d>d0) {
-    if(D)
-      *D=0;
-    if(DD)
-      *DD=0;
-    return 0;
-  }
-  T valLog=std::log(d/d0);
-  T valLogC=valLog*(d-d0);
-  T relD=(d-d0)/d;
-  if(D)
-    *D=-(2*valLogC+(d-d0)*relD)*coef;
-  if(DD)
-    *DD=-(4*relD-relD*relD+2*valLog)*coef;
-  return -valLogC*(d-d0)*coef;
-}
-template <typename T>
 void MultiPrecisionSeparatingPlane<T>::initialGuess(Vec& w) const
 {
   w.setZero(4);
@@ -132,16 +141,10 @@ void MultiPrecisionSeparatingPlane<T>::limitAlpha(T& alpha,const Vec&,const Vec&
 template <typename T>
 bool MultiPrecisionSeparatingPlane<T>::solveDx(T,T,const Vec&,Vec& dx,const DMat& h,const Vec& g) const
 {
-  Eigen::SelfAdjointEigenSolver<Matd> eig(h.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  }),Eigen::ComputeEigenvectors);
-  DMat EVec=eig.eigenvectors().unaryExpr([&](const T& in) {
-    return T(in);
-  });
+  Eigen::SelfAdjointEigenSolver<Matd> eig(h.template cast<scalarD>(),Eigen::ComputeEigenvectors);
+  DMat EVec=eig.eigenvectors().template cast<T>();
   scalarD condNumber=eig.eigenvalues().maxCoeff()*1e-5f;
-  Vec EVal=eig.eigenvalues().cwiseMax(std::max<scalarD>(condNumber,1e-15f)).unaryExpr([&](const T& in) {
-    return T(in);
-  });
+  Vec EVal=eig.eigenvalues().cwiseMax(std::max<scalarD>(condNumber,1e-15f)).template cast<T>();
 
   dx=EVec.transpose()*g;
   dx.array()/=EVal.array();

@@ -7,7 +7,6 @@
 #include <Optimizer/DSSQPObjective.h>
 #include <Utils/DebugGradient.h>
 #include <Utils/Options.h>
-#include <qpOASES.hpp>
 
 PRJ_BEGIN
 
@@ -97,7 +96,6 @@ struct PBDSimulatorTraits<double>
   DECL_MAP_TYPES_T
   static void registerOptions(Options& ops);
   static void initOptions(PBDSimulator<double>& sol);
-  static Vec solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HId,const Vec& gd,const Vec& wd,T beta);
 };
 template <>
 struct PBDSimulatorTraits<__float128>
@@ -106,7 +104,6 @@ struct PBDSimulatorTraits<__float128>
   DECL_MAP_TYPES_T
   static void registerOptions(Options& ops);
   static void initOptions(PBDSimulator<__float128>& sol);
-  static Vec solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HI,const Vec& g,const Vec& w,T beta);
 };
 template <>
 struct PBDSimulatorTraits<mpfr::mpreal>
@@ -115,7 +112,6 @@ struct PBDSimulatorTraits<mpfr::mpreal>
   DECL_MAP_TYPES_T
   static void registerOptions(Options& ops);
   static void initOptions(PBDSimulator<mpfr::mpreal>& sol);
-  static Vec solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HI,const Vec& g,const Vec& w,T beta);
 };
 #ifdef OPTIMIZER_SUPPORT
 template <typename T>

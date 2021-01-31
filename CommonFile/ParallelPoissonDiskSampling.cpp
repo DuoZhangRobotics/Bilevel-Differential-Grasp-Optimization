@@ -25,14 +25,30 @@ void ParallelPoissonDiskSampling::sample()
   generateHashTable();
   generatePoissonDisk();
 }
-void ParallelPoissonDiskSampling::sample(ObjMesh& mesh)
+void ParallelPoissonDiskSampling::sample(ObjMesh& mesh,bool rescale)
 {
+  scalar ext=0;
+  if(rescale) {
+    ext=mesh.getBB().getExtent().norm();
+    mesh.getScale()=1/ext;
+    mesh.applyTrans(Vec3::Zero());
+    _radius*=1/ext;
+  }
+
   _euclid=false;
   ASSERT(mesh.getDim() == _dim)
   mesh.smooth();
   generateRawSample(mesh);
   generateHashTable();
   generatePoissonDisk();
+
+  if(rescale) {
+    _radius*=ext;
+    for(sizeType i=0; i<_rawPSet.size(); i++)
+      _rawPSet[i]._pos*=ext;
+    for(sizeType i=0; i<_PSet.size(); i++)
+      _PSet[i]._pos*=ext;
+  }
 }
 void ParallelPoissonDiskSampling::sample(const Vec3& ctr,scalar rad)
 {

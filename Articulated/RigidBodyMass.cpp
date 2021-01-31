@@ -2,6 +2,7 @@
 #include <Utils/RotationUtil.h>
 #include <CommonFile/MakeMesh.h>
 #include <CommonFile/geom/StaticGeom.h>
+#include <Utils/Scalar.h>
 
 USE_PRJ_NAMESPACE
 
@@ -11,8 +12,11 @@ USE_PRJ_NAMESPACE
 #define SQR(A) ((A)*(A))
 #define CUBE(A) ((A)*(A)*(A))
 
-struct RigidBodyMass2D {
-  typedef std::vector<Vec3,Eigen::aligned_allocator<Vec3> > POS;
+template <typename T>
+struct RigidBodyMass2D
+{
+  DECL_MAP_TYPES_T
+  typedef std::vector<Vec3T,Eigen::aligned_allocator<Vec3T> > POS;
   typedef std::vector<Vec3i,Eigen::aligned_allocator<Vec3i> > IDS;
 public:
   //just use Christopher Batty's code
@@ -25,17 +29,17 @@ public:
     _xy = 0;
 
     for(sizeType i=0; i<(sizeType)I.size(); i++) {
-      Vec3 v1=V[I[i][0]];
-      Vec3 v2=V[I[i][1]];
+      Vec3T v1=V[I[i][0]];
+      Vec3T v2=V[I[i][1]];
 
       // Signed area of this triangle (where 3rd vertex is the origin).
-      scalar v = v1[0]*v2[1] - v2[0]*v1[1];
+      T v = v1[0]*v2[1] - v2[0]*v1[1];
       // Contribution to the mass
       _m += v;
       // Contribution to the centroid
-      scalar x4 = v1[0] + v2[0];
+      T x4 = v1[0] + v2[0];
       _Cx += (v * x4);
-      scalar y4 = v1[1] + v2[1];
+      T y4 = v1[1] + v2[1];
       _Cy += (v * y4);
       // Contribution to moment of inertia monomials
       _xx += v * (v1[0]*v1[0] + v2[0]*v2[0] + x4*x4);
@@ -46,52 +50,52 @@ public:
     _mat.setZero();
     // Centroid.
     // The case _m = 0 needs to be addressed here.
-    scalar r = 1.0f / (3.0f * _m);
-    scalar Cx = _Cx * r;
-    scalar Cy = _Cy * r;
-    _ctr=Vec3(Cx,Cy,0);
+    T r = 1.0f / (3.0f * _m);
+    T Cx = _Cx * r;
+    T Cy = _Cy * r;
+    _ctr=Vec3T(Cx,Cy,0);
     // Mass
-    scalar m=_m / 2.0f;
+    T m=_m / 2.0f;
     // Moment of inertia about the centroid.
     r = 1.0f / 24.0f;
-    Mat3 J=Mat3::Zero();
+    Mat3T J=Mat3T::Zero();
     _xx = _xx * r;
     _yy = _yy * r;
     _xy = _xy * r;
     J(2,2)=_xx+_yy;
     // translate inertia tensor to center of mass
-    translateCOMInv(J,Vec3(Cx,Cy,0.0f),m);
+    translateCOMInv(J,Vec3T(Cx,Cy,0.0f),m);
     _mat(0,0)=_mat(1,1)=m;
-    _mat.block<3,3>(3,3) = J;
+    _mat.template block<3,3>(3,3) = J;
     // translate again
     _matCOM=_mat;
-    translateCOM(_mat,Vec3(Cx,Cy,0.0f),m);
+    translateCOM(_mat,Vec3T(Cx,Cy,0.0f),m);
   }
   //getter
-  virtual Vec3 getCtr() const {
+  virtual Vec3T getCtr() const {
     return _ctr;
   }
-  virtual Mat6 getMass() const {
+  virtual Mat6T getMass() const {
     return _mat;
   }
-  virtual Mat6 getMassCOM() const {
+  virtual Mat6T getMassCOM() const {
     return _matCOM;
   }
-  virtual Mat3 getMCCT() const {
-    Mat3 ret=Mat3::Zero();
+  virtual Mat3T getMCCT() const {
+    Mat3T ret=Mat3T::Zero();
     ret(0,0)=_xx;
     ret(1,1)=_yy;
     ret(0,1)=ret(1,0)=_xy;
     return ret;
   }
 protected:
-  static void translateCOM(Mat6& J,const Vec3& r,const scalar& mass) {
-    Mat3 cr=cross<scalar>(r);
-    J.block<3,3>(3,3)+=cr*cr.transpose()*mass;
-    J.block<3,3>(0,3)=cr.transpose()*mass;
-    J.block<3,3>(3,0)=cr*mass;
+  static void translateCOM(Mat6T& J,const Vec3T& r,const T& mass) {
+    Mat3T cr=cross<T>(r);
+    J.template block<3,3>(3,3)+=cr*cr.transpose()*mass;
+    J.template block<3,3>(0,3)=cr.transpose()*mass;
+    J.template block<3,3>(3,0)=cr*mass;
   }
-  static void translateCOMInv(Mat3& J,const Vec3& r,const scalar& mass) {
+  static void translateCOMInv(Mat3T& J,const Vec3T& r,const T& mass) {
     J(0,0) -= mass * (r[Y]*r[Y] + r[Z]*r[Z]);
     J(1,1) -= mass * (r[Z]*r[Z] + r[X]*r[X]);
     J(2,2) -= mass * (r[X]*r[X] + r[Y]*r[Y]);
@@ -99,24 +103,42 @@ protected:
     J(2,1) = J(1,2) += mass * r[Y] * r[Z];
     J(2,0) = J(0,2) += mass * r[Z] * r[X];
   }
-  Mat6 _mat,_matCOM;
-  Vec3 _ctr;
+  Mat6T _mat,_matCOM;
+  Vec3T _ctr;
   POS _V;
   IDS _I;
-private:
-  scalar _m;
-  scalar _Cx, _Cy;
-  scalar _xx, _yy, _xy;
+protected:
+  T _m;
+  T _Cx, _Cy;
+  T _xx, _yy, _xy;
 };
-struct RigidBodyMass3D : public RigidBodyMass2D {
+template <typename T>
+struct RigidBodyMass3D : public RigidBodyMass2D<T>
+{
 public:
+  DECL_MAP_TYPES_T
+  using typename RigidBodyMass2D<T>::POS;
+  using typename RigidBodyMass2D<T>::IDS;
+  using RigidBodyMass2D<T>::_mat;
+  using RigidBodyMass2D<T>::_matCOM;
+  using RigidBodyMass2D<T>::_ctr;
+  using RigidBodyMass2D<T>::_V;
+  using RigidBodyMass2D<T>::_I;
+  using RigidBodyMass2D<T>::_m;
+  using RigidBodyMass2D<T>::_Cx;
+  using RigidBodyMass2D<T>::_Cy;
+  using RigidBodyMass2D<T>::_xx;
+  using RigidBodyMass2D<T>::_yy;
+  using RigidBodyMass2D<T>::_xy;
+  using RigidBodyMass2D<T>::translateCOM;
+  using RigidBodyMass2D<T>::translateCOMInv;
   //just use Brian Mirtich's code
-  RigidBodyMass3D(const POS& V,const IDS& I):RigidBodyMass2D(V,I) {
+  RigidBodyMass3D(const POS& V,const IDS& I):RigidBodyMass2D<T>(V,I) {
     _TN.resize(_I.size());
     for(sizeType i=0; i<(sizeType)_I.size(); i++) {
-      Vec3i T=_I[i];
-      _TN[i]=(_V[T[1]]-_V[T[0]]).cross(_V[T[2]]-_V[T[0]]);
-      if(_TN[i].norm()>ScalarUtil<scalar>::scalar_eps())
+      Vec3i t=_I[i];
+      _TN[i]=(_V[t[1]]-_V[t[0]]).cross(_V[t[2]]-_V[t[0]]);
+      if(_TN[i].norm()>ScalarUtil<T>::scalar_eps())
         _TN[i].normalize();
       else {
         //remove zero-volume triangles
@@ -130,10 +152,10 @@ public:
     compVolumeIntegrals();
     _mat.setIdentity();
     // compute center of mass
-    Vec3 r(_T1[X] / _T0, _T1[Y] / _T0, _T1[Z] / _T0);
+    Vec3T r(_T1[X] / _T0, _T1[Y] / _T0, _T1[Z] / _T0);
     _ctr=r;
     // compute inertia tensor
-    Mat3 J=Mat3::Zero();
+    Mat3T J=Mat3T::Zero();
     J(0,0) = (_T2[Y] + _T2[Z]);
     J(1,1) = (_T2[Z] + _T2[X]);
     J(2,2) = (_T2[X] + _T2[Y]);
@@ -143,19 +165,19 @@ public:
     // translate inertia tensor to center of mass
     translateCOMInv(J,r,_T0);
     //set to matrix
-    _mat.block<3,3>(0,0)=Mat3::Identity()*_T0;
-    _mat.block<3,3>(3,3)=J;
+    _mat.template block<3,3>(0,0)=Mat3T::Identity()*_T0;
+    _mat.template block<3,3>(3,3)=J;
     // translate again
     _matCOM=_mat;
     translateCOM(_mat,r,_T0);
   }
   void compProjectionIntegrals(const Vec3i& f) {
-    scalar a0, a1, da;
-    scalar b0, b1, db;
-    scalar a0_2, a0_3, a0_4, b0_2, b0_3, b0_4;
-    scalar a1_2, a1_3, b1_2, b1_3;
-    scalar C1, Ca, Caa, Caaa, Cb, Cbb, Cbbb;
-    scalar Cab, Kab, Caab, Kaab, Cabb, Kabb;
+    T a0, a1, da;
+    T b0, b1, db;
+    T a0_2, a0_3, a0_4, b0_2, b0_3, b0_4;
+    T a1_2, a1_3, b1_2, b1_3;
+    T C1, Ca, Caa, Caaa, Cb, Cbb, Cbbb;
+    T Cab, Kab, Caab, Kaab, Cabb, Kabb;
     sizeType i;
 
     _P1 = _Pa = _Pb = _Paa = _Pab = _Pbb = _Paaa = _Paab = _Pabb = _Pbbb = 0.0f;
@@ -215,8 +237,8 @@ public:
     _Paab /= 60.0;
     _Pabb /= -60.0;
   }
-  void compFaceIntegrals(const Vec3i& f,const Vec3& n,const scalar& w) {
-    scalar k1, k2, k3, k4;
+  void compFaceIntegrals(const Vec3i& f,const Vec3T& n,const T& w) {
+    T k1, k2, k3, k4;
 
     compProjectionIntegrals(f);
 
@@ -248,7 +270,7 @@ public:
   }
   void compVolumeIntegrals() {
     Vec3i f;
-    Vec3 n;
+    Vec3T n;
     sizeType i;
 
     _T0 = _T1[X] = _T1[Y] = _T1[Z]
@@ -258,9 +280,9 @@ public:
     for (i = 0; i < (sizeType)_I.size(); i++) {
       f = _I[i];
       n=_TN[i];
-      scalar nx=std::abs(n[0]);
-      scalar ny=std::abs(n[1]);
-      scalar nz=std::abs(n[2]);
+      T nx=std::abs(n[0]);
+      T ny=std::abs(n[1]);
+      T nz=std::abs(n[2]);
       if (nx > ny && nx > nz) _C = X;
       else _C = (ny > nz) ? Y : Z;
       _A = (_C + 1) % 3;
@@ -291,8 +313,8 @@ public:
     _TP[Y] /= 2;
     _TP[Z] /= 2;
   }
-  Mat3 getMCCT() const {
-    Mat3 ret=Mat3::Identity();
+  Mat3T getMCCT() const {
+    Mat3T ret=Mat3T::Identity();
     ret(0,0)=_T2[X];
     ret(1,1)=_T2[Y];
     ret(2,2)=_T2[Z];
@@ -305,48 +327,70 @@ private:
   sizeType _A;
   sizeType _B;
   sizeType _C;
-  scalar _P1, _Pa, _Pb, _Paa, _Pab, _Pbb, _Paaa, _Paab, _Pabb, _Pbbb;
-  scalar _Fa, _Fb, _Fc, _Faa, _Fbb, _Fcc, _Faaa, _Fbbb, _Fccc, _Faab, _Fbbc, _Fcca;
-  scalar _T0, _T1[3], _T2[3], _TP[3];
+  T _P1, _Pa, _Pb, _Paa, _Pab, _Pbb, _Paaa, _Paab, _Pabb, _Pbbb;
+  T _Fa, _Fb, _Fc, _Faa, _Fbb, _Fcc, _Faaa, _Fbbb, _Fccc, _Faab, _Fbbc, _Fcca;
+  T _T0, _T1[3], _T2[3], _TP[3];
   POS _TN;
 };
-RigidBodyMass::RigidBodyMass(const ObjMesh& mesh)
+template <typename T>
+RigidBodyMass<T>::RigidBodyMass(const ObjMesh& mesh)
 {
   if(mesh.getDim() == 2) {
-    RigidBodyMass2D mass(mesh.getV(),mesh.getI());
+    typename RigidBodyMass2D<T>::POS tmpV;
+    tmpV.resize(mesh.getV().size());
+    for(sizeType i=0; i<(sizeType)tmpV.size(); i++)
+      tmpV[i]=mesh.getV(i).template cast<T>();
+
+    RigidBodyMass2D<T> mass(tmpV,mesh.getI());
     _ctr=mass.getCtr();
     _mat=mass.getMass();
     _matCOM=mass.getMassCOM();
     _MCCT=mass.getMCCT();
   } else {
-    RigidBodyMass3D mass(mesh.getV(),mesh.getI());
+    typename RigidBodyMass3D<T>::POS tmpV;
+    tmpV.resize(mesh.getV().size());
+    for(sizeType i=0; i<(sizeType)tmpV.size(); i++)
+      tmpV[i]=mesh.getV(i).template cast<T>();
+
+    RigidBodyMass3D<T> mass(tmpV,mesh.getI());
     _ctr=mass.getCtr();
     _mat=mass.getMass();
     _matCOM=mass.getMassCOM();
     _MCCT=mass.getMCCT();
   }
 }
-Vec3 RigidBodyMass::getCtr() const
+template <typename T>
+typename RigidBodyMass<T>::Vec3T RigidBodyMass<T>::getCtr() const
 {
   return _ctr;
 }
-Mat6 RigidBodyMass::getMass() const
+template <typename T>
+typename RigidBodyMass<T>::Mat6T RigidBodyMass<T>::getMass() const
 {
   return _mat;
 }
-Mat6 RigidBodyMass::getMassCOM() const
+template <typename T>
+typename RigidBodyMass<T>::Mat6T RigidBodyMass<T>::getMassCOM() const
 {
   return _matCOM;
 }
-scalar RigidBodyMass::getM() const
+template <typename T>
+T RigidBodyMass<T>::getM() const
 {
   return _mat(0,0);
 }
-Vec3 RigidBodyMass::getMC() const
+template <typename T>
+typename RigidBodyMass<T>::Vec3T RigidBodyMass<T>::getMC() const
 {
-  return invCross<scalar>(_mat.block<3,3>(3,0));
+  return invCross<T>(_mat.template block<3,3>(3,0));
 }
-Mat3 RigidBodyMass::getMCCT() const
+template <typename T>
+typename RigidBodyMass<T>::Mat3T RigidBodyMass<T>::getMCCT() const
 {
   return _MCCT;
 }
+//instance
+PRJ_BEGIN
+template class RigidBodyMass<float>;
+template class RigidBodyMass<double>;
+PRJ_END

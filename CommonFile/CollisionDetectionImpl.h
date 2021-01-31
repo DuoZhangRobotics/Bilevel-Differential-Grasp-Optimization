@@ -52,27 +52,27 @@ typename BBox<T,DIM>::BBox& BBox<T,DIM>::operator=(const BBox<T2,DIM>& other) {
   return *this;
 }
 template <typename T,int DIM>
+std::shared_ptr<SerializableBase> BBox<T,DIM>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new BBox<T,DIM>);
+}
+template <typename T,int DIM>
+std::string BBox<T,DIM>::type() const
+{
+  return typeid(BBox<T,DIM>).name();
+}
+template <typename T,int DIM>
 bool BBox<T,DIM>::write(std::ostream& os) const
 {
-  Eigen::Matrix<scalarD,DIM,1> minC=_minC.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  writeBinaryData(minC,os);
-  Eigen::Matrix<scalarD,DIM,1> maxC=_maxC.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  writeBinaryData(maxC,os);
+  writeBinaryData(_minC,os);
+  writeBinaryData(_maxC,os);
   return os.good();
 }
 template <typename T,int DIM>
 bool BBox<T,DIM>::read(std::istream& is)
 {
-  Eigen::Matrix<scalarD,DIM,1> minC;
-  readBinaryData(minC,is);
-  _minC=minC.template cast<T>();
-  Eigen::Matrix<scalarD,DIM,1> maxC;
-  readBinaryData(maxC,is);
-  _maxC=maxC.template cast<T>();
+  readBinaryData(_minC,is);
+  readBinaryData(_maxC,is);
   return is.good();
 }
 template <typename T,int DIM>
@@ -318,6 +318,16 @@ template <typename T>
 LineSegTpl<T>::LineSegTpl() {}
 template <typename T>
 LineSegTpl<T>::LineSegTpl(const PT& x,const PT& y):_x(x),_y(y) {}
+template <typename T>
+std::shared_ptr<SerializableBase> LineSegTpl<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new LineSegTpl<T>);
+}
+template <typename T>
+std::string LineSegTpl<T>::type() const
+{
+  return typeid(LineSegTpl<T>).name();
+}
 template <typename T>
 bool LineSegTpl<T>::write(std::ostream& os) const
 {
@@ -743,6 +753,16 @@ PlaneTpl<T>::PlaneTpl(const PT& x0,const PT& n):_x0(x0),_n(n) {}
 template <typename T>
 PlaneTpl<T>::PlaneTpl(const PT& a,const PT& b,const PT& c):_x0(a),_n((b-a).cross(c-a)) {}
 template <typename T>
+std::shared_ptr<SerializableBase> PlaneTpl<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new PlaneTpl<T>);
+}
+template <typename T>
+std::string PlaneTpl<T>::type() const
+{
+  return typeid(PlaneTpl<T>).name();
+}
+template <typename T>
 bool PlaneTpl<T>::write(std::ostream& os) const
 {
   writeBinaryData(_x0,os);
@@ -811,6 +831,16 @@ template <typename T>
 TriangleTpl<T>::TriangleTpl() {}
 template <typename T>
 TriangleTpl<T>::TriangleTpl(const PT& a,const PT& b,const PT& c):_a(a),_b(b),_c(c) {}
+template <typename T>
+std::shared_ptr<SerializableBase> TriangleTpl<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new TriangleTpl<T>);
+}
+template <typename T>
+std::string TriangleTpl<T>::type() const
+{
+  return typeid(TriangleTpl<T>).name();
+}
 template <typename T>
 bool TriangleTpl<T>::write(std::ostream& os) const
 {
@@ -1295,6 +1325,16 @@ TetrahedronTpl<T>::TetrahedronTpl(const PT& a,const PT& b,const PT& c,const PT& 
   }
 }
 template <typename T>
+std::shared_ptr<SerializableBase> TetrahedronTpl<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new TetrahedronTpl<T>);
+}
+template <typename T>
+std::string TetrahedronTpl<T>::type() const
+{
+  return typeid(TetrahedronTpl<T>).name();
+}
+template <typename T>
 bool TetrahedronTpl<T>::write(std::ostream& os) const
 {
   writeBinaryData(_a,os);
@@ -1540,6 +1580,16 @@ OBBTpl<T,2>::OBBTpl(const MAT3& rot,const PT3& trans,const PT3& ext)
   _ext=ext.template block<2,1>(0,0);
 }
 template <typename T>
+std::shared_ptr<SerializableBase> OBBTpl<T,2>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new OBBTpl<T,2>);
+}
+template <typename T>
+std::string OBBTpl<T,2>::type() const
+{
+  return typeid(OBBTpl<T,2>).name();
+}
+template <typename T>
 bool OBBTpl<T,2>::write(std::ostream& os) const
 {
   writeBinaryData(_rot,os);
@@ -1663,6 +1713,16 @@ OBBTpl<T,3>::OBBTpl(const MAT& rot,const PT& trans,const BBox<T,3>& bb)
 }
 template <typename T>
 OBBTpl<T,3>::OBBTpl(const MAT& rot,const PT& trans,const PT& ext):_rot(rot),_trans(trans),_ext(ext) {}
+template <typename T>
+std::shared_ptr<SerializableBase> OBBTpl<T,3>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new OBBTpl<T,3>);
+}
+template <typename T>
+std::string OBBTpl<T,3>::type() const
+{
+  return typeid(OBBTpl<T,3>).name();
+}
 template <typename T>
 bool OBBTpl<T,3>::write(std::ostream& os) const
 {
@@ -1878,6 +1938,16 @@ KDOP18<T>::KDOP18(const PT& a,const PT& b)
   _dist[17] = std::max(ad8, bd8);
 }
 template <typename T>
+std::shared_ptr<SerializableBase> KDOP18<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new KDOP18<T>);
+}
+template <typename T>
+std::string KDOP18<T>::type() const
+{
+  return typeid(KDOP18<T>).name();
+}
+template <typename T>
 bool KDOP18<T>::write(std::ostream& os) const
 {
   for(sizeType i=0; i<18; i++)
@@ -1921,6 +1991,20 @@ void KDOP18<T>::enlarged(T len,sizeType dim)
 {
   ASSERT(dim == 3)
   enlarged(len);
+}
+template <typename T>
+KDOP18<T> KDOP18<T>::enlarge(T len) const
+{
+  KDOP18<T> ret=*this;
+  ret.enlarged(len);
+  return ret;
+}
+template <typename T>
+KDOP18<T> KDOP18<T>::enlarge(T len,sizeType dim) const
+{
+  KDOP18<T> ret=*this;
+  ret.enlarged(len,dim);
+  return ret;
 }
 template <typename T>
 void KDOP18<T>::setPoints(const PT& a,const PT& b,const PT& c)
@@ -2063,24 +2147,27 @@ Sphere<T>::Sphere() {}
 template <typename T>
 Sphere<T>::Sphere(const PT& ctr,const T& rad):_ctr(ctr),_rad(rad) {}
 template <typename T>
+std::shared_ptr<SerializableBase> Sphere<T>::copy() const
+{
+  return std::shared_ptr<SerializableBase>(new Sphere<T>);
+}
+template <typename T>
+std::string Sphere<T>::type() const
+{
+  return typeid(Sphere<T>).name();
+}
+template <typename T>
 bool Sphere<T>::write(std::ostream& os) const
 {
-  Vec3d ctr=_ctr.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  writeBinaryData(ctr,os);
+  writeBinaryData(_ctr,os);
   writeBinaryData(std::to_double(_rad),os);
   return os.good();
 }
 template <typename T>
 bool Sphere<T>::read(std::istream& is)
 {
-  Vec3d ctr;
-  readBinaryData(ctr,is);
-  _ctr=ctr.template cast<T>();
-  scalarD rad;
-  readBinaryData(rad,is);
-  _rad=rad;
+  readBinaryData(_ctr,is);
+  readBinaryData(_rad,is);
   return is.good();
 }
 template <typename T>

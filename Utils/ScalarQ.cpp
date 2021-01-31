@@ -2,8 +2,8 @@
 
 namespace std
 {
-#define STDQUAD1(NAME) scalarQ NAME(scalarQ a) {return NAME##q(a);}
-#define STDQUAD2(NAME) scalarQ NAME(scalarQ a,scalarQ b) {return NAME##q(a,b);}
+#define STDQUAD1(NAME) __float128 NAME(__float128 a) {return NAME##q(a);}
+#define STDQUAD2(NAME) __float128 NAME(__float128 a,__float128 b) {return NAME##q(a,b);}
 STDQUAD1(acos)
 STDQUAD1(acosh)
 STDQUAD1(asin)
@@ -37,19 +37,19 @@ STDQUAD1(tanh)
 STDQUAD1(tan)
 #undef STDQUAD1
 #undef STDQUAD2
-scalarQ abs(scalarQ a)
+__float128 abs(const __float128& a)
 {
   return fabs(a);
 }
-bool isfinite(scalarQ a)
+bool isfinite(__float128 a)
 {
   return !isinfq(a) && !isnanq(a);
 }
-scalarQ frexp(scalarQ a,int* exp)
+__float128 frexp(__float128 a,int* exp)
 {
   return frexpq(a,exp);
 }
-scalarQ ldexp(scalarQ a,int exp)
+__float128 ldexp(__float128 a,int exp)
 {
   return ldexpq(a,exp);
 }
@@ -69,33 +69,33 @@ void convert_scalar(__float128 a,__float128& to)
 {
   to=a;
 }
-double to_double(scalarQ a)
+double to_double(__float128 a)
 {
   return a;
 }
-std::string to_string(scalarQ a)
+std::string to_string(__float128 a)
 {
   ostringstream oss;
   oss << a;
   return oss.str();
 }
-istream& operator>>(istream& input,scalarQ& x)
+istream& operator>>(istream& input,__float128& x)
 {
   double tmp;
   input >> tmp;
   x=tmp;
   return input;
 }
-ostream& operator<<(ostream& output,scalarQ x)
+ostream& operator<<(ostream& output,__float128 x)
 {
   output << (double)x;
   return output;
 }
 }
 
-USE_PRJ_NAMESPACE
+PRJ_BEGIN
 
-std::ostream& writeBinaryData(__float128 val,std::ostream& os,IOData*)
+std::ostream& writeBinaryData(const __float128& val,std::ostream& os,IOData*)
 {
   double valD=std::to_double(val);
   os.write((char*)&valD,sizeof(double));
@@ -108,3 +108,5 @@ std::istream& readBinaryData(__float128& val,std::istream& is,IOData*)
   val=valD;
   return is;
 }
+
+PRJ_END

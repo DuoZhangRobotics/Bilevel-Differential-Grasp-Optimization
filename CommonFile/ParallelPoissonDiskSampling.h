@@ -29,7 +29,7 @@ public:
   ParallelPoissonDiskSampling(sizeType dim);
   virtual ~ParallelPoissonDiskSampling() {}
   void sample();
-  void sample(ObjMesh& mesh);
+  void sample(ObjMesh& mesh,bool rescale=true);
   void sample(const Vec3& ctr,scalar rad);
   void sample(const std::vector<Vec3,Eigen::aligned_allocator<Vec3> >& vss,
               const std::vector<Vec4i,Eigen::aligned_allocator<Vec4i> >& iss,sizeType* nrP=NULL);

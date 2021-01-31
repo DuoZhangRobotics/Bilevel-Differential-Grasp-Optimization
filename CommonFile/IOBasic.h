@@ -94,65 +94,88 @@ std::istream& readBinaryData(scalarF& val,std::istream& is,IOData* dat=NULL);
 std::ostream& writeBinaryData(scalarD val,std::ostream& os,IOData* dat=NULL);
 std::istream& readBinaryData(scalarD& val,std::istream& is,IOData* dat=NULL);
 
-//io for fixed matrix
-#define NO_CONFLICT
-#define FIXED_ONLY
-#include "BeginAllEigen.h"
-//redefine atomic operation
-#undef NAME_EIGEN
-#define NAME_EIGEN(type,NAME,size1,size2) \
-std::ostream& writeBinaryData(const Eigen::Matrix<type,size1,size2>& v,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(Eigen::Matrix<type,size1,size2>& v,std::istream& is,IOData* dat=NULL);
-//realize
-NAME_EIGEN_ROWCOL_ALLTYPES_SPECIALSIZE()
-NAME_EIGEN_MAT_ALLTYPES_SPECIALSIZE()
-#include "EndAllEigen.h"
-
-//io for non-fixed matrix
-#define NO_CONFLICT
-#define NON_FIXED_ONLY
-#include "BeginAllEigen.h"
-//redefine atomic operation
-#undef NAME_EIGEN
-#define NAME_EIGEN(type,NAME,size1,size2) \
-std::ostream& writeBinaryData(const Eigen::Matrix<type,size1,size2>& v,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(Eigen::Matrix<type,size1,size2>& v,std::istream& is,IOData* dat=NULL);
-//realize
-NAME_EIGEN_ROWCOL_ALLTYPES_SPECIALSIZE()
-#include "EndAllEigen.h"
+//io for matrix
+template <typename type,int size1,int size2>
+std::ostream& writeBinaryData(const Eigen::Matrix<type,size1,size2>& v,std::ostream& os,IOData* dat=NULL)
+{
+  sizeType d0=v.rows();
+  sizeType d1=v.cols();
+  os.write((char*)&d0,sizeof(sizeType));
+  os.write((char*)&d1,sizeof(sizeType));
+  for(sizeType r=0; r<d0; r++)
+    for(sizeType c=0; c<d1; c++)
+      writeBinaryData(v(r,c),os);
+  return os;
+}
+template <typename type,int size1,int size2>
+std::istream& readBinaryData(Eigen::Matrix<type,size1,size2>& v,std::istream& is,IOData* dat=NULL)
+{
+  sizeType d0;
+  sizeType d1;
+  is.read((char*)&d0,sizeof(sizeType));
+  is.read((char*)&d1,sizeof(sizeType));
+  v.resize(d0,d1);
+  for(sizeType r=0; r<d0; r++)
+    for(sizeType c=0; c<d1; c++)
+      readBinaryData(v(r,c),is);
+  return is;
+}
 
 //io for quaternion
-#define IO_FIXED_QUAT_DECL(NAMEQ,NAMET,NAMEA)	\
-std::ostream& writeBinaryData(const NAMEQ& v,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(NAMEQ& v,std::istream& is,IOData* dat=NULL);         \
-std::ostream& writeBinaryData(const NAMET& v,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(NAMET& v,std::istream& is,IOData* dat=NULL);         \
-std::ostream& writeBinaryData(const NAMEA& v,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(NAMEA& v,std::istream& is,IOData* dat=NULL);
-IO_FIXED_QUAT_DECL(Quatd,Transd,Affined)
-IO_FIXED_QUAT_DECL(Quatf,Transf,Affinef)
-#undef IO_FIXED_QUAT_DECL
-
-//io for shape
-#define IO_SHAPE_DECL(TYPE)	\
-std::ostream& writeBinaryData(const TYPE& b,std::ostream& os,IOData* dat=NULL);	\
-std::istream& readBinaryData(TYPE& b,std::istream& is,IOData* dat=NULL);
-#define IO_SHAPE_ALL_DECL(NAME) \
-IO_SHAPE_DECL(BBox<NAME>) \
-IO_SHAPE_DECL(LineSegTpl<NAME>) \
-IO_SHAPE_DECL(PlaneTpl<NAME>) \
-IO_SHAPE_DECL(TriangleTpl<NAME>) \
-IO_SHAPE_DECL(TetrahedronTpl<NAME>) \
-IO_SHAPE_DECL(OBBTpl<NAME>) \
-IO_SHAPE_DECL(KDOP18<NAME>) \
-IO_SHAPE_DECL(Sphere<NAME>)
-IO_SHAPE_ALL_DECL(scalarD)
-IO_SHAPE_ALL_DECL(scalarF)
-IO_SHAPE_ALL_DECL(sizeType)
-IO_SHAPE_ALL_DECL(char)
-IO_SHAPE_ALL_DECL(unsigned char)
-#undef IO_SHAPE_ALL_DECL
-#undef IO_SHAPE_DECL
+template <typename type>
+std::ostream& writeBinaryData(const Eigen::Quaternion<type>& v,std::ostream& os,IOData* dat=NULL)
+{
+  writeBinaryData(v.w(),os);
+  writeBinaryData(v.x(),os);
+  writeBinaryData(v.y(),os);
+  writeBinaryData(v.z(),os);
+  return os;
+}
+template <typename type>
+std::istream& readBinaryData(Eigen::Quaternion<type>& v,std::istream& is,IOData* dat=NULL)
+{
+  readBinaryData(v.w(),is);
+  readBinaryData(v.x(),is);
+  readBinaryData(v.y(),is);
+  readBinaryData(v.z(),is);
+  return is;
+}
+template <typename type>
+std::ostream& writeBinaryData(const Eigen::Translation<type,3>& v,std::ostream& os,IOData* dat=NULL)
+{
+  writeBinaryData(v.x(),os);
+  writeBinaryData(v.y(),os);
+  writeBinaryData(v.z(),os);
+  return os;
+}
+template <typename type>
+std::istream& readBinaryData(Eigen::Translation<type,3>& v,std::istream& is,IOData* dat=NULL)
+{
+  readBinaryData(v.x(),is);
+  readBinaryData(v.y(),is);
+  readBinaryData(v.z(),is);
+  return is;
+}
+template <typename type>
+std::ostream& writeBinaryData(const Eigen::Transform<type,3,Eigen::Affine>& v,std::ostream& os,IOData* dat=NULL)
+{
+  Eigen::Matrix<type,3,3> r=v.translation();
+  Eigen::Matrix<type,3,1> t=v.linear();
+  writeBinaryData(r,os);
+  writeBinaryData(t,os);
+  return os;
+}
+template <typename type>
+std::istream& readBinaryData(Eigen::Transform<type,3,Eigen::Affine>& v,std::istream& is,IOData* dat=NULL)
+{
+  Eigen::Matrix<type,3,3> r;
+  Eigen::Matrix<type,3,1> t;
+  readBinaryData(r,is);
+  readBinaryData(t,is);
+  v.translation()=r;
+  v.linear()=t;
+  return is;
+}
 
 //io for unordered_map
 template <typename K,typename V,typename H>

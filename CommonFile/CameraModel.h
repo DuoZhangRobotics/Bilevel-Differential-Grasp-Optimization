@@ -7,8 +7,9 @@ PRJ_BEGIN
 
 //camera model
 template<typename T>
-bool getProjectionMatrixFrustum(const typename ScalarUtil<T>::ScalarMat4& prj,
-                                T& left,T& right,T& bottom,T& top,T& zNear,T& zFar)
+bool getProjectionMatrixFrustum
+(const typename ScalarUtil<T>::ScalarMat4& prj,
+ T& left,T& right,T& bottom,T& top,T& zNear,T& zFar)
 {
   if (prj(3,0)!=0.0f || prj(3,1)!=0.0f || prj(3,2)!=-1.0f || prj(3,3)!=0.0f)
     return false;
@@ -30,11 +31,12 @@ bool getProjectionMatrixFrustum(const typename ScalarUtil<T>::ScalarMat4& prj,
   return true;
 }
 template<typename T>
-void getViewMatrixFrame(const typename ScalarUtil<T>::ScalarMat4& m,
-                        typename ScalarUtil<T>::ScalarVec3& c,
-                        typename ScalarUtil<T>::ScalarVec3& x,
-                        typename ScalarUtil<T>::ScalarVec3& y,
-                        typename ScalarUtil<T>::ScalarVec3& z)
+void getViewMatrixFrame
+(const typename ScalarUtil<T>::ScalarMat4& m,
+ typename ScalarUtil<T>::ScalarVec3& c,
+ typename ScalarUtil<T>::ScalarVec3& x,
+ typename ScalarUtil<T>::ScalarVec3& y,
+ typename ScalarUtil<T>::ScalarVec3& z)
 {
   typename ScalarUtil<T>::ScalarMat4 mInv=m.inverse();
 
@@ -49,6 +51,35 @@ void getViewMatrixFrame(const typename ScalarUtil<T>::ScalarMat4& m,
 
   typename ScalarUtil<T>::ScalarVec4 zH=mInv*typename ScalarUtil<T>::ScalarVec4(0.0f,0.0f,-1.0f,1.0f);
   z=(typename ScalarUtil<T>::ScalarVec3(zH.x(),zH.y(),zH.z())*(1.0f/zH.w())-c).normalized();
+}
+template<typename T>
+typename ScalarUtil<T>::ScalarMat4 getProjection(T fov,T aspect,T near,T far)
+{
+  T D2R = M_PI/180.0;
+  T yScale = 1.0/std::tan(D2R*fov/2);
+  T xScale = yScale/aspect;
+  T nearmfar = near-far;
+  T m[] = {
+    xScale, 0,      0,                    0,
+    0,      yScale, 0,                    0,
+    0,      0,      (far+near)/nearmfar, -1,
+    0,      0,      2*far*near/nearmfar,  0
+  };
+  return Eigen::Map<typename ScalarUtil<T>::ScalarMat4>(m);
+}
+template<typename T>
+typename ScalarUtil<T>::ScalarMat4 lookAt
+(const typename ScalarUtil<T>::ScalarVec3& eye,
+ const typename ScalarUtil<T>::ScalarVec3& center,
+ const typename ScalarUtil<T>::ScalarVec3& up)
+{
+  typename ScalarUtil<T>::ScalarMat4 m;
+  m.setIdentity();
+  m.template block<3,1>(0,3)=eye;
+  m.template block<3,1>(0,0)=up.cross(eye-center).normalized();
+  m.template block<3,1>(0,2)=(eye-center).normalized();
+  m.template block<3,1>(0,1)=m.template block<3,1>(0,2).cross(m.template block<3,1>(0,0));
+  return m.inverse();
 }
 template<typename T>
 bool getViewMatrixFrame(const typename ScalarUtil<T>::ScalarMat4& m,

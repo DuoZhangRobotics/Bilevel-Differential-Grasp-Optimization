@@ -25,9 +25,9 @@ struct DELTAPrecision<double>
   }
 };
 template <>
-struct DELTAPrecision<scalarQ>
+struct DELTAPrecision<__float128>
 {
-  static scalarQ delta()
+  static __float128 delta()
   {
     return 1e-15f;
   }

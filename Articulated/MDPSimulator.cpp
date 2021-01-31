@@ -2,12 +2,12 @@
 #include "MDPSimulator.h"
 #include "PBDSimulator.h"
 #include "PDTarget.h"
+#include <CommonFile/Timing.h>
+#include <Optimizer/QCQPSolverMosek.h>
 #include <Environment/GranularWrenchConstructor.h>
 #include <Utils/SpatialRotationUtil.h>
 #include <Utils/DebugGradient.h>
 #include <Utils/Utils.h>
-#include <CommonFile/Timing.h>
-#include <qpOASES.hpp>
 #include <omp.h>
 
 PRJ_BEGIN
@@ -182,7 +182,7 @@ void MDPSimulator<T>::writeVTKSeq(const std::string& path,T horizon,T interval,T
     std::ofstream os(path+"/pose.dat");
     for(sizeType i=0; i<(sizeType)qss.size(); i++)
       os << qss[i].transpose().unaryExpr([&](const T& in) {
-      return (double)std::to_double(in);
+      return (scalarD)std::to_double(in);
     }) << std::endl;
   }
 }
@@ -192,9 +192,7 @@ void MDPSimulator<T>::writeVTK(const Vec& q,const std::string& path,const std::m
   ASSERT_MSGV(endsWith(path,".vtk"),"writeVTK path(%s) must ends with .vtk!",path.c_str())
   NEArticulatedGradientInfo<T> info(_body,q);
   //std::cout << q.transpose().size() << " " << _body.nrDOF() << std::endl;
-  Mat3Xd trans=info.getTrans().unaryExpr([&](const T& in) {
-    return (double)std::to_double(in);
-  });
+  Mat3Xd trans=info.getTrans().template cast<scalarD>();
   if(!jointMask || jointMask->size()==0)
     _body.writeVTK(trans,path,Joint::MESH);
   else {
@@ -954,18 +952,16 @@ typename MDPSimulator<T>::Vec MDPSimulator<T>::stepNMDPPGM(T dt,VecCM tau0,VecCM
   sizeType N=_body.nrDOF();
   T betaMin=_betaMin,beta=std::max<T>(betaInit?*betaInit:betaMin,betaMin),inc=_alphaBetaInc,alpha=1;
   _info.reset(_body,qdq.segment(0,N));
-  MatT DDKDDTheta=MatT::Zero(N,N),DGDTheta=MatT::Zero(N,N),DGDw,H;
+  MatT DDKDDTheta=MatT::Zero(N,N),DGDTheta=MatT::Zero(N,N),DGDw,H,A;
   Vec DKDTheta=Vec::Zero(N),q=qdq.segment(0,N),qNext,w=Vec::Zero(0),wNext=Vec::Zero(0),g;
   bool updateQP=true;
-  //QP constraint matrix
-  Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> Ad;
   //initial projection
   q=manifoldProjection(dt,tau0,qdq,mapCV(q),&w,&alpha);
   if(q.size()==0)
     return q;
+  QCQPSolverMosek<T> sol;
   DGDw.resize(N,MDP<T>::nW());
   T KVal=K(dt,qdq,mapV((Vec*)NULL),mapM((MatT*)NULL)),KValNext;
-  qpOASES::SQProblem prob(w.size(),_externalWrench.size());
   for(; _iter<_solLQP.maxIter(); _iter++) {
     //buildQP
     if(updateQP) {
@@ -974,14 +970,21 @@ typename MDPSimulator<T>::Vec MDPSimulator<T>::stepNMDPPGM(T dt,VecCM tau0,VecCM
       SolveNewton<T>::solveLU(DGDTheta,DGDw,H,true);
       g=H.transpose()*DKDTheta;
       H=H.transpose()*(DDKDDTheta*H);
-      if(Ad.size()==0) {
-        Ad.setZero(_externalWrench.size(),MDP<T>::nW());
+      if(A.size()==0) {
+        A.setZero(_externalWrench.size(),MDP<T>::nW());
         for(sizeType i=0,offW=0; i<(sizeType)_externalWrench.size(); offW+=_externalWrench[i]._B.cols(),i++)
-          Ad.block(i,offW,1,_externalWrench[i]._B.cols()).setOnes();
+          A.block(i,offW,1,_externalWrench[i]._B.cols()).setOnes();
       }
     }
     //solveQP
-    Vec dwd=PBDSimulatorTraits<T>::solveQP(prob,Ad,H,g,w,beta);
+    Vec dwd;
+    if(sol.QCQPSolver<T>::solveQP(dwd,H,g,A,w,beta)!=QCQPSolver<T>::SOLVED) {
+      if(_solLQP.callback()) {
+        INFOV("qp failed (iter=%d)!",_iter+1)
+      }
+      q.resize(0);
+      break;
+    }
     if(std::sqrt(dwd.squaredNorm())<_solLQP.tolGFinal()) {
       if(_solLQP.callback()) {
         INFOV("Beta: %f",std::to_double(beta))

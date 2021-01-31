@@ -3,11 +3,10 @@
 
 #include <iostream>
 #include <quadmath.h>
-typedef __float128 scalarQ;
 namespace std
 {
-#define STDQUAD1(NAME) scalarQ NAME(scalarQ a);
-#define STDQUAD2(NAME) scalarQ NAME(scalarQ a,scalarQ b);
+#define STDQUAD1(NAME) __float128 NAME(__float128 a);
+#define STDQUAD2(NAME) __float128 NAME(__float128 a,__float128 b);
 STDQUAD1(acos)
 STDQUAD1(acosh)
 STDQUAD1(asin)
@@ -41,18 +40,18 @@ STDQUAD1(tanh)
 STDQUAD1(tan)
 #undef STDQUAD1
 #undef STDQUAD2
-scalarQ abs(scalarQ a);
-bool isfinite(scalarQ a);
-scalarQ frexp(scalarQ a,int* exp);
-scalarQ ldexp(scalarQ a,int exp);
-double to_double(scalarQ a);
+__float128 abs(const __float128& a);
+bool isfinite(__float128 a);
+__float128 frexp(__float128 a,int* exp);
+__float128 ldexp(__float128 a,int exp);
+double to_double(__float128 a);
 void convert_scalar(double a,double& to);
 void convert_scalar(double a,__float128& to);
 void convert_scalar(__float128 a,double& to);
 void convert_scalar(__float128 a,__float128& to);
-std::string to_string(scalarQ a);
-istream& operator>>(istream& input,scalarQ& x);
-ostream& operator<<(ostream& output,scalarQ x);
+std::string to_string(__float128 a);
+istream& operator>>(istream& input,__float128& x);
+ostream& operator<<(ostream& output,__float128 x);
 }
 
 #include <CommonFile/MathBasic.h>
@@ -84,8 +83,8 @@ struct ScalarUtil<__float128> {
 };
 #include <CommonFile/EndAllEigen.h>
 
-std::ostream& writeBinaryData(__float128 val,std::ostream& os,IOData*);
-std::istream& readBinaryData(__float128& val,std::istream& is,IOData*);
+std::ostream& writeBinaryData(const __float128& val,std::ostream& os,IOData* dat=NULL);
+std::istream& readBinaryData(__float128& val,std::istream& is,IOData* dat=NULL);
 
 PRJ_END
 

@@ -28,6 +28,7 @@ public:
   void assembleJoints(const tinyxml2::XMLElement& pt,std::vector<TransInfo>& infos);
   void assembleJoint(const tinyxml2::XMLElement& pt,sizeType parent,std::vector<TransInfo>& infos);
   void addBase(sizeType dim,const Vec3d& planeNormal);
+  void combine(const std::vector<ArticulatedBody>& bodies);
   void simplify(std::function<bool(const Joint&)> canSimplify,const Cold& DOF,sizeType nrDebug);
   void simplify(sizeType nrDebug);
   void eliminateJoint(const std::vector<std::string>& jointName,const Cold& DOF,sizeType nrDebug);

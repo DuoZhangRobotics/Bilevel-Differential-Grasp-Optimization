@@ -1,7 +1,7 @@
 #ifndef DSSQP_OBJECTIVE_H
 #define DSSQP_OBJECTIVE_H
 
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Utils/MapTypePragma.h>
 #include <Utils/SparseUtils.h>
 #include <unordered_map>
 
@@ -40,6 +40,9 @@ public:
   virtual int operator()(const Vec& x,Vec& fvec,STrips* fjac);
   //objective
   virtual T operator()(const Vec& x,Vec* fgrad);
+  virtual T operator()(const Vec& x,Vec* fvec,DMat* fjac);
+  virtual T operator()(const Vec& x,Vec* fvec,SMat* fjac);
+  virtual T operator()(const Vec& x,Vec* fvec,STrips* fjac);
   //problem size
   virtual int inputs() const;
   virtual int values() const;
@@ -65,11 +68,14 @@ public:
   virtual ~DSSQPObjectiveComponent();
   virtual int inputs() const override;
   virtual int values() const override;
+  //whether modifying objective function expression is allowed
+  virtual void setUpdateCache(const Vec& x,bool);
   //constraint
   virtual int operator()(const Vec& x,Vec& fvec,STrips* fjac) override;
   //objective
   virtual T operator()(const Vec& x,Vec* fgrad) override;
-  virtual bool debug(sizeType inputs,sizeType nrTrial,T thres);
+  virtual bool debug(sizeType inputs,sizeType nrTrial,T thres,Vec* x0=NULL,bool hess=false);
+  virtual bool debug(sizeType nrTrial,T thres,Vec* x0=NULL,bool hess=false);
   virtual Vec makeValid(const Vec& x) const;
   virtual bool debugGradientConditional(const std::string& entryStr,T ref,T err,T thres) const;
   virtual bool debugGradientConditionalVID(const std::string& entryStr,sizeType vid,T ref,T err,T thres) const;
@@ -108,19 +114,30 @@ struct DSSQPObjectiveCompound : public DSSQPObjective<T>
   virtual int values() const override;
   //constraint
   virtual int operator()(const Vec& x,Vec& fvec,STrips* fjac) override;
+  const std::vector<Coli,Eigen::aligned_allocator<Coli>>& getQCones() const;
+  void addQCone(const Coli& vss);
   //objective
   virtual T operator()(const Vec& x,Vec* fgrad) override;
   const DSSQPVariable<T>& addVar(const std::string& name,T l,T u,VARIABLE_OP op=NEW_OR_EXIST);
   const DSSQPVariable<T>& addVar(const std::string& name,VARIABLE_OP op=NEW_OR_EXIST);
   const DSSQPVariable<T>& addVar(sizeType id) const;
   DSSQPVariable<T>& addVar(sizeType id);
+  const VARMAP& vars() const;
   void setVarInit(const std::string& name,T init);
   void setVarInit(sizeType id,T init);
   void checkViolation(const Vec* at=NULL);
   const CONSMAP& components() const;
   void addComponent(std::shared_ptr<DSSQPObjectiveComponent<T>> c);
   virtual bool debug(const std::string& str,sizeType nrTrial,T thres);
+  template <typename OBJ_TYPE>
+  std::shared_ptr<OBJ_TYPE> getComponent() const {
+    for(typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_components.begin(),end=_components.end(); beg!=end; beg++)
+      if(std::dynamic_pointer_cast<OBJ_TYPE>(beg->second))
+        return std::dynamic_pointer_cast<OBJ_TYPE>(beg->second);
+    return NULL;
+  }
 protected:
+  std::vector<Coli,Eigen::aligned_allocator<Coli>> _QCones;
   CONSMAP _components;
   VARMAPINV _varsInv;
   VARMAP _vars;

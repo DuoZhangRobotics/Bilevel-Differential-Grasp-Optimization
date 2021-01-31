@@ -27,7 +27,6 @@ void ArticulatedUtils::assemble(const tinyxml2::XMLElement& pt)
   std::vector<TransInfo> infos;
   assembleJoints(*getChild(pt,"joint"),infos);
   //apply X0
-
   for(sizeType i=0; i<(sizeType)_body.nrJ(); i++) {
     Joint& J=_body.joint(i);
     const ObjMesh mesh=J.getMesh(Joint::MESH);
@@ -485,6 +484,61 @@ void ArticulatedUtils::addBase(sizeType dim,const Vec3d& planeNormal)
     J0._trans=(quat.toRotationMatrix().transpose()*J0._trans).eval();
   }
 }
+void ArticulatedUtils::combine(const std::vector<ArticulatedBody>& bodies)
+{
+  _body._joints.clear();
+  //joint
+  {
+    Joint joint;
+    joint._parent=-1;
+    joint._depth=0;
+    joint._typeJoint=Joint::FIX_JOINT;
+    joint._mimic=-1;
+    joint._limits.resize(3,0);
+    joint._control.resize(0);
+    joint._damping.resize(0);
+    joint._trans.setIdentity();
+    //mimic
+    joint._mult=joint._offset=0;
+    //mass
+    joint._M=0;
+    joint._MC.setZero();
+    joint._MCCT.setZero();
+    //sphere approx.
+    joint._name="";
+    joint._spheres.resize(3,0);
+    joint._radGeomColl.resize(0);
+    joint._radSelfColl.resize(0);
+    joint._color.setZero();
+    joint.assemble(1);
+    _body._joints.push_back(joint);
+  }
+  //add bodies
+  _body._geom.reset(new StaticGeom(3));
+  for(const ArticulatedBody& body:bodies) {
+    sizeType off=_body.nrJ();
+    for(sizeType i=0; i<body.nrJ(); i++) {
+      Joint joint=body.joint(i);
+      if(joint._parent==-1)
+        joint._parent=0;
+      else joint._parent+=off;
+      joint._depth++;
+      if(joint._mimic>=0)
+        joint._mimic++;
+      _body._joints.push_back(joint);
+    }
+  }
+  //reorder
+  sizeType offDOF=0,offDDT=0;
+  for(sizeType i=0; i<_body.nrJ(); i++) {
+    Joint& joint=_body.joint(i);
+    joint._offDOF=offDOF;
+    joint._offDDT=offDDT;
+    offDOF+=joint.nrDOF();
+    offDDT+=joint.nrDDT();
+  }
+  _body.fillChildren();
+}
 void ArticulatedUtils::simplify(std::function<bool(const Joint&)> canSimplify,const Cold& DOF,sizeType nrDebug)
 {
   ArticulatedBody bodyOriginal=_body;
@@ -533,7 +587,6 @@ void ArticulatedUtils::simplify(std::function<bool(const Joint&)> canSimplify,co
   ArticulatedBody body;
   std::map<sizeType,sizeType> idMap;
   body._geom.reset(new StaticGeom(3));
-  body._geomEnv=_body._geomEnv;
   for(sizeType i=0; i<_body.nrJ(); i++) {
     Joint& joint=_body.joint(i);
     if(_body.children(i).empty() && joint.getMesh(Joint::MESH).getV().empty())

@@ -181,6 +181,7 @@ protected:
       _blocks[0]+=_blocks[i];
       _blocks[i]=Zero<Vec>::value(_blocks[0]);
     }
+    _joined=true;
   }
   std::vector<Vec,Eigen::aligned_allocator<Vec>> _blocks;
   bool _joined;

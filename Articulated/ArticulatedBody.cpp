@@ -21,7 +21,6 @@ bool ArticulatedBody::read(std::istream& is,IOData* dat)
   StaticGeom::registerType(dat);
   readBinaryData(_joints,is,dat);
   readBinaryData(_geom,is,dat);
-  readBinaryData(_geomEnv,is,dat);
   return is.good();
 }
 bool ArticulatedBody::write(std::ostream& os,IOData* dat) const
@@ -30,7 +29,6 @@ bool ArticulatedBody::write(std::ostream& os,IOData* dat) const
   StaticGeom::registerType(dat);
   writeBinaryData(_joints,os,dat);
   writeBinaryData(_geom,os,dat);
-  writeBinaryData(_geomEnv,os,dat);
   return os.good();
 }
 std::shared_ptr<SerializableBase> ArticulatedBody::copy() const
@@ -41,14 +39,25 @@ std::string ArticulatedBody::type() const
 {
   return typeid(ArticulatedBody).name();
 }
-void ArticulatedBody::updateGeom(const Mat3Xd& T)
+void ArticulatedBody::beginUpdateGeom(const Mat3Xd& T,std::vector<Mat4,Eigen::aligned_allocator<Mat4>>& tss)
 {
+  tss.clear();
   Mat4d TJ=Mat4d::Identity();
   for(sizeType j=0,k=0; j<nrJ(); j++)
     if(_joints[j]._mesh) {
       GETTC(TID,T,j)
       TJ.block<3,4>(0,0)=TID;
-      _geom->getG(k).setT(TJ.cast<scalar>()*_joints[j]._mesh->getT());
+      tss.push_back(_joints[j]._mesh->getT());
+      _joints[j]._mesh->setT(TJ.cast<scalar>()*_joints[j]._mesh->getT());
+      k++;
+    }
+  _geom->update();
+}
+void ArticulatedBody::endUpdateGeom(const std::vector<Mat4,Eigen::aligned_allocator<Mat4>>& tss)
+{
+  for(sizeType j=0,k=0; j<nrJ(); j++)
+    if(_joints[j]._mesh) {
+      _joints[j]._mesh->setT(tss[k]);
       k++;
     }
   _geom->update();
@@ -62,16 +71,6 @@ StaticGeom& ArticulatedBody::getGeom()
   if(!_geom)
     _geom.reset(new StaticGeom(3));
   return *_geom;
-}
-const StaticGeom& ArticulatedBody::getGeomEnv() const
-{
-  return const_cast<ArticulatedBody&>(*this).getGeomEnv();
-}
-StaticGeom& ArticulatedBody::getGeomEnv()
-{
-  if(!_geomEnv)
-    _geomEnv.reset(new StaticGeom(3));
-  return *_geomEnv;
 }
 void ArticulatedBody::randomize(sizeType nrLink,bool chain)
 {

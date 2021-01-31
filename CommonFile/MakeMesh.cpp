@@ -67,6 +67,36 @@ void MakeMesh::makeBox3D(ObjMesh& m,const Vec3& ext,scalar thick)
   m.addMesh(tmp,"outer");
   m.getDim()=3;
 }
+void MakeMesh::makeBoxOpen3D(ObjMesh& m,const Vec3& ext,scalar thick)
+{
+  ObjMesh tmp;
+  //+X
+  makeBox3D(tmp,Vec3(thick/2,ext.y(),ext.z()));
+  tmp.getPos()= Vec3::UnitX()*(ext.x()+thick/2);
+  tmp.applyTrans();
+  m.addMesh(tmp);
+  //-X
+  makeBox3D(tmp,Vec3(thick/2,ext.y(),ext.z()));
+  tmp.getPos()=-Vec3::UnitX()*(ext.x()+thick/2);
+  tmp.applyTrans();
+  m.addMesh(tmp);
+  //+Y
+  makeBox3D(tmp,Vec3(ext.x()+thick,thick/2,ext.z()));
+  tmp.getPos()= Vec3::UnitY()*(ext.y()+thick/2);
+  tmp.applyTrans();
+  m.addMesh(tmp);
+  //-Y
+  makeBox3D(tmp,Vec3(ext.x()+thick,thick/2,ext.z()));
+  tmp.getPos()=-Vec3::UnitY()*(ext.y()+thick/2);
+  tmp.applyTrans();
+  m.addMesh(tmp);
+  //-Z
+  makeBox3D(tmp,Vec3(ext.x()+thick,ext.y()+thick,thick/2));
+  tmp.getPos()=-Vec3::UnitZ()*(ext.z()+thick/2);
+  tmp.applyTrans();
+  m.addMesh(tmp);
+  m.getDim()=3;
+}
 void MakeMesh::makeDiscreteBox3D(ObjMesh& m,const Vec3& ext)
 {
   m.getV().clear();
@@ -271,7 +301,7 @@ void MakeMesh::makeCapsule3D(ObjMesh& m,const scalar rad,const Vec3& offD,const 
   avgEdge/=(scalarD)edge._ess.size();
   //move
   for(sizeType d=0; d<3; d++) {
-    sizeType N=(offD[d]<=0) ? 0 : (sizeType)ceil(offD[d]/avgEdge);
+    sizeType N=(offD[d]<=0) ? 0 : 2;//(sizeType)ceil(offD[d]/avgEdge);
     separateDim(m,d,offD[d],N);
   }
   m.makeUniform();

@@ -63,8 +63,8 @@ struct ScalarUtil<mpfr::mpreal> {
 };
 #include <CommonFile/EndAllEigen.h>
 
-std::ostream& writeBinaryData(mpfr::mpreal val,std::ostream& os,IOData*);
-std::istream& readBinaryData(mpfr::mpreal& val,std::istream& is,IOData*);
+std::ostream& writeBinaryData(const mpfr::mpreal& val,std::ostream& os,IOData* dat=NULL);
+std::istream& readBinaryData(mpfr::mpreal& val,std::istream& is,IOData* dat=NULL);
 
 PRJ_END
 

@@ -26,11 +26,10 @@ struct ArticulatedBody : public SerializableBase
   bool write(std::ostream& os,IOData* dat) const override;
   std::shared_ptr<SerializableBase> copy() const override;
   std::string type() const override;
-  void updateGeom(const Mat3Xd& T);
+  void beginUpdateGeom(const Mat3Xd& T,std::vector<Mat4,Eigen::aligned_allocator<Mat4>>& tss);
+  void endUpdateGeom(const std::vector<Mat4,Eigen::aligned_allocator<Mat4>>& tss);
   const StaticGeom& getGeom() const;
   StaticGeom& getGeom();
-  const StaticGeom& getGeomEnv() const;
-  StaticGeom& getGeomEnv();
   void randomize(sizeType nrLink,bool chain=true);
   ObjMesh writeMesh(const Mat3Xd& T,Joint::GEOM_TYPE type,const std::set<sizeType>* jointMask=NULL) const;
   void writeVTK(const Mat3Xd& T,VTKWriter<scalar>& os,Joint::GEOM_TYPE type,const std::set<sizeType>* jointMask=NULL,const std::vector<std::vector<unsigned char> >* sphereMask=NULL) const;
@@ -73,7 +72,6 @@ struct ArticulatedBody : public SerializableBase
 protected:
   ALIGN_16 std::vector<Joint> _joints;
   ALIGN_16 std::shared_ptr<StaticGeom> _geom;
-  ALIGN_16 std::shared_ptr<StaticGeom> _geomEnv;
 };
 
 PRJ_END

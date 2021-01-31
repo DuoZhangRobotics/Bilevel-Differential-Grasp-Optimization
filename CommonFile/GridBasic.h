@@ -19,7 +19,7 @@ public:
   Grid();
   virtual ~Grid();
   virtual std::shared_ptr<SerializableBase> copy() const;
-  virtual bool write(std::ostream &os,IOData* dat) const ;
+  virtual bool write(std::ostream &os,IOData* dat) const;
   virtual bool read(std::istream &is,IOData* dat);
   virtual bool write(std::ostream &os) const;
   virtual bool read(std::istream& is);

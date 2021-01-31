@@ -181,246 +181,32 @@ std::ostream& writeBinaryData(const std::string& str,std::ostream& os,IOData* da
   return os.write(str.c_str(),len);
 }
 
-//type invariant IO
-#if defined(FOUND_QUADMATH) && defined(__GNUC__)
-#include "quadmath.h"
-typedef __float128 FLOAT_TO_TYPE;
-#else
-typedef double FLOAT_TO_TYPE;
-#endif
-template <typename T>
-struct IOType {
-  typedef T TO_TYPE;
-};
-template <>
-struct IOType<scalarF> {
-  typedef FLOAT_TO_TYPE TO_TYPE;
-};
-template <>
-struct IOType<scalarD> {
-  typedef FLOAT_TO_TYPE TO_TYPE;
-};
-
 //io for float is double
-std::ostream& writeBinaryData(scalarF val,std::ostream& os,IOData* dat)
+std::ostream& writeBinaryData(scalarF val,std::ostream& os,IOData*)
 {
-  IOType<scalarF>::TO_TYPE valD=val;
-  os.write((char*)&valD,sizeof(IOType<scalarF>::TO_TYPE));
+  double valD=val;
+  os.write((char*)&valD,sizeof(double));
   return os;
 }
-std::istream& readBinaryData(scalarF& val,std::istream& is,IOData* dat)
+std::istream& readBinaryData(scalarF& val,std::istream& is,IOData*)
 {
-  IOType<scalarF>::TO_TYPE valD;
-  is.read((char*)&valD,sizeof(IOType<scalarF>::TO_TYPE));
+  double valD;
+  is.read((char*)&valD,sizeof(double));
   val=(scalarF)valD;
   return is;
 }
-std::ostream& writeBinaryData(scalarD val,std::ostream& os,IOData* dat)
+std::ostream& writeBinaryData(scalarD val,std::ostream& os,IOData*)
 {
-  IOType<scalarD>::TO_TYPE valD=std::convert<IOType<scalarD>::TO_TYPE>()(val);
-  os.write((char*)&valD,sizeof(IOType<scalarD>::TO_TYPE));
+  double valD=std::convert<double>()(val);
+  os.write((char*)&valD,sizeof(double));
   return os;
 }
-std::istream& readBinaryData(scalarD& val,std::istream& is,IOData* dat)
+std::istream& readBinaryData(scalarD& val,std::istream& is,IOData*)
 {
-  IOType<scalarD>::TO_TYPE valD;
-  is.read((char*)&valD,sizeof(IOType<scalarD>::TO_TYPE));
+  double valD;
+  is.read((char*)&valD,sizeof(double));
   val=scalarD(valD);
   return is;
 }
-
-//io for fixed matrix
-#define NO_CONFLICT
-#define FIXED_ONLY
-#include "BeginAllEigen.h"
-//redefine atomic operation
-#undef NAME_EIGEN
-#define NAME_EIGEN(type,NAME,size1,size2) \
-std::ostream& writeBinaryData(const Eigen::Matrix<type,size1,size2>& v,std::ostream& os,IOData* dat) \
-{ \
-  typedef Eigen::Matrix<type,size1,size2> TYPE; \
-  typedef IOType<type>::TO_TYPE TO_TYPE;  \
-  sizeType d0=TYPE::RowsAtCompileTime;os.write((char*)&d0,sizeof(sizeType)); \
-  sizeType d1=TYPE::ColsAtCompileTime;os.write((char*)&d1,sizeof(sizeType)); \
-  for(sizeType r=0;r<TYPE::RowsAtCompileTime;r++) \
-  for(sizeType c=0;c<TYPE::ColsAtCompileTime;c++) \
-  { \
-    TO_TYPE val=std::convert<TO_TYPE>()(v(r,c)); \
-    os.write((char*)&val,sizeof(TO_TYPE)); \
-  } \
-  return os; \
-} \
-std::istream& readBinaryData(Eigen::Matrix<type,size1,size2>& v,std::istream& is,IOData* dat) \
-{ \
-  typedef Eigen::Matrix<type,size1,size2> TYPE; \
-  typedef IOType<type>::TO_TYPE TO_TYPE;  \
-  sizeType d0;is.read((char*)&d0,sizeof(sizeType));ASSERT(d0 == TYPE::RowsAtCompileTime) \
-  sizeType d1;is.read((char*)&d1,sizeof(sizeType));ASSERT(d1 == TYPE::ColsAtCompileTime) \
-  for(sizeType r=0;r<TYPE::RowsAtCompileTime;r++) \
-  for(sizeType c=0;c<TYPE::ColsAtCompileTime;c++) \
-  { \
-    TO_TYPE val; \
-    is.read((char*)&val,sizeof(TO_TYPE)); \
-    v(r,c)=TYPE::Scalar(val); \
-  } \
-  return is; \
-}
-//realize
-NAME_EIGEN_ROWCOL_ALLTYPES_SPECIALSIZE()
-NAME_EIGEN_MAT_ALLTYPES_SPECIALSIZE()
-#include "EndAllEigen.h"
-
-//io for non-fixed matrix
-#define NO_CONFLICT
-#define NON_FIXED_ONLY
-#include "BeginAllEigen.h"
-//redefine atomic operation
-#undef NAME_EIGEN
-#define NAME_EIGEN(type,NAME,size1,size2) \
-std::ostream& writeBinaryData(const Eigen::Matrix<type,size1,size2>& v,std::ostream& os,IOData* dat) \
-{ \
-  typedef IOType<type>::TO_TYPE TO_TYPE;  \
-  sizeType d0=v.rows(); \
-  sizeType d1=v.cols(); \
-  os.write((char*)&d0,sizeof(sizeType)); \
-  os.write((char*)&d1,sizeof(sizeType)); \
-  if(d0 <= 1 || d1 <= 1) { \
-    if(d0*d1 > 0)os.write((char*)(v.cast<TO_TYPE>().eval().data()),sizeof(TO_TYPE)*d0*d1); \
-    return os; \
-  } \
-  Eigen::Matrix<TO_TYPE,-1,1> sub; \
-  sub.setZero(d1); \
-  for(sizeType r=0; r<d0; r++) { \
-    sub=v.row(r).cast<TO_TYPE>(); \
-    if(d1 > 0)os.write((char*)(sub.data()),sizeof(TO_TYPE)*d1); \
-  } \
-  return os; \
-} \
-std::istream& readBinaryData(Eigen::Matrix<type,size1,size2>& v,std::istream& is,IOData* dat) \
-{ \
-  typedef Eigen::Matrix<type,size1,size2> TYPE; \
-  typedef IOType<type>::TO_TYPE TO_TYPE;  \
-  typedef Eigen::Matrix<TO_TYPE,TYPE::RowsAtCompileTime,TYPE::ColsAtCompileTime> TONAME; \
-  sizeType d0; \
-  is.read((char*)&d0,sizeof(sizeType)); \
-  sizeType d1; \
-  is.read((char*)&d1,sizeof(sizeType)); \
-  v.resize(d0,d1); \
-  if(d0 <= 1 || d1 <= 1) { \
-    TONAME vcast(d0,d1); \
-    if(d0*d1 > 0)is.read((char*)(vcast.data()),sizeof(TO_TYPE)*d0*d1); \
-    v=vcast.cast<TYPE::Scalar>(); \
-    return is; \
-  } \
-  Eigen::Matrix<TO_TYPE,-1,1> sub; \
-  sub.setZero(d1); \
-  for(sizeType r=0; r<d0; r++) { \
-    if(d1 > 0)is.read((char*)(sub.data()),sizeof(TO_TYPE)*d1); \
-    v.row(r)=sub.cast<TYPE::Scalar>(); \
-  } \
-  return is; \
-}
-//realize
-NAME_EIGEN_ROWCOL_ALLTYPES_SPECIALSIZE()
-#include "EndAllEigen.h"
-
-//io for quaternion
-#define IO_FIXED_QUAT(NAMEQ,NAMET,NAMEA,TO_TYPE)			\
-std::ostream& writeBinaryData(const NAMEQ& v,std::ostream& os,IOData* dat)	\
-{									\
-    TO_TYPE val=std::convert<TO_TYPE>()(v.w());			\
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    val=std::convert<TO_TYPE>()(v.x());					\
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    val=std::convert<TO_TYPE>()(v.y());					\
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    val=std::convert<TO_TYPE>()(v.z());					\
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    return os;                                          \
-}                                                       \
-std::istream& readBinaryData(NAMEQ& v,std::istream& is,IOData* dat)		\
-{									\
-    TO_TYPE val;                                        \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.w()=NAMEQ::Scalar(val);                           \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.x()=NAMEQ::Scalar(val);                           \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.y()=NAMEQ::Scalar(val);                           \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.z()=NAMEQ::Scalar(val);                           \
-    return is;                                          \
-}                                                       \
-std::ostream& writeBinaryData(const NAMET& v,std::ostream& os,IOData* dat)	\
-{									\
-    TO_TYPE val=std::convert<TO_TYPE>()(v.x());         \
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    val=std::convert<TO_TYPE>()(v.y());                 \
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    val=std::convert<TO_TYPE>()(v.z());                 \
-	os.write((char*)&val,sizeof(TO_TYPE));				\
-    return os;                                          \
-}                                                       \
-std::istream& readBinaryData(NAMET& v,std::istream& is,IOData* dat)		\
-{									\
-    TO_TYPE val;                                        \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.x()=NAMEQ::Scalar(val);                           \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.y()=NAMEQ::Scalar(val);                           \
-	is.read((char*)&val,sizeof(TO_TYPE));				\
-    v.z()=NAMEQ::Scalar(val);                           \
-    return is;                                          \
-}                                                       \
-std::ostream& writeBinaryData(const NAMEA& v,std::ostream& os,IOData* dat)	\
-{                                   \
-  Eigen::Matrix<NAMEA::Scalar,3,3> l=v.linear();                        \
-  Eigen::Matrix<NAMEA::Scalar,3,1> t=v.translation();                   \
-  writeBinaryData(l,os,dat);                                            \
-  writeBinaryData(t,os,dat);                                            \
-  return os;                                                            \
-}                                                                       \
-std::istream& readBinaryData(NAMEA& v,std::istream& is,IOData* dat)		\
-{									\
-  Eigen::Matrix<NAMEA::Scalar,3,3> l;                                   \
-  Eigen::Matrix<NAMEA::Scalar,3,1> t;                                   \
-  readBinaryData(l,is,dat);                                             \
-  readBinaryData(t,is,dat);                                             \
-  v.linear()=l;                                                         \
-  v.translation()=t;                                                    \
-  return is;                                                            \
-}
-IO_FIXED_QUAT(Quatd,Transd,Affined,IOType<scalarD>::TO_TYPE)
-IO_FIXED_QUAT(Quatf,Transf,Affinef,IOType<scalarF>::TO_TYPE)
-#undef IO_FIXED_QUAT
-
-//io for shape
-#define IO_SHAPE(TYPE) \
-std::ostream& writeBinaryData(const TYPE& b,std::ostream& os,IOData* dat)   \
-{   \
-    b.write(os);    \
-    return os;  \
-}   \
-std::istream& readBinaryData(TYPE& b,std::istream& is,IOData* dat)  \
-{   \
-    b.read(is);    \
-    return is;  \
-}
-#define IO_SHAPE_ALL(NAME) \
-IO_SHAPE(BBox<NAME>) \
-IO_SHAPE(LineSegTpl<NAME>) \
-IO_SHAPE(PlaneTpl<NAME>) \
-IO_SHAPE(TriangleTpl<NAME>) \
-IO_SHAPE(TetrahedronTpl<NAME>) \
-IO_SHAPE(OBBTpl<NAME>) \
-IO_SHAPE(KDOP18<NAME>) \
-IO_SHAPE(Sphere<NAME>)
-IO_SHAPE_ALL(scalarD)
-IO_SHAPE_ALL(scalarF)
-IO_SHAPE_ALL(sizeType)
-IO_SHAPE_ALL(char)
-IO_SHAPE_ALL(unsigned char)
-#undef IO_SHAPE_ALL
-#undef IO_SHAPE
 
 PRJ_END

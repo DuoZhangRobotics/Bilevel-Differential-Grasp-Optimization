@@ -196,16 +196,16 @@ struct PtreeSafeType<scalarD> {
   }
 };
 template <>
-struct PtreeSafeType<scalarQ> {
+struct PtreeSafeType<__float128> {
   typedef scalarF SAFE_SCALAR;
-  static void put(tinyxml2::XMLElement& pt,const std::string& name,const scalarQ& val)
+  static void put(tinyxml2::XMLElement& pt,const std::string& name,const __float128& val)
   {
     if(name.empty()) {
       std::string text=std::to_string(std::to_double(val));
       pt.SetText(text.c_str());
     } else pt.SetAttribute(name.c_str(),std::to_double(val));
   }
-  static scalarQ get(const tinyxml2::XMLElement& pt,const std::string& name,const scalarQ& val)
+  static __float128 get(const tinyxml2::XMLElement& pt,const std::string& name,const __float128& val)
   {
     SAFE_SCALAR def=val;
     if(name.empty())
@@ -213,7 +213,7 @@ struct PtreeSafeType<scalarQ> {
     else pt.QueryFloatAttribute(name.c_str(),&def);
     return def;
   }
-  static scalarQ get(const tinyxml2::XMLElement& pt,const std::string& name)
+  static __float128 get(const tinyxml2::XMLElement& pt,const std::string& name)
   {
     SAFE_SCALAR def=0;
     if(name.empty()) {

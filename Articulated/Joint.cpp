@@ -237,28 +237,25 @@ void Joint::assemble(scalar rho)
     //fill mass
     ObjMesh m;
     _mesh->getMesh(m);
-    RigidBodyMass M(m);
+    RigidBodyMass<scalarD> M(m);
     _M=M.getM();
-    std::cout << "M = " << _M << std::endl;
     _MC=M.getMC().cast<scalarD>();
     _MCCT=M.getMCCT().cast<scalarD>();
     if(_M <= 0) {
       m.insideOut();
-      RigidBodyMass MInv(m);
+      RigidBodyMass<scalarD> MInv(m);
       _M=MInv.getM();
       _MC=MInv.getMC().cast<scalarD>();
       _MCCT=MInv.getMCCT().cast<scalarD>();
-      Eigen::SelfAdjointEigenSolver<Mat6> eig(MInv.getMassCOM());
+      Eigen::SelfAdjointEigenSolver<Mat6d> eig(MInv.getMassCOM());
       ASSERT(eig.eigenvalues().minCoeff()>=0)
     } else {
-      Eigen::SelfAdjointEigenSolver<Mat6> eig(M.getMassCOM());
+      Eigen::SelfAdjointEigenSolver<Mat6d> eig(M.getMassCOM());
       ASSERT(eig.eigenvalues().minCoeff()>=0)
     }
     ASSERT(!std::isinf(_M) && !std::isnan(_M))
-    std::cout << "MC: " << _MC[0] <<" " << _MC[1] << " " << _MC[2] << std::endl;
     ASSERT(isFinite(_MC))
     ASSERT(isFinite(_MCCT))
-
     //multiply by rho
     _M*=rho;
     _MC*=rho;

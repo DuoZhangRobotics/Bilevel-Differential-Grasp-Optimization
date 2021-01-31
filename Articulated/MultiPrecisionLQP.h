@@ -1,7 +1,7 @@
 #ifndef MULTI_PRECISION_LQP_H
 #define MULTI_PRECISION_LQP_H
 
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Utils/MapTypePragma.h>
 #include <Utils/DebugGradient.h>
 #include <Utils/SparseUtils.h>
 #include <Utils/Options.h>
@@ -58,15 +58,11 @@ public:
     }
     if(maxG>0) {
       //factorize low-precision
-      Matd hL=(h/maxH).unaryExpr([&](const T& in) {
-        return (scalarD)std::to_double(in);
-      });
+      Matd hL=(h/maxH).template cast<scalarD>();
       Eigen::PartialPivLU<Matd> factor(hL);
       //solve low-precision
       dx=-g/maxG;
-      dx=factor.solve(dx.unaryExpr([&](const T& in) {
-        return (scalarD)std::to_double(in);
-      })).template cast<T>()*(maxG/maxH);
+      dx=factor.solve(dx.template cast<scalarD>()).template cast<T>()*(maxG/maxH);
     } else dx.setZero(g.rows(),g.cols());
     return true;
   }
@@ -312,8 +308,8 @@ public:
   T muFinal() const;
   T tolAlpha() const;
   sizeType maxIter() const;
-  void writeProb(const std::string& path) const;
-  void readAndTestProb(const std::string& path);
+  virtual void writeProb(const std::string& path) const;
+  virtual void readAndTestProb(const std::string& path);
   virtual T computeFGH(T mu,const Vec& w,Vec* g=NULL,DMat* h=NULL,bool forceSPD=true) const;
 protected:
   virtual void initialGuess(Vec& w) const;

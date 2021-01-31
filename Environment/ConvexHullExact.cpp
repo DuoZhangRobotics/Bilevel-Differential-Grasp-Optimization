@@ -3,7 +3,7 @@
 #include <CommonFile/CameraModel.h>
 #include <Utils/DebugGradient.h>
 #include <Utils/Utils.h>
-#include <Utils/Hash.h>
+#include <CommonFile/Hash.h>
 #include <CommonFile/IO.h>
 #include <iomanip>
 #include <stack>
@@ -24,7 +24,6 @@ ConvexHullExact::ConvexHullExact(const ObjMeshGeomCell& exact)
     bb.setUnion(_vss[i]);
   }
   if(!_vss.empty()) {
-
     _bvh.resize(1);
     _bvh[0]._bb=bb;
   }
@@ -32,12 +31,10 @@ ConvexHullExact::ConvexHullExact(const ObjMeshGeomCell& exact)
   _iss=exact.iss();
   //tss
   _tss.resize(_iss.size());
-
   for(sizeType i=0; i<(sizeType)_tss.size(); i++) {
     _tss[i]=TriangleExact(_vss[_iss[i][0]],_vss[_iss[i][1]],_vss[_iss[i][2]]);
     _tss[i]._vid=_iss[i];
   }
-
   //ess
   std::unordered_map<Vec2i,EdgeExact,Hash> ess;
   for(sizeType i=0; i<(sizeType)_tss.size(); i++)
@@ -53,7 +50,6 @@ ConvexHullExact::ConvexHullExact(const ObjMeshGeomCell& exact)
       } else
         ess.find(id)->second._tNId[1]=i;
     }
-
   _eNss.resize(_vss.size());
   for(const std::pair<Vec2i,EdgeExact>& E:ess) {
     for(sizeType d=0; d<2; d++) {
@@ -71,11 +67,23 @@ ConvexHullExact::ConvexHullExact(const ObjMeshGeomCell& exact)
     _eNss[E.second._vid[0]].push_back((sizeType)_ess.size());
     _eNss[E.second._vid[1]].push_back((sizeType)_ess.size());
     _ess.push_back(E.second);
-
   }
   parityCheck();
   buildBD();
-
+}
+ConvexHullExact::ConvexHullExact(const ConvexHullExact& other)
+{
+  buildBD();
+  operator=(other);
+}
+ConvexHullExact& ConvexHullExact::operator=(const ConvexHullExact& other)
+{
+  ObjMeshGeomCellExact::operator=(other);
+  _ess=other._ess;
+  _eNss=other._eNss;
+  removeBD();
+  buildBD();
+  return *this;
 }
 ConvexHullExact::~ConvexHullExact()
 {
@@ -349,9 +357,9 @@ void ConvexHullExact::buildBD()
   typedef double* doublePtr;
   _bd.numpoints=(int)_vss.size();
   if(_bd.numpoints>0) {
-    _bd.coord=new doublePtr[_bd.numpoints];
+    _bd.coord=(double**)malloc(_bd.numpoints*sizeof(doublePtr));
     for(sizeType i=0; i<_bd.numpoints; i++) {
-      _bd.coord[i]=new double[3];
+      _bd.coord[i]=(double*)malloc(3*sizeof(double));
       for(sizeType d=0; d<3; d++)
         castRational(_vss[i][d],_bd.coord[i][d]);
     }
@@ -364,8 +372,8 @@ void ConvexHullExact::removeBD()
 {
   if(_bd.numpoints>0) {
     for(sizeType i=0; i<_bd.numpoints; i++)
-      delete [] _bd.coord[i];
-    delete [] _bd.coord;
+      free(_bd.coord[i]);
+    free(_bd.coord);
   }
   _bd.numpoints=0;
   _bd.coord=NULL;

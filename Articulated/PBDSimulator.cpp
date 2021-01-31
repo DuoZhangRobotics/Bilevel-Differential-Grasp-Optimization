@@ -3,6 +3,7 @@
 #include "MultiPrecisionLQP.h"
 #include <Optimizer/KNInterface.h>
 #include <Optimizer/IPOPTInterface.h>
+#include <Optimizer/QCQPSolverMosek.h>
 #include <CommonFile/Timing.h>
 #include <Utils/DebugGradient.h>
 #include <Utils/RotationUtil.h>
@@ -26,25 +27,6 @@ void PBDSimulatorTraits<double>::registerOptions(Options& ops)
   REGISTER_BOOL_TYPE("callback",PBDSimulator<double>,bool,t._callback)
   REGISTER_BOOL_TYPE("useKEE",PBDSimulator<double>,bool,t._useKEE)
 }
-PBDSimulatorTraits<double>::Vec PBDSimulatorTraits<double>::solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HId,const Vec& gd,const Vec& wd,T beta)
-{
-  qpOASES::int_t nWSR=10000;
-  HId.diagonal().array()+=std::to_double(beta);
-  Cold lbd=-wd,ubAd=Cold::Ones(prob.getNC())-Ad*wd;
-  qpOASES::returnValue ret;
-  if(!prob.isInitialised())
-    ret=prob.init(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  else ret=prob.hotstart(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  if(!prob.isSolved()) {
-    INFOV("qpOASES failed: %d!",ret)
-    return Vec::Zero(0);
-  } else {
-    Vec dwd;
-    dwd.resize(wd.size());
-    prob.getPrimalSolution(dwd.data());
-    return dwd;
-  }
-}
 void PBDSimulatorTraits<__float128>::registerOptions(Options& ops)
 {
   REGISTER_FLOAT128_TYPE("alphaPBTO",PBDSimulator<__float128>,__float128,t._alphaPBTO)
@@ -59,34 +41,6 @@ void PBDSimulatorTraits<__float128>::registerOptions(Options& ops)
   REGISTER_BOOL_TYPE("callback",PBDSimulator<__float128>,bool,t._callback)
   REGISTER_BOOL_TYPE("useKEE",PBDSimulator<__float128>,bool,t._useKEE)
 }
-typename PBDSimulatorTraits<__float128>::Vec PBDSimulatorTraits<__float128>::solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HI,const Vec& g,const Vec& w,T beta)
-{
-  qpOASES::int_t nWSR=10000;
-  HI.diagonal().array()+=beta;
-  Matd HId=HI.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold gd=g.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold wd=w.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold lbd=-wd,ubAd=Cold::Ones(prob.getNC())-Ad*wd;
-  qpOASES::returnValue ret;
-  if(!prob.isInitialised())
-    ret=prob.init(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  else ret=prob.hotstart(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  if(!prob.isSolved()) {
-    INFOV("qpOASES failed: %d!",ret)
-    return Vec::Zero(0);
-  } else {
-    Cold dwd;
-    dwd.resize(wd.size());
-    prob.getPrimalSolution(dwd.data());
-    return dwd.template cast<T>();
-  }
-}
 void PBDSimulatorTraits<mpfr::mpreal>::registerOptions(Options& ops)
 {
   REGISTER_MPFR_TYPE("alphaPBTO",PBDSimulator<mpfr::mpreal>,mpfr::mpreal,t._alphaPBTO)
@@ -100,34 +54,6 @@ void PBDSimulatorTraits<mpfr::mpreal>::registerOptions(Options& ops)
   REGISTER_MPFR_TYPE("alphaBetaInc",PBDSimulator<mpfr::mpreal>,mpfr::mpreal,t._alphaBetaInc)
   REGISTER_BOOL_TYPE("callback",PBDSimulator<mpfr::mpreal>,bool,t._callback)
   REGISTER_BOOL_TYPE("useKEE",PBDSimulator<mpfr::mpreal>,bool,t._useKEE)
-}
-typename PBDSimulatorTraits<mpfr::mpreal>::Vec PBDSimulatorTraits<mpfr::mpreal>::solveQP(qpOASES::SQProblem& prob,const Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor>& Ad,MatT HI,const Vec& g,const Vec& w,T beta)
-{
-  qpOASES::int_t nWSR=10000;
-  HI.diagonal().array()+=beta;
-  Matd HId=HI.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold gd=g.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold wd=w.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold lbd=-wd,ubAd=Cold::Ones(prob.getNC())-Ad*wd;
-  qpOASES::returnValue ret;
-  if(!prob.isInitialised())
-    ret=prob.init(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  else ret=prob.hotstart(HId.data(),gd.data(),Ad.data(),lbd.data(),NULL,NULL,ubAd.data(),nWSR);
-  if(!prob.isSolved()) {
-    INFOV("qpOASES failed: %d!",ret)
-    return Vec::Zero(0);
-  } else {
-    Cold dwd;
-    dwd.resize(wd.size());
-    prob.getPrimalSolution(dwd.data());
-    return dwd.template cast<T>();
-  }
 }
 //PBDSimulator
 template <typename T>
@@ -282,7 +208,7 @@ bool PBDSimulator<T>::eval(const PBDArticulatedGradientInfo<T>& x,const PBDArtic
   std::vector<ExternalWrench<T>> externalWrench;
   gV=G(dt,lastDt,mapCV(ctrl),mapM(H?&h:NULL),NULL,mapM((MatT*)NULL),x,xM,xMM,externalWrench,iterG);
   if(e)
-    *e+=E(dt,dt,mapCV(ctrl),x,xM,xMM);
+    *e+=E(dt,lastDt,mapCV(ctrl),x,xM,xMM);
   if(g)
     g->segment(off,gV.size())+=gV;
   if(H)
@@ -423,21 +349,6 @@ PBD_SIMULATOR_MODE PBDSimulator<T>::getMode() const
 }
 //helper
 template <typename T>
-std::shared_ptr<qpOASES::DenseMatrix> createAQP(sizeType nW,const std::vector<ExternalWrench<T>>& f)
-{
-  scalarD* val=new scalarD[f.size()*nW];
-  for(sizeType i=0; i<(sizeType)f.size()*nW; i++)
-    val[i]=0;
-  for(sizeType i=0,offW=0; i<(sizeType)f.size(); i++) {
-    for(sizeType j=0; j<f[i]._B.cols(); j++)
-      val[i*nW+offW+j]=1;
-    offW+=f[i]._B.cols();
-  }
-  std::shared_ptr<qpOASES::DenseMatrix> Ad(new qpOASES::DenseMatrix(f.size(),nW,nW,val));
-  Ad->doFreeMemory();
-  return Ad;
-}
-template <typename T>
 typename PBDSimulator<T>::Vec PBDSimulator<T>::stepPBTO(T dt,T lastDt,VecCM tau0,VecCM qMqMM)
 {
   _iterG=0;
@@ -482,18 +393,16 @@ typename PBDSimulator<T>::Vec PBDSimulator<T>::stepNMDPPGM(T dt,T lastDt,VecCM t
   _qqMqMM[0].reset(_body,qMqMM.segment(0,N));
   _qqMqMM[1]=_qqMqMM[0];
   _qqMqMM[2].reset(_body,qMqMM.segment(N,N));
-  MatT DDKDDTheta=MatT::Zero(N,N),DGDTheta=MatT::Zero(N,N),DGDw,H;
+  MatT DDKDDTheta=MatT::Zero(N,N),DGDTheta=MatT::Zero(N,N),DGDw,H,A;
   Vec DKDTheta=Vec::Zero(N),q=qMqMM.segment(0,N),qNext,w=Vec::Zero(0),wNext=Vec::Zero(0),g;
   bool updateQP=true;
-  //QP constraint matrix
-  Eigen::Matrix<scalarD,-1,-1,Eigen::RowMajor> Ad;
   //initial projection
   q=manifoldProjection(dt,lastDt,tau0,mapCV(q),&w,&alpha);
   if(q.size()==0)
     return q;
+  QCQPSolverMosek<T> sol;
   DGDw.resize(N,nW());
   T KVal=K(dt,mapV((Vec*)NULL),mapM((MatT*)NULL)),KValNext;
-  qpOASES::SQProblem prob(w.size(),_externalWrench.size());
   for(; _iter<_maxIter; _iter++) {
     //buildQP
     if(updateQP) {
@@ -502,14 +411,21 @@ typename PBDSimulator<T>::Vec PBDSimulator<T>::stepNMDPPGM(T dt,T lastDt,VecCM t
       SolveNewton<T>::solveLU(DGDTheta,DGDw,H,true);
       g=H.transpose()*DKDTheta;
       H=H.transpose()*(DDKDDTheta*H);
-      if(Ad.size()==0) {
-        Ad.setZero(_externalWrench.size(),nW());
+      if(A.size()==0) {
+        A.setZero(_externalWrench.size(),nW());
         for(sizeType i=0,offW=0; i<(sizeType)_externalWrench.size(); offW+=_externalWrench[i]._B.cols(),i++)
-          Ad.block(i,offW,1,_externalWrench[i]._B.cols()).setOnes();
+          A.block(i,offW,1,_externalWrench[i]._B.cols()).setOnes();
       }
     }
     //solveQP
-    Vec dwd=PBDSimulatorTraits<T>::solveQP(prob,Ad,H,g,w,beta);
+    Vec dwd;
+    if(sol.QCQPSolver<T>::solveQP(dwd,H,g,A,w,beta)!=QCQPSolver<T>::SOLVED) {
+      if(_callback) {
+        INFOV("qp failed (iter=%d)!",_iter+1)
+      }
+      q.resize(0);
+      break;
+    }
     if(std::sqrt(dwd.squaredNorm())<_tolG) {
       if(_callback) {
         INFOV("Beta=%f!",std::to_double(beta))

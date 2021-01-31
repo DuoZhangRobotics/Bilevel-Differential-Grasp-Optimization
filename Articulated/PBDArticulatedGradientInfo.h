@@ -8,7 +8,7 @@
 
 PRJ_BEGIN
 
-#include <Utils/ArticulatedBodyPragma.h>
+#include <Utils/MapTypePragma.h>
 template <typename T>
 struct PBDArticulatedGradientInfoMap
 {

@@ -2,21 +2,26 @@
 #define RIGID_BODY_MASS_H
 
 #include <CommonFile/ObjMesh.h>
+#include <Utils/SparseUtils.h>
 
 PRJ_BEGIN
 
-struct RigidBodyMass {
+#include <Utils/MapTypePragma.h>
+template <typename T>
+struct RigidBodyMass
+{
+  DECL_MAP_TYPES_T
   RigidBodyMass(const ObjMesh& mesh);
-  Vec3 getCtr() const;
-  Mat6 getMass() const;
-  Mat6 getMassCOM() const;
-  scalar getM() const;
-  Vec3 getMC() const;
-  Mat3 getMCCT() const;
+  Vec3T getCtr() const;
+  Mat6T getMass() const;
+  Mat6T getMassCOM() const;
+  T getM() const;
+  Vec3T getMC() const;
+  Mat3T getMCCT() const;
 private:
-  Mat6 _mat,_matCOM;
-  Vec3 _ctr;
-  Mat3 _MCCT;
+  Mat6T _mat,_matCOM;
+  Vec3T _ctr;
+  Mat3T _MCCT;
 };
 
 PRJ_END

@@ -3,7 +3,7 @@
 
 #include "PBDArticulatedGradientInfo.h"
 #include <Optimizer/DSSQPObjective.h>
-#include <Utils/Hash.h>
+#include <CommonFile/Hash.h>
 
 PRJ_BEGIN
 

@@ -15,10 +15,11 @@ public:
   void clearPoints();
   void resetPoints(const PSS& pss);
   void resetPoints(const Mat3XT& pssL,const Mat3XT& pssR);
+  virtual void writeProb(const std::string& path) const override;
+  virtual void readAndTestProb(const std::string& path) override;
   virtual T computeFGH(T mu,const Vec& w,Vec* g=NULL,DMat* h=NULL,bool forceSPD=false) const override;
   virtual Vec sampleValidW() const override;
   Vec4T solve(bool& succ);
-  static T clog(T dist,T* D,T* DD,T d0,T coef);
 protected:
   virtual void initialGuess(Vec& w) const override;
   virtual void limitAlpha(T& alpha,const Vec& w,const Vec& dx) const override;

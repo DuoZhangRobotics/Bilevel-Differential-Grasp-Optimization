@@ -29,20 +29,20 @@ SET(CMAKE_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE})
 
 SET(WITH_CGAL ON)
 SET(WITH_CUDA OFF)
-SET(WITH_GRASP ON)
+SET(WITH_QUASISTATIC ON)
 SET(WITH_DEFORMABLE OFF)
 SET(WITH_ENVIRONMENT ON)
 SET(WITH_OPTIMIZER ON)
 SET(WITH_TRAJ_OPT OFF)
 
-SET(GRASP_EXAMPLE ON)
 SET(ENABLE_PYTHON OFF)
 SET(TRAJ_OPT_EXAMPLE OFF)
 SET(DEFORMABLE_EXAMPLE OFF)
+SET(QUASISTATIC_EXAMPLE ON)
 SET(ARTICULATED_EXAMPLE OFF)
 
 #THIRD PARTY HEADERS
-ADD_DEFINITIONS(-DALL_TYPES)
+#ADD_DEFINITIONS(-DALL_TYPES)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
 MACRO(SEARCH_SOURCE NAME DIRPRJ)
   FILE(GLOB_RECURSE header${NAME} ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.h ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.hpp ${PROJECT_SOURCE_DIR}/${DIRPRJ}/*.hh)
@@ -67,10 +67,10 @@ IF(WITH_DEFORMABLE)
   ADD_DEFINITIONS(-DDEFORMABLE_SUPPORT)
   SEARCH_SOURCE(Deformable Deformable)
 ENDIF(WITH_DEFORMABLE)
-IF(WITH_GRASP)
-  ADD_DEFINITIONS(-DGRASP_SUPPORT)
-  SEARCH_SOURCE(Grasp Grasp)
-ENDIF(WITH_GRASP)
+IF(WITH_QUASISTATIC)
+  ADD_DEFINITIONS(-DQUASISTATIC_SUPPORT)
+  SEARCH_SOURCE(Quasistatic Quasistatic)
+ENDIF(WITH_QUASISTATIC)
 SEARCH_SOURCE(Utils Utils)
 
 #LIBRARY
@@ -85,14 +85,14 @@ ENDIF(WITH_CUDA)
 ADD_LIBRARY(LibDiff SHARED
     ${sourceKnitro}
     ${sourceUtils} ${headerUtils}
+    ${sourceqpOASES} ${headerqpOASES}
     ${sourceTrajOpt} ${headerTrajOpt}
     ${sourceOptimizer} ${headerOptimizer}
     ${sourceCommonFile} ${headerCommonFile}
     ${sourceEnvironment} ${headerEnvironment}
     ${sourceArticulated} ${headerArticulated}
-    ${sourceDeformable} ${headerDeformable}
-    ${sourceGrasp} ${headerGrasp}
-    ${sourceqpOASES} ${headerqpOASES})
+    ${sourceQuasistatic} ${headerQuasistatic}
+    ${sourceDeformable} ${headerDeformable})
 TARGET_LINK_LIBRARIES(LibDiff stdc++fs ${ALL_LIBRARIES} ${ALL_STATIC_LIBRARIES})
 
 #EXE
@@ -116,25 +116,29 @@ ENDMACRO(ADD_EXE)
 
 IF(ARTICULATED_EXAMPLE)
   ADD_EXE(mainDebugEnvironment)
-  #ADD_EXE(mainSimplifiedDynamics)
   #ADD_EXE(mainArticulatedLoader)
+  #ADD_EXE(mainSimplifiedDynamics)
   #ADD_EXE(mainDebugPBDSimulatorChain)
   #ADD_EXE(mainDebugMDPSimulatorChain)
   #ADD_EXE(mainDebugMDPSimulatorSpider)
   #ADD_EXE(mainDebugPBTOSimulatorRobosimian)
-  ADD_EXE(mainDebugSeparatingPlane)
   #ADD_EXE(mainDebugPBDGradientInfo)
   #ADD_EXE(mainDebugNEGradientInfo)
+  ADD_EXE(mainDebugSeparatingPlane)
   #ADD_EXE(mainDebugJoint)
   #ADD_EXE(mainDebugMDP)
   ADD_EXE(mainKukaArm)
 ENDIF()
 
-IF(GRASP_EXAMPLE)
-  ADD_EXE(mainGraspOptimize)
-  ADD_EXE(mainGraspQuality)
-  ADD_EXE(mainGraspGripper)
+IF(QUASISTATIC_EXAMPLE)
+  ADD_EXE(mainDebugQP)
   ADD_EXE(mainDebugFGT)
+  ADD_EXE(mainGraspPlan)
+  ADD_EXE(mainPointCloudObject)
+  ADD_EXE(mainDebugRegistration)
+  ADD_EXE(mainObjectRegister)
+  ADD_EXE(mainObjectSettle)
+  ADD_EXE(mainGripper)
 ENDIF()
 
 IF(TRAJ_OPT_EXAMPLE)
@@ -157,6 +161,8 @@ IF(DEFORMABLE_EXAMPLE)
   ADD_EXE(mainDebugFEM3D)
   ADD_EXE(mainDebugFEM3DReduced)
   ADD_EXE(mainSoftGripper)
+  ADD_EXE(mainDebugSweepAndPrune)
+  ADD_EXE(mainDebugSimulatorPacking)
   ADD_EXE(mainDebugPolynomial)
   ADD_EXE(mainDebugIntegrate)
   ADD_EXE(mainDebugNNHTP)

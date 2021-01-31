@@ -72,9 +72,9 @@ bool isfinite(mpfr::mpreal a) {
 }
 }
 
-USE_PRJ_NAMESPACE
+PRJ_BEGIN
 
-std::ostream& writeBinaryData(mpfr::mpreal val,std::ostream& os,IOData*)
+std::ostream& writeBinaryData(const mpfr::mpreal& val,std::ostream& os,IOData*)
 {
   double valD=std::to_double(val);
   os.write((char*)&valD,sizeof(double));
@@ -87,3 +87,5 @@ std::istream& readBinaryData(mpfr::mpreal& val,std::istream& is,IOData*)
   val=valD;
   return is;
 }
+
+PRJ_END

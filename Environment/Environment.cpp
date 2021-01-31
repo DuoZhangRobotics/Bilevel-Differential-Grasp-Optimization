@@ -1,4 +1,5 @@
 #include "Environment.h"
+#include <Environment/ConvexHullExact.h>
 #include <Environment/ObjMeshGeomCellExact.h>
 #include <Environment/MPQZIO.h>
 #include <Utils/Utils.h>
@@ -10,6 +11,11 @@
 USE_PRJ_NAMESPACE
 
 //Environment
+template <typename T>
+bool Environment<T>::empty() const
+{
+  return false;
+}
 template <typename T>
 ObjMesh Environment<T>::getMeshProj2D() const
 {
@@ -48,23 +54,14 @@ void Environment<T>::debug(sizeType nrIter)
 template <typename T>
 EnvironmentExact<T>::EnvironmentExact() {}
 template <typename T>
-EnvironmentExact<T>::EnvironmentExact(const ArticulatedBody& body)
-{
-  ObjMesh m,env;
-  const StaticGeom& g=body.getGeomEnv();
-  for(sizeType i=0; i<g.nrG(); i++) {
-    g.getG(i).getMesh(m);
-    env.addMesh(m);
-  }
-  ObjMeshGeomCell cell(Mat4::Identity(),env,0,true,false);
-  _obj.reset(new ObjMeshGeomCellExact(cell));
-}
-template <typename T>
 EnvironmentExact<T>::EnvironmentExact(const ObjMeshGeomCellExact& obj):_obj(new ObjMeshGeomCellExact(obj)) {}
+template <typename T>
+EnvironmentExact<T>::EnvironmentExact(const ConvexHullExact& obj):_obj(new ConvexHullExact(obj)) {}
 template <typename T>
 bool EnvironmentExact<T>::read(std::istream& is,IOData* dat)
 {
   registerType<ObjMeshGeomCellExact>(dat);
+  registerType<ConvexHullExact>(dat);
   readBinaryData(_obj,is,dat);
   return is.good();
 }
@@ -72,6 +69,7 @@ template <typename T>
 bool EnvironmentExact<T>::write(std::ostream& os,IOData* dat) const
 {
   registerType<ObjMeshGeomCellExact>(dat);
+  registerType<ConvexHullExact>(dat);
   writeBinaryData(_obj,os,dat);
   return os.good();
 }
@@ -119,6 +117,11 @@ template <typename T>
 ObjMesh EnvironmentExact<T>::getMesh() const
 {
   return getObj().getMesh();
+}
+template <typename T>
+bool EnvironmentExact<T>::empty() const
+{
+  return _obj->empty();
 }
 template <typename T>
 void EnvironmentExact<T>::debugVTK(const std::string& path,sizeType res) const
@@ -253,18 +256,22 @@ const ObjMeshGeomCellExact& EnvironmentExact<T>::getObj() const
 }
 //EnvironmentCubic
 template <typename T>
-EnvironmentCubic<T>::EnvironmentCubic(scalarD dx):_dx(dx) {}
+EnvironmentCubic<T>::EnvironmentCubic() {}
 template <typename T>
-EnvironmentCubic<T>::EnvironmentCubic(const ArticulatedBody& body,scalarD dx):_dx(dx)
+EnvironmentCubic<T>::EnvironmentCubic(scalarD dx):_dx(dx),_enlarge(0) {}
+template <typename T>
+EnvironmentCubic<T>::EnvironmentCubic(const ObjMeshGeomCell& obj,scalarD dx,scalarD enlarge):_dx(dx),_enlarge(enlarge)
 {
-  EnvironmentExact<T> env(body);
-  buildDist(env);
+  obj.getMesh(_mesh);
+  if(!_mesh.getV().empty())
+    buildDist(obj);
 }
 template <typename T>
-EnvironmentCubic<T>::EnvironmentCubic(const ObjMeshGeomCellExact& obj,scalarD dx):_dx(dx)
+EnvironmentCubic<T>::EnvironmentCubic(const ObjMeshGeomCellExact& obj,scalarD dx,scalarD enlarge):_dx(dx),_enlarge(enlarge)
 {
   EnvironmentExact<T> env(obj);
-  buildDist(env);
+  if(!env.empty())
+    buildDist(env);
 }
 template <typename T>
 bool EnvironmentCubic<T>::read(std::istream& is,IOData* dat)
@@ -272,6 +279,7 @@ bool EnvironmentCubic<T>::read(std::istream& is,IOData* dat)
   _dist.read(is,dat);
   _mesh.readBinary(is);
   readBinaryData(_dx,is,dat);
+  readBinaryData(_enlarge,is,dat);
   return is.good();
 }
 template <typename T>
@@ -280,6 +288,7 @@ bool EnvironmentCubic<T>::write(std::ostream& os,IOData* dat) const
   _dist.write(os,dat);
   _mesh.writeBinary(os);
   writeBinaryData(_dx,os,dat);
+  writeBinaryData(_enlarge,os,dat);
   return os.good();
 }
 template <typename T>
@@ -451,6 +460,11 @@ ObjMesh EnvironmentCubic<T>::getMesh() const
 #endif
 }
 template <typename T>
+bool EnvironmentCubic<T>::empty() const
+{
+  return _mesh.getV().empty();
+}
+template <typename T>
 void EnvironmentCubic<T>::debugVTK(const std::string& path) const
 {
   recreate(path);
@@ -498,11 +512,35 @@ void EnvironmentCubic<T>::createFloor(const Vec4d& plane)
 }
 //helper
 template <typename T>
+void EnvironmentCubic<T>::buildDist(const ObjMeshGeomCell& obj)
+{
+  BBox<scalar> bb=obj.getBB();
+  bb.enlarged(_enlarge);
+  _dist.reset(ceilV(bb.getExtent()/_dx),bb,0,false);
+  _dist.expand(Vec3i::Constant(5),0);
+
+  sizeType nrLayer=0;
+  OMP_PARALLEL_FOR_
+  for(sizeType x=0; x<_dist.getNrPoint()[0]; x++) {
+    OMP_ATOMIC_
+    nrLayer++;
+    INFOV("Building %ld/%ld layer!",nrLayer,_dist.getNrPoint()[0])
+    for(sizeType y=0; y<_dist.getNrPoint()[1]; y++)
+      for(sizeType z=0; z<_dist.getNrPoint()[2]; z++) {
+        Vec3 n,pt=_dist.getPt(Vec3i(x,y,z)).template cast<scalar>();
+        bool inside=obj.closest(pt,n);
+        _dist.get(Vec3i(x,y,z))=inside?-n.norm():n.norm();
+      }
+  }
+  GridOp<scalarD,scalarD>::write3DScalarGridVTK("grid.vtk",_dist);
+}
+template <typename T>
 void EnvironmentCubic<T>::buildDist(const EnvironmentExact<T>& env)
 {
   BBox<scalarD> bb;
   bb._minC=castRational<Vec3d,TriangleExact::PT>(env.getObj().getBB()._minC);
   bb._maxC=castRational<Vec3d,TriangleExact::PT>(env.getObj().getBB()._maxC);
+  bb.enlarged(_enlarge);
   _dist.reset(ceilV(bb.getExtent()/_dx),bb,0,false);
   _dist.expand(Vec3i::Constant(5),0);
   _mesh=env.getMesh();
@@ -549,6 +587,8 @@ T EnvironmentCubic<T>::interp1DDDiff(T t,std::function<T(sizeType)> f)
 }
 //EnvironmentHeight
 template <typename T>
+EnvironmentHeight<T>::EnvironmentHeight() {}
+template <typename T>
 EnvironmentHeight<T>::EnvironmentHeight(scalarD dx):EnvironmentCubic<T>(dx) {}
 template <typename T>
 EnvironmentHeight<T>::EnvironmentHeight(const std::string& path,bool is2D,scalar dxMul):EnvironmentCubic<T>(0)
@@ -591,18 +631,6 @@ EnvironmentHeight<T>::EnvironmentHeight(const std::string& path,bool is2D,scalar
   }
   mesh.smooth();
   ObjMeshGeomCell cell(Mat4::Identity(),mesh,0,true);
-  buildDist(cell);
-}
-template <typename T>
-EnvironmentHeight<T>::EnvironmentHeight(const ArticulatedBody& body,scalarD dx):EnvironmentCubic<T>(dx)
-{
-  ObjMesh m,env;
-  const StaticGeom& g=body.getGeomEnv();
-  for(sizeType i=0; i<g.nrG(); i++) {
-    g.getG(i).getMesh(m);
-    env.addMesh(m);
-  }
-  ObjMeshGeomCell cell(Mat4::Identity(),env,0,true,false);
   buildDist(cell);
 }
 template <typename T>

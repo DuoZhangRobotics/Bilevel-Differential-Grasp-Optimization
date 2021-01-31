@@ -356,14 +356,8 @@ void MultiPrecisionLQP<T>::writeProb(const std::string& path) const
 {
   std::ofstream os(path,std::ios::binary);
   writeBinaryData(_foot,os);
-  Matd H=_H.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  Cold c=_c.unaryExpr([&](const T& in) {
-    return (scalarD)std::to_double(in);
-  });
-  writeBinaryData(H,os);
-  writeBinaryData(c,os);
+  writeBinaryData(_H,os);
+  writeBinaryData(_c,os);
 }
 template <typename T>
 void MultiPrecisionLQP<T>::readAndTestProb(const std::string& path)
@@ -373,12 +367,8 @@ void MultiPrecisionLQP<T>::readAndTestProb(const std::string& path)
     return;
   std::ifstream is(path,std::ios::binary);
   readBinaryData(_foot,is);
-  Matd H;
-  Cold c;
-  readBinaryData(H,is);
-  readBinaryData(c,is);
-  _H=H.template cast<T>();
-  _c=c.template cast<T>();
+  readBinaryData(_H,is);
+  readBinaryData(_c,is);
   solve(succ);
 }
 template <typename T>

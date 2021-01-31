@@ -1,3 +1,4 @@
+#include <Utils/Scalar.h>
 #include "DSSQPObjective.h"
 #include <CommonFile/Timing.h>
 #include <Utils/DebugGradient.h>
@@ -71,16 +72,39 @@ int DSSQPObjective<T>::operator()(const Vec& x,Vec& fvec,SMat* fjac) {
 }
 template <typename T>
 int DSSQPObjective<T>::operator()(const Vec&,Vec&,STrips*) {
-  ASSERT_MSG(false,"Not Implemented: Sparse Least Square Function!")
+  ASSERT_MSG(false,"Not Implemented: Sparse Constraint Function!")
   return -1;
 }
 //objective
 template <typename T>
-T DSSQPObjective<T>::operator()(const Vec&,Vec* fgrad) {
-  if(fgrad)
-    fgrad->setZero(inputs());
-  return 0;
+T DSSQPObjective<T>::operator()(const Vec& x,Vec* fgrad) {
+  return operator()(x,fgrad,(STrips*)NULL);
 }
+template <typename T>
+T DSSQPObjective<T>::operator()(const Vec& x,Vec* fgrad,DMat* fhess) {
+  T ret=operator()(x,fgrad,fhess?&_tmpFjacs:NULL);
+  if(fhess)
+    *fhess=_tmpFjacs.toDense();
+  return ret;
+}
+template <typename T>
+T DSSQPObjective<T>::operator()(const Vec& x,Vec* fgrad,SMat* fhess) {
+  if(fhess)  //to remember number of entries
+    _tmp.clear();
+  T ret=operator()(x,fgrad,fhess?&_tmp:NULL);
+  if(fhess) {
+    fhess->resize(inputs(),inputs());
+    if(!_tmp.getVector().empty())
+      fhess->setFromTriplets(_tmp.begin(),_tmp.end());
+  }
+  return ret;
+}
+template <typename T>
+T DSSQPObjective<T>::operator()(const Vec&,Vec*,STrips*) {
+  ASSERT_MSG(false,"Not Implemented: Sparse Objective Function!")
+  return -1;
+}
+//problem size
 template <typename T>
 int DSSQPObjective<T>::inputs() const {
   return 0;
@@ -91,7 +115,7 @@ int DSSQPObjective<T>::values() const {
 }
 //KTRObjectiveComponent
 template <typename T>
-DSSQPObjectiveComponent<T>::DSSQPObjectiveComponent(DSSQPObjectiveCompound<T>& obj,const std::string& name,bool force):_offset(0)
+DSSQPObjectiveComponent<T>::DSSQPObjectiveComponent(DSSQPObjectiveCompound<T>& obj,const std::string& name,bool force):_vars(&(obj.vars())),_offset(0)
 {
   _name=name;
   if(force) {
@@ -117,6 +141,9 @@ int DSSQPObjectiveComponent<T>::values() const
   ASSERT(_gl.size()==_gu.size())
   return (sizeType)_gl.size();
 }
+//whether modifying objective function expression is allowed
+template <typename T>
+void DSSQPObjectiveComponent<T>::setUpdateCache(const Vec&,bool) {}
 //constraint
 template <typename T>
 int DSSQPObjectiveComponent<T>::operator()(const Vec&,Vec&,STrips*)
@@ -131,7 +158,7 @@ T DSSQPObjectiveComponent<T>::operator()(const Vec&,Vec*)
   return 0;
 }
 template <typename T>
-bool DSSQPObjectiveComponent<T>::debug(sizeType inputs,sizeType nrTrial,T thres)
+bool DSSQPObjectiveComponent<T>::debug(sizeType inputs,sizeType nrTrial,T thres,Vec* x0,bool hess)
 {
   sizeType offset=_offset;
   _inputs=inputs;
@@ -139,14 +166,27 @@ bool DSSQPObjectiveComponent<T>::debug(sizeType inputs,sizeType nrTrial,T thres)
   DEFINE_NUMERIC_DELTA_T(T)
   for(sizeType i=0; i<nrTrial; i++)
     for(sizeType vid=thres!=0?0:-1; vid<sizeType(thres!=0?inputs:0); vid++) {
-      SMat fjac;
+      T FX,FX2;
+      SMat fjac,fhess;
       Vec x=makeValid(Vec::Random(inputs)),grad,grad2;
+      if(x0)
+        x.segment(0,x0->size())=*x0;
       Vec delta=thres>0?Vec(Vec::Unit(inputs,vid)):Vec(Vec::Random(inputs));
       //objective
       grad.setZero(inputs);
       grad2.setZero(inputs);
-      T FX=operator()(x,&grad);
-      T FX2=operator()(x+delta*DELTA,(Vec*)NULL);
+      if(hess) {
+        setUpdateCache(x,true);
+        FX=DSSQPObjective<T>::operator()(x,&grad,&fhess);
+        setUpdateCache(x+delta*DELTA,false);
+        FX2=DSSQPObjective<T>::operator()(x+delta*DELTA,&grad2,(SMat*)NULL);
+        fhess=fhess.toDense().block(0,0,inputs,inputs).sparseView();
+      } else {
+        setUpdateCache(x,true);
+        FX=DSSQPObjective<T>::operator()(x,&grad);
+        setUpdateCache(x+delta*DELTA,false);
+        FX2=DSSQPObjective<T>::operator()(x+delta*DELTA,&grad2);
+      }
       if(thres!=0) {
         std::string entryStr=_name+":grad["+(vid<0?"-":std::to_string(vid))+"]";
         T ref=grad.dot(delta),err=grad.dot(delta)-(FX2-FX)/DELTA;
@@ -157,24 +197,46 @@ bool DSSQPObjectiveComponent<T>::debug(sizeType inputs,sizeType nrTrial,T thres)
           DEBUG_GRADIENT(entryStr,ref,err)
           return false;
         }
+        if(hess) {
+          std::string entryStr=_name+":hess["+(vid<0?"-":std::to_string(vid))+"]";
+          ref=std::sqrt((hess*delta).squaredNorm()),err=std::sqrt((hess*delta-(grad2-grad)/DELTA).squaredNorm());
+          if(ref==0)
+            continue;
+          T thresRel=thres>0?thres:std::max<T>(-thres,-thres*std::abs(ref));
+          if(std::abs(err)>thresRel) {
+            DEBUG_GRADIENT(entryStr,ref,err)
+            return false;
+          }
+        }
       } else {
         std::string entryStr=_name+":grad["+(vid<0?"-":std::to_string(vid))+"]";
         T ref=grad.dot(delta),err=grad.dot(delta)-(FX2-FX)/DELTA;
         if(ref==0)
           continue;
         DEBUG_GRADIENT(entryStr,ref,err)
+        if(hess) {
+          std::string entryStr=_name+":hess["+(vid<0?"-":std::to_string(vid))+"]";
+          ref=std::sqrt((fhess*delta).squaredNorm()),err=std::sqrt((fhess*delta-(grad2-grad)/DELTA).squaredNorm());
+          if(ref==0)
+            continue;
+          DEBUG_GRADIENT(entryStr,ref,err)
+        }
       }
     }
   for(sizeType i=0; i<nrTrial; i++)
     for(sizeType vid=thres!=0?0:-1; vid<sizeType(thres!=0?inputs:0); vid++) {
       SMat fjac;
       Vec x=makeValid(Vec::Random(inputs)),grad,grad2;
+      if(x0)
+        x.segment(0,x0->size())=*x0;
       Vec delta=thres>0?Vec(Vec::Unit(inputs,vid)):Vec(Vec::Random(inputs));
       //constraint
       Vec fvec=Vec::Zero(values());
       Vec fvec2=Vec::Zero(values());
       fjac.resize(values(),inputs);
+      setUpdateCache(x,true);
       DSSQPObjective<T>::operator()(x,fvec,(SMat*)&fjac);
+      setUpdateCache(x+delta*DELTA,false);
       DSSQPObjective<T>::operator()(x+delta*DELTA,fvec2,(SMat*)NULL);
       if(thres!=0) {
         for(sizeType r=0; r<fvec.size(); r++) {
@@ -198,6 +260,14 @@ bool DSSQPObjectiveComponent<T>::debug(sizeType inputs,sizeType nrTrial,T thres)
     }
   _offset=offset;
   return true;
+}
+template <typename T>
+bool DSSQPObjectiveComponent<T>::debug(sizeType nrTrial,T thres,Vec* x0,bool hess)
+{
+  sizeType inputs=0;
+  for(const std::pair<std::string,DSSQPVariable<T>>& v:*_vars)
+    inputs=std::max(inputs,v.second._id+1);
+  return debug(inputs,nrTrial,thres,x0,hess);
 }
 template <typename T>
 typename DSSQPObjectiveComponent<T>::Vec DSSQPObjectiveComponent<T>::makeValid(const Vec& x) const
@@ -299,6 +369,19 @@ int DSSQPObjectiveCompound<T>::operator()(const Vec& x,Vec& fvec,STrips* fjac)
     v.second->operator()(x,fvec,fjac);
   return 0;
 }
+template <typename T>
+const std::vector<Coli,Eigen::aligned_allocator<Coli>>& DSSQPObjectiveCompound<T>::getQCones() const
+{
+  return _QCones;
+}
+template <typename T>
+void DSSQPObjectiveCompound<T>::addQCone(const Coli& vss)
+{
+  for(sizeType i=0; i<vss.size(); i++) {
+    ASSERT_MSGV(vss[i]>=0 && vss[i]<(sizeType)vars().size(),"Invalid variable id: 0<=%d<%d",vss[i],vars().size())
+  }
+  _QCones.push_back(vss);
+}
 //objective
 template <typename T>
 T DSSQPObjectiveCompound<T>::operator()(const Vec& x,Vec* fgrad)
@@ -361,6 +444,11 @@ DSSQPVariable<T>& DSSQPObjectiveCompound<T>::addVar(sizeType id)
 {
   ASSERT(_varsInv.find(id)!=_varsInv.end())
   return _vars.find(_varsInv.find(id)->second)->second;
+}
+template <typename T>
+const typename DSSQPObjectiveCompound<T>::VARMAP& DSSQPObjectiveCompound<T>::vars() const
+{
+  return _vars;
 }
 template <typename T>
 void DSSQPObjectiveCompound<T>::setVarInit(const std::string& name,T init)

@@ -12,6 +12,7 @@ public:
   static void makeTet3D(ObjMesh& m);
   static void makeBox3D(ObjMesh& m,const Vec3& ext);
   static void makeBox3D(ObjMesh& m,const Vec3& ext,scalar thick);
+  static void makeBoxOpen3D(ObjMesh& m,const Vec3& ext,scalar thick);
   static void makeDiscreteBox3D(ObjMesh& m,const Vec3& ext);
   static void makeBox2D(ObjMesh& m,const Vec3& ext);
   static void makeBox2D(ObjMesh& m,const Vec3& ext,scalar thick);

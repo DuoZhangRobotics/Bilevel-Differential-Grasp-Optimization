@@ -7,7 +7,7 @@
 PRJ_BEGIN
 
 template <typename T,int DIM=3>
-struct ALIGN_16 BBox {
+struct ALIGN_16 BBox : public SerializableBase {
   static const int dim=DIM;
   typedef Eigen::Matrix<T,DIM,1> PT;
   typedef Eigen::Matrix<T,2,1> PT2;
@@ -21,8 +21,10 @@ struct ALIGN_16 BBox {
   virtual ~BBox();
   template <typename T2>
   BBox& operator=(const BBox<T2,DIM>& other);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   static BBox createMM(const PT& minC,const PT& maxC);
   static BBox createME(const PT& minC,const PT& extent);
   static BBox createCE(const PT& center,const PT& extent);
@@ -65,7 +67,7 @@ struct ALIGN_16 BBox {
   ALIGN_16 PT _maxC;
 };
 template <typename T>
-class ALIGN_16 LineSegTpl
+class ALIGN_16 LineSegTpl : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,3,1> PT;
@@ -73,8 +75,10 @@ public:
   typedef typename Eigen::Matrix<T,2,2> MAT2;
   LineSegTpl();
   LineSegTpl(const PT& x,const PT& y);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   T length() const;
   PT circumcenter() const;
   PT masscenter() const;
@@ -94,7 +98,7 @@ public:
   ALIGN_16 PT _y;
 };
 template <typename T>
-class ALIGN_16 PlaneTpl
+class ALIGN_16 PlaneTpl : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,3,1> PT;
@@ -102,8 +106,10 @@ public:
   PlaneTpl();
   PlaneTpl(const PT& x0,const PT& n);
   PlaneTpl(const PT& a,const PT& b,const PT& c);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   T side(const PT& p) const;
   bool intersect(const BBox<T>& bb) const;
   PT2 project(const PT& d) const;
@@ -114,7 +120,7 @@ public:
   ALIGN_16 PT _n;
 };
 template <typename T>
-class ALIGN_16 TriangleTpl
+class ALIGN_16 TriangleTpl : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,3,1> PT;
@@ -123,8 +129,10 @@ public:
   typedef typename Eigen::Matrix<T,3,3> MAT3;
   TriangleTpl();
   TriangleTpl(const PT& a,const PT& b,const PT& c);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   PT circumcenter() const;
   PT masscenter() const;
   PT bary(const PT& pt) const;
@@ -155,7 +163,7 @@ public:
   ALIGN_16 PT _c;
 };
 template <typename T>
-class ALIGN_16 TetrahedronTpl
+class ALIGN_16 TetrahedronTpl : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,2,1> PT2;
@@ -165,8 +173,10 @@ public:
   typedef typename Eigen::Matrix<T,3,3> MAT3;
   TetrahedronTpl();
   TetrahedronTpl(const PT& a,const PT& b,const PT& c,const PT& d);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   PT circumcenter() const;
   PT masscenter() const;
   PT4 bary(const PT& pt) const;
@@ -193,7 +203,7 @@ public:
 template <typename T,int DIM=3>
 class OBBTpl;
 template <typename T>
-class ALIGN_16 OBBTpl<T,2>
+class ALIGN_16 OBBTpl<T,2> : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,2,1> PT;
@@ -207,8 +217,10 @@ public:
   OBBTpl(const MAT3& rot,const PT3& trans,const BBox<T,3>& bb);
   OBBTpl(const MAT& rot,const PT& trans,const PT& ext);
   OBBTpl(const MAT3& rot,const PT3& trans,const PT3& ext);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   bool closest(PT pt,PT& n,PT* normal) const;
   bool closestInner(const PT& pt,PT& n,PT* normal) const;
   bool intersect(const OBBTpl<T,2>& other) const;
@@ -219,7 +231,7 @@ public:
   ALIGN_16 PT _ext;
 };
 template <typename T>
-class ALIGN_16 OBBTpl<T,3>
+class ALIGN_16 OBBTpl<T,3> : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,3,1> PT;
@@ -229,8 +241,10 @@ public:
   OBBTpl(const BBox<T,3>& bb);
   OBBTpl(const MAT& rot,const PT& trans,const BBox<T,3>& bb);
   OBBTpl(const MAT& rot,const PT& trans,const PT& ext);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   bool closest(PT pt,PT& n,PT* normal) const;
   bool closestInner(const PT& pt,PT& n,PT* normal) const;
   bool intersect(const OBBTpl<T,3>& other) const;
@@ -241,7 +255,7 @@ public:
   ALIGN_16 PT _ext;
 };
 template <typename T>
-class ALIGN_16 KDOP18
+class ALIGN_16 KDOP18 : public SerializableBase
 {
 public:
   static const int dim=3;
@@ -249,12 +263,16 @@ public:
   KDOP18();
   KDOP18(const PT& v);
   KDOP18(const PT& a,const PT& b);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   void reset();
   void empty();
   void enlarged(T len);
   void enlarged(T len,sizeType dim);
+  KDOP18 enlarge(T len) const;
+  KDOP18 enlarge(T len,sizeType dim) const;
   void setPoints(const PT& a,const PT& b,const PT& c);
   void setUnion(const PT& p);
   void setUnion(const KDOP18& b);
@@ -271,14 +289,16 @@ protected:
   ALIGN_16 T _dist[18];
 };
 template <typename T>
-class ALIGN_16 Sphere
+class ALIGN_16 Sphere : public SerializableBase
 {
 public:
   typedef typename Eigen::Matrix<T,3,1> PT;
   Sphere();
   Sphere(const PT& ctr,const T& rad);
-  bool write(std::ostream& os) const;
-  bool read(std::istream& is);
+  std::shared_ptr<SerializableBase> copy() const override;
+  std::string type() const override;
+  bool write(std::ostream& os) const override;
+  bool read(std::istream& is) override;
   bool closest(const PT& pt,PT& n,PT* normal) const;
   bool intersect(const PT& a,const PT& b) const;
   T distTo(const Sphere<T>& other) const;
