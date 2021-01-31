@@ -294,13 +294,13 @@ typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::solveL1QPTpl(Vec&,c
 }
 //helper
 template <typename T>
-typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const MatT&,bool) const
+typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const MatT&,bool,bool) const
 {
   FUNCTION_NOT_IMPLEMENTED
   return QCQPSolver<T>::UNKNOWN;
 }
 template <typename T>
-typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const SMat&,bool) const
+typename QCQPSolver<T>::QCQP_RETURN_CODE QCQPSolverMosek<T>::putHess(void*,const SMat&,bool,bool) const
 {
   FUNCTION_NOT_IMPLEMENTED
   return QCQPSolver<T>::UNKNOWN;
