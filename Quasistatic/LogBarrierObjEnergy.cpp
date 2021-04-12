@@ -95,10 +95,16 @@ void LogBarrierObjEnergy<T>::addTerm(bool& valid,const Vec2i& termId,Vec2i& feat
       dist=distCalc.template closest<T>(pL,n,normal,hessian,feat);
     else dist=distCalc.template closest<T>(pL,n,normal,hessian,feat=_cache.find(cacheId)->second,true);
   }
-  if(dist<=0)
+  if(dist<=0){
+      std::cout <<"dist < 0" << std::endl;
+      std::cout << "dist = "<< dist << " _d1 = " << _d1 << " dist -  _d1 = " <<dist- _d1 << std::endl;
+
     valid=false;
+
+  }
   else {
     T D,DD,E=clog(dist-_d1,g?&D:NULL,h?&DD:NULL,_d0-_d1,_mu);
+    
     e+=E;
     if(!std::isfinite(E)) {
       valid=false;

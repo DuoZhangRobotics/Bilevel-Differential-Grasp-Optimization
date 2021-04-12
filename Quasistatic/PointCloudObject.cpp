@@ -305,8 +305,9 @@ void PointCloudObject<T>::samplePoints(T rad)
   //sample
   _rad=rad;
   ParallelPoissonDiskSampling sampler(3);
+  //TODO: I add this line
   sampler.setRadius(std::to_double(_rad));
-  sampler.sample(_m);
+  sampler.sample(_m, false);
   //pss
   _pss.resize(3,sampler.getPSet().size());
   _nss.resize(3,sampler.getPSet().size());

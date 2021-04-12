@@ -31,7 +31,7 @@ int ConvexLogBarrierSelfEnergy<T>::operator()(const Vec&,ParallelMatrix<T>& e,Pa
 {
   const std::vector<Node<std::shared_ptr<StaticGeomCell>,BBox<scalar>>>& bvhHand=_planner.body().getGeom().getBVH();
   std::vector<KDOP18<scalar>> bbs=updateBVH();
-  //update plane
+  //update plane 
   std::stack<std::pair<sizeType,sizeType>> ss;
   ss.push(std::make_pair((sizeType)bvhHand.size()-1,(sizeType)bvhHand.size()-1));
   while(_updateCache && !ss.empty()) {

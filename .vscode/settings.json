@@ -58,7 +58,10 @@
         "random": "cpp",
         "cassert": "cpp",
         "hash_map": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "condition_variable": "cpp",
+        "future": "cpp",
+        "mutex": "cpp"
     },
     "cmake.configureOnOpen": true
 }

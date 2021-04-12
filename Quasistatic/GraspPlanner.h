@@ -7,6 +7,7 @@
 #include <Articulated/PBDArticulatedGradientInfo.h>
 #include <Optimizer/QCQPSolverMosek.h>
 #include <Optimizer/QCQPSolverGurobi.h>
+#include <Optimizer/QCQPSolverQPOASES.h>
 #include <Utils/ParallelVector.h>
 #include <Utils/Options.h>
 
@@ -88,7 +89,7 @@ protected:
   ArticulatedBody _body;
   //mimic
   SMat _A;
-  QCQPSolverGurobi<T> _sol;
+  QCQPSolverQPOASES<T> _sol;
   Vec _b,_l,_u,_gl,_gu;
   //sampled points
   PNSS _pnss;

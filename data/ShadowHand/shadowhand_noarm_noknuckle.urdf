@@ -51,8 +51,8 @@
 
     <origin rpy="0 0 0" xyz="0.033 0 0.095" />
     <axis xyz="0 -1 0" />
-    <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="ffproximal">
     <inertial>
@@ -79,8 +79,8 @@
     <child link="ffproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="ffmiddle">
     <inertial>
@@ -107,8 +107,8 @@
     <child link="ffmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="ffdistal">
     <inertial>
@@ -136,8 +136,8 @@
     <child link="ffdistal" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="fftip">
     <inertial>
@@ -164,8 +164,8 @@
 
     <origin rpy="0 0 0" xyz="0.011 0 0.099" />
     <axis xyz="0 -1 0" />
-    <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="mfproximal">
     <inertial>
@@ -192,8 +192,8 @@
     <child link="mfproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="mfmiddle">
     <inertial>
@@ -220,8 +220,8 @@
     <child link="mfmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="mfdistal">
     <inertial>
@@ -249,8 +249,8 @@
     <child link="mfdistal" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="mftip">
     <inertial>
@@ -276,9 +276,9 @@
     <child link="rfknuckle" />
 
     <origin rpy="0 0 0" xyz="-0.011 0 0.095" />
-    <axis xyz="0 1 0" />
-    <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <axis xyz="0 -1 0" />
+    <limit effort="0" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="rfproximal">
     <inertial>
@@ -305,8 +305,8 @@
     <child link="rfproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="rfmiddle">
     <inertial>
@@ -333,8 +333,8 @@
     <child link="rfmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="rfdistal">
     <inertial>
@@ -362,8 +362,8 @@
     <child link="rfdistal" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="rftip">
     <inertial>
@@ -401,8 +401,8 @@
     <child link="lfmetacarpal" />
     <origin rpy="0 0 0" xyz="-0.033 0 0.02071" />
     <axis xyz="0.573576436 0 0.819152044" />
-    <limit effort="100" lower="0" upper="0.69813170079773179" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.69813170079773179" upper="0.69813170079773179" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="lfknuckle">
     <inertial>
@@ -416,8 +416,8 @@
     <child link="lfknuckle" />
     <origin rpy="0 0 0" xyz="0 0 0.06579" />
     <axis xyz="0 1 0" />
-    <limit effort="100" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.43633231299858238" upper="0.43633231299858238" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="lfproximal">
     <inertial>
@@ -444,8 +444,8 @@
     <child link="lfproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="lfmiddle">
     <inertial>
@@ -472,8 +472,8 @@
     <child link="lfmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0.045" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="lfdistal">
     <inertial>
@@ -501,8 +501,8 @@
     <child link="lfdistal" />
     <origin rpy="0 0 0" xyz="0 0 0.025" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.57079632679" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="lftip">
     <inertial>
@@ -527,8 +527,8 @@
     <child link="thbase" />
     <origin rpy="0 0.785398163397 0" xyz="0.034 -0.0085 0.029" />
     <axis xyz="0 0 -1.0" />
-    <limit effort="100" lower="-1.047" upper="1.047" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.047" upper="1.047" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="thproximal">
     <inertial>
@@ -557,8 +557,8 @@
     <child link="thproximal" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="1.0 0 0" />
-    <limit effort="100" lower="0" upper="1.309" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.309" upper="1.309" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="thhub">
     <inertial>
@@ -572,8 +572,8 @@
     <child link="thhub" />
     <origin rpy="0 0 0" xyz="0 0 0.038" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="-0.2618" upper="0.2618" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.2618" upper="0.2618" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="thmiddle">
     <inertial>
@@ -602,8 +602,8 @@
     <child link="thmiddle" />
     <origin rpy="0 0 0" xyz="0 0 0" />
     <axis xyz="0 -1 0" />
-    <limit effort="100" lower="-0.5237" upper="0.5237" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-0.5237" upper="0.5237" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="thdistal">
     <inertial>
@@ -632,8 +632,8 @@
     <child link="thdistal" />
     <origin rpy="0 0 -1.570796327" xyz="0 0 0.032" />
     <axis xyz="1 0 0" />
-    <limit effort="100" lower="0" upper="1.571" velocity="1.0" />
-    <dynamics damping="50.5" />
+    <limit effort="0" lower="-1.57079632679" upper="1.57079632679" velocity="1.0" />
+    <dynamics damping="0" />
   </joint>
   <link name="thtip">
     <inertial>

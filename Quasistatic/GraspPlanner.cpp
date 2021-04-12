@@ -11,6 +11,7 @@
 #include <Environment/ConvexHullExact.h>
 #include <Environment/Environment.h>
 #include <Eigen/Eigen>
+#include <Eigen/Sparse>
 //energy
 #include <Optimizer/DSSQPObjective.h>
 #include "ConvexLogBarrierSelfEnergy.h"
@@ -60,10 +61,10 @@ void GraspPlannerParameter::initOptions(GraspPlannerParameter& sol)
   sol._activation=SQR_EXP_ACTIVATION;
   sol._normalExtrude=1;
   sol._FGTThres=1e-6f;
-  sol._coefM=-100;
+  sol._coefM=-1;
   sol._coefOC=0;
   sol._coefCC=0;
-  sol._coefO=10;
+  sol._coefO=100;
   sol._coefS=1;
   sol._useGJK=false;
   //solver
@@ -120,8 +121,10 @@ void GraspPlanner<T>::reset(T rad,bool convex,T SDFRes,T SDFExtension,bool SDFRa
   PBDArticulatedGradientInfo<T> info(_body,Vec::Zero(_body.nrDOF()));
   for(sizeType i=0; i<_body.nrJ(); i++) {
     _body.getGeom().getG(i).getMesh(m);
-    if(m.getV().empty())
+    if(m.getV().empty()){
       continue;
+          }
+
     //rescale mesh to gain accuracy
     ParallelPoissonDiskSampling sampler(3);
     sampler.setRadius(std::to_double(_rad));
@@ -343,7 +346,9 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
     _objs.addComponent(std::shared_ptr<ArticulatedObjective<T>>(new ConvexLogBarrierSelfEnergy<T>(_objs,_info,*this,object,_rad*ops._d0,ops._coefS)));
 
   Vec x;
+ 
   SolveNewton<T>::template solveNewton<Vec>(_A.transpose()*_A,_A.transpose()*(_b-init),x,true);
+
   sizeType nAdd=_objs.inputs()-init.size();
   if(nAdd>0) {
     x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
@@ -364,7 +369,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
   return _A*x.segment(0,_A.cols())+_b;
 }
 template <typename T>
-bool GraspPlanner<T>::solveDenseQP(Vec& d,const Vec& x,const Vec& g,MatT& h,const Vec* c,const MatT* cjac,T TR,T rho)
+bool GraspPlanner<T>::solveDenseQP(Vec& d, const Vec& x,const Vec& g,MatT& h,const Vec* c,const MatT* cjac,T TR,T rho)
 {
   scalarD maxConditionNumber=1e5f,minDiagonalValue=1e-5f;
   Eigen::SelfAdjointEigenSolver<Matd> eig(h.unaryExpr([&](const T& in) {
@@ -457,22 +462,37 @@ bool GraspPlanner<T>::assemble(Vec x,bool update,T& e,Vec* g,MatT* h,Vec* c,MatT
   bool valid=true;
   for(typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin(),end=_objs.components().end(); beg!=end; beg++) {
     beg->second->setUpdateCache(x,update);
+    // std::cout << beg->second->_name << " " << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,g?&G:NULL,h?&H:NULL,g,h) << std::endl;
+    // std::cout << "E value" << E.getValue() << std::endl;
     if(std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,g?&G:NULL,h?&H:NULL,g,h)<0) {
       valid=false;
+      // std::cout << beg->second->_name << " " << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,g?&G:NULL,h?&H:NULL,g,h) << std::endl;
       break;
     }
   }
   if(!valid)
     return false;
   //assemble body gradient / hessian
+
   Mat3XT tmpG;
   Mat12XT tmpH;
   e=E.getValue();
   if(g) {
     tmpG=G.getMatrix();
     _info.DTG(_body,mapM(tmpG),mapV(*g));
+//   for (int i = 0; i < g->size(); i++)
+//   {/* code */
+//     std::cout << (*g)[i] << " ";
+//   }
+//   std::cout <<"In assemble"<< std::endl;
     *g=_A.transpose()**g;
+  //  for (int i = 0; i < g->size(); i++)
+  //   {/* code */
+  //    std::cout << (*g)[i] << " ";
+  //  }
+  //  std::cout <<"After assemble"<< std::endl;
   }
+
   if(h) {
     tmpH=H.getMatrix();
     Eigen::Map<const MatT,0,Eigen::OuterStride<>> HMap(tmpH.data(),tmpH.rows(),tmpH.cols(),tmpH.outerStride());
@@ -480,6 +500,7 @@ bool GraspPlanner<T>::assemble(Vec x,bool update,T& e,Vec* g,MatT* h,Vec* c,MatT
     *h=_A.transpose()*(*h*_A);
   }
   //assemble constraint (jacobian)
+
   if(c || cjac) {
     if(c)
       c->setZero(nCons);
@@ -561,7 +582,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
   T e,e2,m,m2;
   MatT hD,cjacD;
   SMat hS,cjacS;
-  Vec g,c,c2,xTmp;
+  Vec g,c,c2,xTmp, xTmpTmp;
   T dNorm,cNorm,cNorm2,alphaDec=0.5f,alphaInc=1.5f,coefWolfe=0.1f,alpha=1,rho=ops._rho0,gamma=0.1f,reg=0;
   _gl=_objs.gl(),_gu=_objs.gu();
   bool tmpUseGJK=ops._useGJK;
@@ -591,6 +612,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
         }
         return Vec::Zero(0);
       }
+      
       if(!solveDenseQP(d,x,g,hD,&c,&cjacD,0,0)) {
         if(ops._callback) {
           INFOV("Iter=%d failed(qp failed)",it)
@@ -631,6 +653,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
         alpha*=alphaDec;
         continue;
       }
+
       cNorm2=-c2.cwiseMin(0).sum();
       m2=e2+cNorm2*rho;
       if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
@@ -638,9 +661,11 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
         continue;
       } else {
         alpha=std::min<T>(alpha*alphaInc,1);
-        x=xTmp;
+        // alpha *= alphaInc;
+        xTmpTmp=xTmp;
         break;
       }
+      
     }
     ops._useGJK=tmpUseGJK;
     if(alpha<ops._alphaThres) {
@@ -649,12 +674,45 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
       }
       break;
     }
+     if (!assemble(xTmpTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2))
+    {
+      std::cout << "Cannot use GJK.\n Redoing the line search..." << std::endl;
+       while(alpha>ops._alphaThres) {
+      xTmp=x+d*alpha;
+      if(!assemble(xTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2)) {
+        alpha*=alphaDec;
+        continue;
+      }
+
+      cNorm2=-c2.cwiseMin(0).sum();
+      m2=e2+cNorm2*rho;
+      if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
+        alpha*=alphaDec;
+        continue;
+      } else {
+        alpha=std::min<T>(alpha*alphaInc,1);
+        // alpha *= alphaInc;
+        x=xTmp;
+        break;
+      }
+      
+    }
+    }
+    else x=xTmpTmp;
+
+
     //update plane
     for(const std::pair<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>& p:_objs.components()) {
       std::shared_ptr<ConvexLogBarrierSelfEnergy<T>> ESelf=std::dynamic_pointer_cast<ConvexLogBarrierSelfEnergy<T>>(p.second);
-      if(ESelf)
+      if(ESelf){
         ESelf->updatePlanes();
+      }
     }
+    if (!assemble(x,false,e2,(Vec*)NULL,(DMat*)NULL,&c2))
+    {
+      std::cout << "after updating plane goes wrong" << std::endl;
+    }
+    
   }
   return x;
 }

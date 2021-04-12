@@ -5,6 +5,7 @@
 #include <Utils/DebugGradient.h>
 #include <Utils/SparseUtils.h>
 #include <Utils/Options.h>
+#include <chrono>
 
 PRJ_BEGIN
 
@@ -68,16 +69,33 @@ public:
   }
   template <typename RHS>
   static bool solveNewton(const DMat& h,const RHS& g,RHS& dx,bool highPrec) {
+    auto start=std::chrono::high_resolution_clock::now();
+ 
     if(highPrec==1) {
       dx=-g;
       DMat hTmp=h;
       LTDL(hTmp);
       for(sizeType i=0; i<hTmp.rows(); i++)
         if(hTmp(i,i)<=0)
+        {
+          auto stop=std::chrono::high_resolution_clock::now();
+          auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+          std::cout << "Time solve newton "  << " is: " << duration.count() << std::endl;
           return false;
+        }
+
       LTDLSolve<RHS>(hTmp,dx);
-      return true;
+      {
+        auto stop=std::chrono::high_resolution_clock::now();
+          auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+          std::cout << "Time solve newton "  << " is: " << duration.count() << std::endl;
+          return true;
+      }
+
     } else {
+      auto stop=std::chrono::high_resolution_clock::now();
+          auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+          std::cout << "Time solve newton "  << " is: " << duration.count() << std::endl;
       return solveRefinementNewton<RHS>(h,g,dx);
     }
   }

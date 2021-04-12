@@ -139,6 +139,7 @@ IF(QUASISTATIC_EXAMPLE)
   ADD_EXE(mainObjectRegister)
   ADD_EXE(mainObjectSettle)
   ADD_EXE(mainGripper)
+  ADD_EXE(mainEvaluate)
 ENDIF()
 
 IF(TRAJ_OPT_EXAMPLE)

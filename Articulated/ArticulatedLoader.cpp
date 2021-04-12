@@ -282,6 +282,7 @@ bool ArticulatedLoader::readRelations(Relations& relations,const tinyxml2::XMLEl
       if(!hasAttribute(joint,"<xmlattr>.name"))
         continue;
       info._name=get<std::string>(joint,"<xmlattr>.name");
+      std::cout << info._name << std::endl;
       //type
       if(!hasAttribute(joint,"<xmlattr>.type"))
         continue;
@@ -300,7 +301,14 @@ bool ArticulatedLoader::readRelations(Relations& relations,const tinyxml2::XMLEl
       info._T.setIdentity();
       ROT(info._T)=RPY2Mat(parsePtreeDef<Vec3>(joint,"origin.<xmlattr>.rpy",Vec3::Zero()));
       CTR(info._T)=parsePtreeDef<Vec3>(joint,"origin.<xmlattr>.xyz",Vec3::Zero());
-      info._axis=parsePtreeDef<Vec3>(joint,"axis.<xmlattr>.xyz",Vec3::Zero());
+       info._axis=parsePtreeDef<Vec3>(joint,"axis.<xmlattr>.xyz",Vec3::Zero());
+       for (int i = 0; i < info._axis.size(); i++)
+       {
+         std::cout << info._axis[i] << " ";
+       }
+       std::cout <<"Axis" << std::endl;
+//      info._axis=parsePtreeDef<Vec3>(joint,"axis.<xmlattr>.xyz");
+
       info._ctrl=get<scalar>(joint,"limit.<xmlattr>.effort",0);
       info._damp=get<scalar>(joint,"dynamics.<xmlattr>.damping",0);
       //lower

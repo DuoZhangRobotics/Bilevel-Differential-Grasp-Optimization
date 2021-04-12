@@ -2,7 +2,7 @@
 #include "GraspPlanner.h"
 #include "FGTTreeNode.h"
 #include <Utils/SparseUtils.h>
-
+#include <chrono>
 USE_PRJ_NAMESPACE
 
 template <typename T>
@@ -38,6 +38,7 @@ int PrimalDualQInfMetricEnergyFGT<T>::operator()(const Vec& x,Vec& fvec,STrips* 
     _gripperFGT[i]->transform(ROTI(_info._TM,i),CTRI(_info._TM,i));
     FGTTreeNode<T>::FGT(G,fjac?&DGDT[i]:NULL,NULL,y,&yl,_pss,*_gripperFGT[i],*_objectFGT,invHSqr,_FGTThres);
   }
+
   sizeType nrC=values();
   T area=_planner.area();
   if(fjac) {
@@ -54,6 +55,7 @@ int PrimalDualQInfMetricEnergyFGT<T>::operator()(const Vec& x,Vec& fvec,STrips* 
           TRANSI(DGDTc,j)+=_object.gij()(i,r)*DGDT[j].template block<3,4>(i*3,0);
       }
       DGDTc*=area;
+
       cjacRow=Vec::Zero(_planner.body().nrDOF());
       fjac->push_back(STrip(r+DSSQPObjectiveComponent<T>::_offset,MetricEnergy<T>::_off,-1));
       _info.DTG(_planner.body(),ArticulatedObjective<T>::mapM(DGDTc),ArticulatedObjective<T>::mapV(cjacRow));

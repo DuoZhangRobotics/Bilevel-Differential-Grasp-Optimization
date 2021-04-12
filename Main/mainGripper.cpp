@@ -64,7 +64,7 @@ int main(int argn,char** argc)
     x0.template segment<3>(0)=Vec3T(0,0,-0.2f);
   else if(pathIO.string().find("ShadowHand")!=std::string::npos)
     x0.template segment<3>(0)=Vec3T(0,0.2f,0);
-
+  
   pathIO=path;
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
@@ -75,6 +75,7 @@ int main(int argn,char** argc)
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
   object.writeVTK(pathIO.filename().string(),1);
+
   {
     DSSQPObjectiveCompound<T> obj;
     PBDArticulatedGradientInfo<T> info;
@@ -122,5 +123,7 @@ int main(int argn,char** argc)
     es.debug(1,0,&x0,true);
     es.updatePlanes();
   }
+  
+
   return 0;
 }

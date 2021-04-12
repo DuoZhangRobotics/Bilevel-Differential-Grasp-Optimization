@@ -546,6 +546,8 @@ void ArticulatedUtils::simplify(std::function<bool(const Joint&)> canSimplify,co
   //remove fixed
   for(sizeType i=1; i<_body.nrJ(); i++) {
     const Joint& joint=_body.joint(i);
+    //Todo: simplify
+    std::cout << "can simplify "<<joint._name<<" " << canSimplify(joint) << std::endl;
     if(canSimplify(joint)) {
       Mat3X4d trans=TRANSI(info._TK_1KM,i);
       sizeType parentId=joint._parent;

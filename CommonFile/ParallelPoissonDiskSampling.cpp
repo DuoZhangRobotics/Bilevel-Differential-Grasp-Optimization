@@ -28,11 +28,17 @@ void ParallelPoissonDiskSampling::sample()
 void ParallelPoissonDiskSampling::sample(ObjMesh& mesh,bool rescale)
 {
   scalar ext=0;
+  // scalar ext=1;
   if(rescale) {
     ext=mesh.getBB().getExtent().norm();
+    std::cout << "scale = " << mesh.getScale() << " " << ext << std::endl;
     mesh.getScale()=1/ext;
+    std::cout << "scale = " << mesh.getScale() << std::endl;
     mesh.applyTrans(Vec3::Zero());
+    std::cout << "scale = " << mesh.getScale() << std::endl;
     _radius*=1/ext;
+    std::cout << "radius = " << _radius << std::endl;
+
   }
 
   _euclid=false;
