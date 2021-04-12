@@ -716,6 +716,24 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
   }
   return x;
 }
+
+template <typename T>
+void GraspPlanner<T>::evaluateQInf(const Vec& x, PointCloudObject<T>& object,GraspPlannerParameter& ops)
+{
+   ParallelMatrix<T> E(0);
+   _objs=DSSQPObjectiveCompound<T>();
+   _info=PBDArticulatedGradientInfo<T>();
+   _objs.addComponent(std::shared_ptr<PrimalDualQInfMetricEnergy<T>>(new PrimalDualQInfMetricEnergy<T>(_objs,_info,*this,object,ops._alpha,ops._coefM,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
+  typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin();
+  beg->second->setUpdateCache(x,false);
+  std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL);
+  std::cout << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL) << std::endl;
+  std::cout <<"Q_inf = "<< E.getValue() << std::endl;
+  T e2;
+  Vec c2;
+  assemble(x,false,e2,(Vec*)NULL,(DMat*)NULL,&c2);
+}
+
 template <typename T>
 void GraspPlanner<T>::debugSystem(const Vec& x)
 {

@@ -76,6 +76,7 @@ public:
   bool assemble(Vec x,bool update,T& e,Vec* g=NULL,MatT* h=NULL,Vec* c=NULL,MatT* cjac=NULL);
   bool assemble(Vec x,bool update,T& e,Vec* g=NULL,SMat* h=NULL,Vec* c=NULL,SMat* cjac=NULL);
   Vec optimizeSQP(Vec x,GraspPlannerParameter& ops);
+  void evaluateQInf(const Vec& x,PointCloudObject<T>& object,GraspPlannerParameter& ops);
   void debugSystem(const Vec& x);
   const SMat& A() const;
   const Vec& b() const;

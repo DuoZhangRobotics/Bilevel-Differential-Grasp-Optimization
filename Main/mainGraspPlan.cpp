@@ -100,6 +100,8 @@ int main(int argn,char** argc)
   GraspPlannerParameter param(ops);
   if(useFGT)
     param._metric=Q_INF_CONSTRAINT_FGT;
+  else
+    param._metric=Q_1;
   param._normalExtrude=10;
   param._maxIter=1000;
 
