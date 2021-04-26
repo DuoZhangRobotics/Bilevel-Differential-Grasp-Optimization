@@ -348,7 +348,6 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
   Vec x;
  
   SolveNewton<T>::template solveNewton<Vec>(_A.transpose()*_A,_A.transpose()*(_b-init),x,true);
-
   sizeType nAdd=_objs.inputs()-init.size();
   if(nAdd>0) {
     x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
@@ -718,20 +717,29 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
 }
 
 template <typename T>
-void GraspPlanner<T>::evaluateQInf(const Vec& x, PointCloudObject<T>& object,GraspPlannerParameter& ops)
+void GraspPlanner<T>::evaluateQInf( Vec& x, PointCloudObject<T>& object,GraspPlannerParameter& ops)
 {
+  _objs=DSSQPObjectiveCompound<T>();
+  _info=PBDArticulatedGradientInfo<T>();
    ParallelMatrix<T> E(0);
-   _objs=DSSQPObjectiveCompound<T>();
-   _info=PBDArticulatedGradientInfo<T>();
-   _objs.addComponent(std::shared_ptr<PrimalDualQInfMetricEnergy<T>>(new PrimalDualQInfMetricEnergy<T>(_objs,_info,*this,object,ops._alpha,ops._coefM,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
-  typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin();
-  beg->second->setUpdateCache(x,false);
-  std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL);
-  std::cout << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL) << std::endl;
-  std::cout <<"Q_inf = "<< E.getValue() << std::endl;
-  T e2;
-  Vec c2;
-  assemble(x,false,e2,(Vec*)NULL,(DMat*)NULL,&c2);
+  _objs.addComponent(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(_objs,_info,*this,object,ops._d0,ops._alpha,ops._coefM,(METRIC_TYPE)ops._metric,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
+   sizeType nAdd=_objs.inputs()-x.size();
+  if(nAdd>0) {
+    x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
+     _b=concat<Vec,Vec>(_b,Vec::Zero(nAdd));
+    _A=concatDiag<T,0,sizeType>(_A,MatT::Identity(nAdd,nAdd).eval().sparseView());
+    _l=concat<Vec,Vec>(_l,Vec::Constant(nAdd,-DSSQPObjective<T>::infty()));
+    _u=concat<Vec,Vec>(_u,Vec::Constant(nAdd, DSSQPObjective<T>::infty()));
+  }
+  x=_A*x+_b;
+  for(typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin(),end=_objs.components().end(); beg!=end; beg++) {
+    beg->second->setUpdateCache(x,true);
+    std::cout << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL) << std::endl;
+
+//    std::cout << beg->second->_name << " " << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->Quality(x)<< std::endl;
+  }
+
+
 }
 
 template <typename T>

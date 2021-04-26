@@ -200,6 +200,7 @@ T PointCloudObject<T>::computeQInf(const Vec& w,Vec* g) const
   T area=_rad*_rad*M_PI;
   Vec wrench=(_gij.transpose()*w.asDiagonal()).rowwise().sum()*area;
   T ret=wrench.minCoeff(&id);
+  std::cout << "Q_Inf value = " << ret << std::endl;
   if(g)
     *g=_gij.col(id)*area;
   return ret;
@@ -210,6 +211,7 @@ T PointCloudObject<T>::computeQ1(const Vec& w,Vec* g) const
   sizeType idMax,idMin;
   Vec wrench=(_gij.transpose()*w.asDiagonal()).rowwise().maxCoeff();
   T ret=wrench.minCoeff(&idMin);
+  std::cout << "Q_1 value = " << ret << std::endl;
   if(g) {
     Vec tmp=(_gij.col(idMin).array()*w.array()).matrix();
     tmp.maxCoeff(&idMax);
@@ -297,7 +299,14 @@ void PointCloudObject<T>::buildGij(sizeType dRes,const Mat6T& M,T mu,bool torque
   _gij.resize(_pss.cols(),(sizeType)dss.size());
   for(sizeType r=0; r<_pss.cols(); r++)
     for(sizeType c=0; c<(sizeType)dss.size(); c++)
+    {
       _gij(r,c)=computeGij(_pss.col(r),_nss.col(r),dss[c],M,mu);
+      if (_gij(r,c)<0)
+      {
+        std::cout << "gij < 0:" << _gij(r, c) << " " << r << " " << c<< std::endl;
+      }
+      
+    }
 }
 template <typename T>
 void PointCloudObject<T>::samplePoints(T rad)

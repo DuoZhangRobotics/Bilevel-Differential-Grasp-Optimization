@@ -32,6 +32,7 @@ public:
   MetricEnergy(DSSQPObjectiveCompound<T>& obj,const PBDArticulatedGradientInfo<T>& info,const GraspPlanner<T>& planner,const PointCloudObject<T>& object,
                T d0,const T& alpha,T coef,METRIC_TYPE m,METRIC_ACTIVATION a,T normalExtrude=0);
   virtual int operator()(const Vec& x,ParallelMatrix<T>& e,ParallelMatrix<Mat3XT>* g,ParallelMatrix<Mat12XT>* h,Vec* fgrad,STrips* fhess) override;
+  T Quality(const Vec& x);
 protected:
   void addTerm(T area,const Vec& gw,sizeType linkId,sizeType linkPId,sizeType oid,ParallelMatrix<Mat3XT>* g,ParallelMatrix<Mat12XT>* h) const;
   T activation(T param,T* D=NULL,T* DD=NULL) const;

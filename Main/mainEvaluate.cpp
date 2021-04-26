@@ -87,7 +87,7 @@ int main(int argn,char** argc)
   GraspPlannerParameter param(ops);
 
     param._normalExtrude=2;
-    param._metric=Q_INF_CONSTRAINT;
+    param._metric=Q_INF;
     param._coefOC = 0;
     param._coefCC = 0;
     param._coefO = 0;

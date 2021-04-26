@@ -15,6 +15,7 @@ typedef PointCloudObject<T>::Vec Vec;
 typedef PointCloudObject<T>::Vec3T Vec3T;
 Vec initializeParams(std::string path, Vec &x)
 {
+  std::cout << "Input path is: " <<  path << std::endl;
   std::string line;
   int i = 0;
   std::ifstream fin;
@@ -36,17 +37,19 @@ int main(int argn,char** argc)
   RandEngine::useDeterministic();
   RandEngine::seed(0);
 
-  ASSERT_MSG(argn>=6,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [use_FGT] [initial parameters]")
+  ASSERT_MSG(argn>=7,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [use_FGT] [max_iters] [initial parameters]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
+  std::cout << "Obj Path is: "<< pathObj << std::endl;
   std::string objName(argc[4]);
   std::string objScale(argc[5]);
-  bool useFGT(argc[6]);
+  int useFGT = std::atoi(argc[6]);
+  int max_iters = std::atoi(argc[7]);
   std::string initParamsPath;
   std::cout << "argn = " << argn << std::endl;
-  if(argn==8) {
-    std::string initParamPath(argc[7]);
+  if(argn==9) {
+    std::string initParamPath(argc[8]);
     initParamsPath=initParamPath;
   }
   else initParamsPath="";
@@ -66,21 +69,47 @@ int main(int argn,char** argc)
   obj.SerializableBase::read(pathObj);
   Vec x0=Vec::Zero(planner.body().nrDOF());
   std::string handName=" ";
+  if(useFGT==1)
+    handName="Q_INF_CONSTRAINT_FGT";
+  else if(useFGT==2)
+  {
+
+      handName="Q_INF";
+  }
+  else{
+
+      handName="Q_1";
+  }
+  Options ops;
+  GraspPlannerParameter param(ops);
   if(initParamsPath!="") {
     x0=initializeParams(initParamsPath, x0);
+    if(pathIO.string().find("BarrettHand")!=std::string::npos) {
+        handName+="_BarrettHand";
+        param._coefM = -100;
+        param._coefO=10;
+        param._coefS=1;
+    }
+    else if(pathIO.string().find("ShadowHand")!=std::string::npos) {
+        handName += "+Shadowhand";
+        param._coefM=-1;
+        param._coefO=100;
+        param._coefS=1;
+    }
+
   } else if(pathIO.string().find("BarrettHand")!=std::string::npos) {
     x0.template segment<3>(0)=Vec3T(0,0.0,-0.2f);
     x0[5]=M_PI/2;
     x0[6]=0.5f;
     x0[9]=0.5f;
-    handName="BarrettHand";
+    handName+="_BarrettHand";
   } else if(pathIO.string().find("ShadowHand")!=std::string::npos) {
-    x0.template segment<3>(0)=Vec3T(0.05f,-0.1f,-0.15f);
-//    x0[5]=-M_PI/2;
+    x0.template segment<3>(0)=Vec3T(-0.1f,0.02f,-0.1f);
+    x0[5]=-M_PI/2;
 
-     x0[3]=-M_PI/2;
-          x0[4]=-M_PI/2;
-    handName = "Shadowhand";
+//     x0[3]=-M_PI/2;
+//          x0[4]=-M_PI/2;
+    handName += "_Shadowhand";
   }
 
   pathIO=path;
@@ -90,40 +119,53 @@ int main(int argn,char** argc)
   planner.writeLocalVTK(pathIO.filename().string(),1);
   planner.writeLimitsVTK("limits");
   std::string beforeOptimizeFileName="beforeOptimize_"+handName+ "_"+ objName+"_"+objScale;
-  std::cout << beforeOptimizeFileName<< std::endl;
+  std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
   planner.writeVTK(x0, beforeOptimizeFileName,1);
   std::ofstream initialParameters(beforeOptimizeFileName+"/initialParameters.txt");
   for(const auto &e:x0)
     initialParameters << e << " ";
 
-  Options ops;
-  GraspPlannerParameter param(ops);
-  if(useFGT)
+
+  if(useFGT==1)
     param._metric=Q_INF_CONSTRAINT_FGT;
+  else if(useFGT==2)
+  {
+      std::cout << "using Q_Inf" << std::endl;
+      param._metric=Q_INF;
+
+  }
+  else{
+      std::cout << "using Q_1" << std::endl;
+      param._metric=Q_1;
+  }
+  if(max_iters==1)
+  {
+       param._normalExtrude=2;
+       planner.evaluateQInf(x0, obj, param);
+   }
   else
-    param._metric=Q_1;
-  param._normalExtrude=10;
-  param._maxIter=1000;
+  {
+      param._normalExtrude=10;
+      param._maxIter=max_iters;
+      x0=planner.optimize(false,x0,obj,param);
+      auto start=std::chrono::high_resolution_clock::now();
 
-  auto start=std::chrono::high_resolution_clock::now();
-  x0=planner.optimize(false,x0,obj,param);
+      param._normalExtrude=2;
+      param._maxIter=max_iters;
+      x0=planner.optimize(false,x0,obj,param);
+      auto stop=std::chrono::high_resolution_clock::now();
+      auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+      std::cout << "Optimization time using " << (useFGT?"FGT": "No FGT") << " is: " << duration.count() << std::endl;
 
-  param._normalExtrude=2;
-  param._maxIter=1000;
-  x0=planner.optimize(false,x0,obj,param);
-  auto stop=std::chrono::high_resolution_clock::now();
-  auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-  std::cout << "Optimization time using " << (useFGT?"FGT": "No FGT") << " is: " << duration.count() << std::endl;
+      std::string afterOptimizeFileName="afterOptimize_"+handName+ "_" + objName+"_"+objScale;
+      std::cout << "Output paramters saved at: " << afterOptimizeFileName << std::endl;
+      planner.writeVTK(x0,afterOptimizeFileName, 1);
+      obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
+      std::ofstream afterOptimizeFile(afterOptimizeFileName + "/parameters.txt");
+      for(const auto &e:x0)
+        afterOptimizeFile << e << " ";
+  }
 
-  std::string afterOptimizeFileName="afterOptimize_"+handName+ "_" + objName+"_"+objScale;
-  planner.writeVTK(x0,afterOptimizeFileName, 1);
-  obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
-  std::ofstream afterOptimizeFile(afterOptimizeFileName + "/parameters.txt");
-  for(const auto &e:x0)
-    afterOptimizeFile << e << " ";
   return 0;
-//   auto start=std::chrono::high_resolution_clock::now();
-//  auto stop=std::chrono::high_resolution_clock::now();
-//   auto duration=std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-//   std::cout << "Optimization time using " << (useFGT?"FGT": "No FGT") << " is: " << duration.count() << std::endl;
+
 }
