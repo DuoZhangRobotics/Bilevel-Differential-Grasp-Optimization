@@ -3,7 +3,7 @@
 #include <CommonFile/geom/StaticGeom.h>
 #include <Environment/ObjMeshGeomCellExact.h>
 #include <stack>
-
+#include<chrono>
 USE_PRJ_NAMESPACE
 
 template <typename T>
@@ -16,15 +16,25 @@ int ObjectClosednessEnergy<T>::operator()(const Vec&,ParallelMatrix<T>& e,Parall
   for(sizeType i=0; i<_planner.body().nrJ(); i++)
     for(sizeType j=0; j<_planner.pnss()[i].first.cols(); j++)
       terms.push_back(Vec2i(i,j));
-
+  
+  // std::cout << "size = " << (sizeType)terms.size() << std::endl;
   if(std::is_same<T,mpfr::mpreal>::value) {
+    // auto start = std::chrono::high_resolution_clock::now();
     for(sizeType termId=0; termId<(sizeType)terms.size(); termId++)
       addTerm(terms[termId],e,g,h);
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "closest time1 = " << duration.count() << std::endl;
   } else {
+    //  auto start = std::chrono::high_resolution_clock::now();
     OMP_PARALLEL_FOR_
     for(sizeType termId=0; termId<(sizeType)terms.size(); termId++)
       addTerm(terms[termId],e,g,h);
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << "closest time2 = " << duration.count() << std::endl;
   }
+ 
   return 0;
 }
 template <typename T>
@@ -38,8 +48,14 @@ void ObjectClosednessEnergy<T>::addTerm(const Vec2i& termId,ParallelMatrix<T>& e
   Vec3T n,normal;
   Mat3T hessian;
   Vec2i feat;
+
+    //  auto start = std::chrono::high_resolution_clock::now();
+ 
   T dist=distCalc.template closest<T>(pL,n,normal,hessian,feat);
   T E=dist*dist*_coef/2;
+  // auto end = std::chrono::high_resolution_clock::now();
+  //   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  //   std::cout << "closest time3 = " << duration.count() << std::endl;
   e+=E;
   if(g) {
     ROTI(g->getMatrixI(),i)+=normal*pss.col(j).transpose()*dist*_coef;
@@ -53,6 +69,7 @@ void ObjectClosednessEnergy<T>::addTerm(const Vec2i& termId,ParallelMatrix<T>& e
       for(sizeType c=0; c<4; c++)
         hBlk.template block<3,3>(r*3,c*3)+=hessian*cH[r]*cH[c];
   }
+  
 }
 //instance
 PRJ_BEGIN

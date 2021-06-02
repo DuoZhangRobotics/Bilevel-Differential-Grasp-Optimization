@@ -76,29 +76,38 @@ int main(int argn,char** argc)
 
       handName="Q_INF";
   }
+  else if(useFGT==3)
+  {
+
+      handName="No_Metric_OC";
+  }
   else{
 
       handName="Q_1";
   }
   Options ops;
+  std::string type;
   GraspPlannerParameter param(ops);
   if(initParamsPath!="") {
     x0=initializeParams(initParamsPath, x0);
     if(pathIO.string().find("BarrettHand")!=std::string::npos) {
         handName+="_BarrettHand";
+        type = "BarrettHand";
         param._coefM = -100;
         param._coefO=10;
         param._coefS=1;
     }
     else if(pathIO.string().find("ShadowHand")!=std::string::npos) {
-        handName += "+Shadowhand";
+        handName += "_Shadowhand";
+        type = "Shadowhand";
         param._coefM=-1;
         param._coefO=100;
         param._coefS=1;
     }
 
   } else if(pathIO.string().find("BarrettHand")!=std::string::npos) {
-    x0.template segment<3>(0)=Vec3T(0,0.0,-0.2f);
+      std::cout<< "find barretthand" << std::endl;
+    x0.template segment<3>(0)=Vec3T(0,-0.2f,-0.2f);
     x0[5]=M_PI/2;
     x0[6]=0.5f;
     x0[9]=0.5f;
@@ -111,7 +120,9 @@ int main(int argn,char** argc)
 //          x0[4]=-M_PI/2;
     handName += "_Shadowhand";
   }
-
+   else{
+      std::cout<< "wrong" << std::endl;
+  }
   pathIO=path;
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
@@ -133,6 +144,15 @@ int main(int argn,char** argc)
       std::cout << "using Q_Inf" << std::endl;
       param._metric=Q_INF;
 
+  }
+  else if(useFGT==3)
+  {
+      std::cout << "using No_metric OC" << std::endl;
+      param._metric=NO_METRIC;
+      if(type=="Shadowhand")
+        param._coefOC = 1;
+      else if(type=="BarrettHand")
+          param._coefOC = 100;
   }
   else{
       std::cout << "using Q_1" << std::endl;
