@@ -50,6 +50,6 @@ echo "iteration = "$iteration
 echo "path = "$path
 echo "initial parameter path = "$initial
 
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 1 $iteration $initial $path/
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 0 $iteration $initial $path/
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 3 $iteration $initial $path/
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 1 $iteration $path/ $initial
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 0 $iteration $path/ $initial
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat 1 0.3 3 $iteration $path/ $initial
