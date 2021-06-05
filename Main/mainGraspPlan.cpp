@@ -37,7 +37,7 @@ int main(int argn,char** argc)
   RandEngine::useDeterministic();
   RandEngine::seed(0);
 
-  ASSERT_MSG(argn>=7,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [use_FGT] [max_iters] [initial parameters]")
+  ASSERT_MSG(argn>=7,"mainGraspPlan: [urdf path] [sample density] [obj path] [obj name] [obj scale] [use_FGT] [max_iters] [saving dir] [initial parameters]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
@@ -48,8 +48,16 @@ int main(int argn,char** argc)
   int max_iters = std::atoi(argc[7]);
   std::string initParamsPath;
   std::cout << "argn = " << argn << std::endl;
-  if(argn==9) {
-    std::string initParamPath(argc[8]);
+  std::string savingDir;
+  if(argn>=9){
+      std::string tmp(argc[8]);
+      savingDir = tmp;
+  }
+  else{
+      savingDir = "./";
+  }
+  if(argn==10) {
+    std::string initParamPath(argc[9]);
     initParamsPath=initParamPath;
   }
   else initParamsPath="";
@@ -57,6 +65,7 @@ int main(int argn,char** argc)
 
   //load hand
   std::experimental::filesystem::v1::path pathIO(path);
+  std::cout << "Path is: " << path << std::endl;
   pathIO.replace_extension("");
   pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density));
   pathIO.replace_extension(".dat");
@@ -123,13 +132,13 @@ int main(int argn,char** argc)
    else{
       std::cout<< "wrong" << std::endl;
   }
-  pathIO=path;
-  pathIO.replace_extension("");
-  recreate(pathIO.filename().string());
-  planner.writeVTK(x0,pathIO.filename().string(),1);
-  planner.writeLocalVTK(pathIO.filename().string(),1);
-  planner.writeLimitsVTK("limits");
-  std::string beforeOptimizeFileName="beforeOptimize_"+handName+ "_"+ objName+"_"+objScale;
+//  pathIO=path;
+//  pathIO.replace_extension("");
+//  recreate(pathIO.filename().string());
+//  planner.writeVTK(x0,pathIO.filename().string(),1);
+  // planner.writeLocalVTK(pathIO.filename().string(),1);
+  // planner.writeLimitsVTK("limits");
+  std::string beforeOptimizeFileName= savingDir+"beforeOptimize_"+handName+ "_"+ objName+"_"+objScale;
   std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
   planner.writeVTK(x0, beforeOptimizeFileName,1);
   std::ofstream initialParameters(beforeOptimizeFileName+"/initialParameters.txt");
@@ -177,7 +186,7 @@ int main(int argn,char** argc)
       auto duration=std::chrono::duration_cast<std::chrono::seconds>(stop - start);
       std::cout << "Optimization time using " << (useFGT?"FGT": "No FGT") << " is: " << duration.count() << std::endl;
 
-      std::string afterOptimizeFileName="afterOptimize_"+handName+ "_" + objName+"_"+objScale;
+      std::string afterOptimizeFileName=savingDir+"afterOptimize_"+handName+ "_" + objName+"_"+objScale;
       std::cout << "Output paramters saved at: " << afterOptimizeFileName << std::endl;
       planner.writeVTK(x0,afterOptimizeFileName, 1);
       obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
