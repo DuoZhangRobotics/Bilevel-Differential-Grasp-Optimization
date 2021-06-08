@@ -19,7 +19,7 @@ int MetricEnergy<T>::operator()(const Vec& x,ParallelMatrix<T>& e,ParallelMatrix
 {
   T area=_planner.area();
   Vec w=Vec::Zero(_object.gij().rows());
-  std::cout << "gij min = " << _object.gij().minCoeff() <<std::endl;
+//  std::cout << "gij min = " << _object.gij().minCoeff() <<std::endl;
   //point on object
   for(sizeType k=0; k<_pss.cols(); k++) {
     const Vec3T po=_pss.col(k);
@@ -79,20 +79,14 @@ T MetricEnergy<T>::Quality(const Vec& x)
 {
  T area=_planner.area();
   Vec w=Vec::Zero(_object.gij().rows());
-  std::cout << "evaluation gij min = " << _object.gij().minCoeff() <<std::endl;
   //point on object
   for(sizeType k=0; k<_pss.cols(); k++) {
-    // std::cout << "right1" << std::endl;
     const Vec3T po=_pss.col(k);
-    // std::cout << "right2" << std::endl;
     //point on hand
     for(sizeType i=0; i<_planner.body().nrJ(); i++) {
       //point on link i
-      // std::cout << "right3" << std::endl;
       const std::pair<Mat3XT,Mat3XT>& pn=_planner.pnss()[i];
-      // std::cout << "right4" << std::endl;
       Mat3XT p=ROTI(_info._TM,i)*pn.first+CTRI(_info._TM,i)*Vec::Ones(pn.first.cols()).transpose();
-      // std::cout << "right5" << std::endl;
       for(sizeType j=0; j<p.cols(); j++) {
         T len=std::sqrt((p.col(j)-po).squaredNorm());
         w[k]+=activation(len)*area;
@@ -105,7 +99,6 @@ T MetricEnergy<T>::Quality(const Vec& x)
     
   }
   //Q-Metric
-  // std::cout << "right1" << std::endl;
   if(_type==Q_1)
     return _object.computeQ1(w,NULL);
   else if(_type==Q_INF)

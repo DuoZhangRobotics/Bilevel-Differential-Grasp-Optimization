@@ -52,4 +52,4 @@ echo "initial parameter path = "$initial
 
 $path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand2_200_0.200000.dat ShadowHand2 0.2 1 $iteration $path/ $initial 
 $path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand2_200_0.200000.dat ShadowHand2 0.2 0 $iteration $path/ $initial 
-$path/mainraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand2_200_0.200000.dat ShadowHand2 0.2 3 $iteration $path/ $initial 
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand2_200_0.200000.dat ShadowHand2 0.2 3 $iteration $path/ $initial 

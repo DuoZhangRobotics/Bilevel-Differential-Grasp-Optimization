@@ -734,7 +734,7 @@ void GraspPlanner<T>::evaluateQInf( Vec& x, PointCloudObject<T>& object,GraspPla
   x=_A*x+_b;
   for(typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin(),end=_objs.components().end(); beg!=end; beg++) {
     beg->second->setUpdateCache(x,true);
-    std::cout << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL) << std::endl;
+   std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL);
 
 //    std::cout << beg->second->_name << " " << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->Quality(x)<< std::endl;
   }

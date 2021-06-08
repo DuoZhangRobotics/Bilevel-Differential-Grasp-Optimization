@@ -65,16 +65,16 @@ int main(int argn,char** argc)
   else if(pathIO.string().find("ShadowHand")!=std::string::npos)
     x0.template segment<3>(0)=Vec3T(0,0.2f,0);
   
-  pathIO=path;
-  pathIO.replace_extension("");
-  recreate(pathIO.filename().string());
-  planner.writeVTK(x0,pathIO.filename().string(),1);
-  planner.writeLocalVTK(pathIO.filename().string(),1);
+//  pathIO=path;
+//  pathIO.replace_extension("");
+//  recreate(pathIO.filename().string());
+//  planner.writeVTK(x0,pathIO.filename().string(),1);
+//  planner.writeLocalVTK(pathIO.filename().string(),1);
 
-  pathIO=pathObj;
-  pathIO.replace_extension("");
-  recreate(pathIO.filename().string());
-  object.writeVTK(pathIO.filename().string(),1);
+//  pathIO=pathObj;
+//  pathIO.replace_extension("");
+//  recreate(pathIO.filename().string());
+//  object.writeVTK(pathIO.filename().string(),1);
 
   {
     DSSQPObjectiveCompound<T> obj;

@@ -200,7 +200,7 @@ T PointCloudObject<T>::computeQInf(const Vec& w,Vec* g) const
   T area=_rad*_rad*M_PI;
   Vec wrench=(_gij.transpose()*w.asDiagonal()).rowwise().sum()*area;
   T ret=wrench.minCoeff(&id);
-  std::cout << "Q_Inf value = " << ret << std::endl;
+  // std::cout << "Q_Inf value = " << ret << std::endl;
   if(g)
     *g=_gij.col(id)*area;
   return ret;
@@ -211,7 +211,7 @@ T PointCloudObject<T>::computeQ1(const Vec& w,Vec* g) const
   sizeType idMax,idMin;
   Vec wrench=(_gij.transpose()*w.asDiagonal()).rowwise().maxCoeff();
   T ret=wrench.minCoeff(&idMin);
-  std::cout << "Q_1 value = " << ret << std::endl;
+  // std::cout << "Q_1 value = " << ret << std::endl;
   if(g) {
     Vec tmp=(_gij.col(idMin).array()*w.array()).matrix();
     tmp.maxCoeff(&idMax);

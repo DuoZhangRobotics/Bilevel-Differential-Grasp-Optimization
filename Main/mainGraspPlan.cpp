@@ -15,7 +15,7 @@ typedef PointCloudObject<T>::Vec Vec;
 typedef PointCloudObject<T>::Vec3T Vec3T;
 Vec initializeParams(std::string path, Vec &x)
 {
-  std::cout << "Input path is: " <<  path << std::endl;
+//  std::cout << "Input path is: " <<  path << std::endl;
   std::string line;
   int i = 0;
   std::ifstream fin;
@@ -41,13 +41,13 @@ int main(int argn,char** argc)
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
   std::string pathObj(argc[3]);
-  std::cout << "Obj Path is: "<< pathObj << std::endl;
+//  std::cout << "Obj Path is: "<< pathObj << std::endl;
   std::string objName(argc[4]);
   std::string objScale(argc[5]);
   int useFGT = std::atoi(argc[6]);
   int max_iters = std::atoi(argc[7]);
   std::string initParamsPath;
-  std::cout << "argn = " << argn << std::endl;
+//  std::cout << "argn = " << argn << std::endl;
   std::string savingDir;
   if(argn>=9){
       std::string tmp(argc[8]);
@@ -61,11 +61,11 @@ int main(int argn,char** argc)
     initParamsPath=initParamPath;
   }
   else initParamsPath="";
-  std::cout << initParamsPath << std::endl;
+//  std::cout << initParamsPath << std::endl;
 
   //load hand
   std::experimental::filesystem::v1::path pathIO(path);
-  std::cout << "Path is: " << path << std::endl;
+//  std::cout << "Path is: " << path << std::endl;
   pathIO.replace_extension("");
   pathIO.replace_filename(pathIO.filename().string()+"_"+std::to_string(density));
   pathIO.replace_extension(".dat");
@@ -139,7 +139,7 @@ int main(int argn,char** argc)
   // planner.writeLocalVTK(pathIO.filename().string(),1);
   // planner.writeLimitsVTK("limits");
   std::string beforeOptimizeFileName= savingDir+"beforeOptimize_"+handName+ "_"+ objName+"_"+objScale;
-  std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
+//  std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
   planner.writeVTK(x0, beforeOptimizeFileName,1);
   std::ofstream initialParameters(beforeOptimizeFileName+"/initialParameters.txt");
   for(const auto &e:x0)

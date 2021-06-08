@@ -40,10 +40,10 @@ int main(int argn,char** argc)
     m.getScale()=scale;
     m.getPos()-= m.getVolumeCentroid();
     m.applyTrans();
-    std::cout << "scale2 = " << m.getScale() << std::endl;
-    std::cout << "x, y, z = "<< m.getVolumeCentroid()[0] << " " << m.getVolumeCentroid()[1]<< " "<< m.getVolumeCentroid()[2]<< std::endl;
-    std::cout << "x, y, z = "<< m.getPos()[0] << " " << m.getPos()[1]<< " "<< m.getPos()[2]<< std::endl;
-    std::cout << "scale = " << scale << std::endl;
+    // std::cout << "scale2 = " << m.getScale() << std::endl;
+    // std::cout << "x, y, z = "<< m.getVolumeCentroid()[0] << " " << m.getVolumeCentroid()[1]<< " "<< m.getVolumeCentroid()[2]<< std::endl;
+    // std::cout << "x, y, z = "<< m.getPos()[0] << " " << m.getPos()[1]<< " "<< m.getPos()[2]<< std::endl;
+    // std::cout << "scale = " << scale << std::endl;
   }
 
   std::experimental::filesystem::v1::path pathIO(path);
