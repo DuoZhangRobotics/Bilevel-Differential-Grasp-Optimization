@@ -142,8 +142,8 @@ int main(int argn,char** argc)
 //  std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
   planner.writeVTK(x0, beforeOptimizeFileName,1);
   std::ofstream initialParameters(beforeOptimizeFileName+"/initialParameters.txt");
-  for(const auto &e:x0)
-    initialParameters << e << " ";
+  for(sizeType i=0;i<x0.size();i++)
+    initialParameters << x0[i] << " ";
 
 
   if(useFGT==1)
@@ -191,8 +191,8 @@ int main(int argn,char** argc)
       planner.writeVTK(x0,afterOptimizeFileName, 1);
       obj.writeVTK("object",1,planner.rad()*param._normalExtrude);
       std::ofstream afterOptimizeFile(afterOptimizeFileName + "/parameters.txt");
-      for(const auto &e:x0)
-        afterOptimizeFile << e << " ";
+      for(sizeType i=0;i<x0.size();i++)
+        afterOptimizeFile << x0[i] << " ";
   }
 
   return 0;

@@ -556,7 +556,7 @@ bool GraspPlanner<T>::assemble(Vec x,bool update,T& e,Vec* g,SMat* h,Vec* c,SMat
     hDense.setZero(x.size(),x.size());
     Eigen::Map<const MatT,0,Eigen::OuterStride<>> HMap(tmpH.data(),tmpH.rows(),tmpH.cols(),tmpH.outerStride());
     _info.toolAB(_body,HMap,mapM(tmpG=G.getMatrix()),mapM(hDense));
-    *h=(_A.transpose()*(hDense*_A)).sparseView();
+    *h=MatT(_A.transpose()*(hDense*_A)).sparseView();
   }
   //assemble constraint (jacobian)
   if(c || cjac) {
