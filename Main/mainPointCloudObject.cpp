@@ -13,15 +13,13 @@ int main(int argn,char** argc)
   sizeType density=std::atoi(argc[2]);
   T scale=std::atof(argc[3]);
   T scaleY=std::atof(argn>4?argc[4]:argc[3]);
-   bool graspable=true;
-//  bool graspable=false;
+  bool graspable=true;
+  // bool graspable=false;
   ObjMesh m;
   if(beginsWith(path,"cube"))
     MakeMesh::makeBox3D(m,Vec3::Constant(scale));
   else if(beginsWith(path,"sphere"))
-  {
-      MakeMesh::makeSphere3D(m,scale,16);
-  }
+    MakeMesh::makeSphere3D(m,scale,16);
   else if(beginsWith(path,"cylinder"))
     MakeMesh::makeCylinder3D(m,scale,scaleY,16);
   else if(beginsWith(path,"plane")) {
@@ -54,19 +52,17 @@ int main(int argn,char** argc)
   if(exists(pathIO.string())) {
     q.SerializableBase::read(pathIO.string());
   } else {
-    if(graspable)
-    {
+    if(graspable) {
       q.resetGraspable(m,1.0f/density);
-    }
-    else{
-        q.reset(m,1.0f/density);
+    } else {
+      q.reset(m,1.0f/density);
     }
     q.SerializableBase::write(pathIO.string());
   }
   q.debug(10);
   pathIO.replace_extension("");
   recreate(pathIO.filename().string());
-  q.writeVTK(pathIO.filename().string(),1);
+  q.writeVTK(pathIO.filename().string(),0);
   m.writeVTK(pathIO.filename().string()+".vtk",1);
   return 0;
 }

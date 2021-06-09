@@ -10,8 +10,9 @@
 #include <Environment/ObjMeshGeomCellExact.h>
 #include <Environment/ConvexHullExact.h>
 #include <Environment/Environment.h>
-#include <Eigen/Eigen>
+#include <CommonFile/Timing.h>
 #include <Eigen/Sparse>
+#include <Eigen/Eigen>
 //energy
 #include <Optimizer/DSSQPObjective.h>
 #include "ConvexLogBarrierSelfEnergy.h"
@@ -121,9 +122,9 @@ void GraspPlanner<T>::reset(T rad,bool convex,T SDFRes,T SDFExtension,bool SDFRa
   PBDArticulatedGradientInfo<T> info(_body,Vec::Zero(_body.nrDOF()));
   for(sizeType i=0; i<_body.nrJ(); i++) {
     _body.getGeom().getG(i).getMesh(m);
-    if(m.getV().empty()){
+    if(m.getV().empty()) {
       continue;
-          }
+    }
 
     //rescale mesh to gain accuracy
     ParallelPoissonDiskSampling sampler(3);
@@ -346,7 +347,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
     _objs.addComponent(std::shared_ptr<ArticulatedObjective<T>>(new ConvexLogBarrierSelfEnergy<T>(_objs,_info,*this,object,_rad*ops._d0,ops._coefS)));
 
   Vec x;
- 
+
   SolveNewton<T>::template solveNewton<Vec>(_A.transpose()*_A,_A.transpose()*(_b-init),x,true);
   sizeType nAdd=_objs.inputs()-init.size();
   if(nAdd>0) {
@@ -356,9 +357,13 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
     _l=concat<Vec,Vec>(_l,Vec::Constant(nAdd,-DSSQPObjective<T>::infty()));
     _u=concat<Vec,Vec>(_u,Vec::Constant(nAdd, DSSQPObjective<T>::infty()));
   }
+  sizeType it;
+  TBEG();
   if(debug)
     debugSystem(x);
-  else x=optimizeSQP(x,ops);
+  else x=optimizeSQP(x,ops,it);
+  scalarD time=TENDV();
+  INFOV("OptimizeSQP %d iterations, average time=%f",it,time/it)
   if(nAdd>0) {
     _b=_b.segment(0,_b.size()-nAdd).eval();
     _A=_A.block(0,0,_A.rows()-nAdd,_A.cols()-nAdd).eval();
@@ -485,11 +490,11 @@ bool GraspPlanner<T>::assemble(Vec x,bool update,T& e,Vec* g,MatT* h,Vec* c,MatT
 //   }
 //   std::cout <<"In assemble"<< std::endl;
     *g=_A.transpose()**g;
-  //  for (int i = 0; i < g->size(); i++)
-  //   {/* code */
-  //    std::cout << (*g)[i] << " ";
-  //  }
-  //  std::cout <<"After assemble"<< std::endl;
+    //  for (int i = 0; i < g->size(); i++)
+    //   {/* code */
+    //    std::cout << (*g)[i] << " ";
+    //  }
+    //  std::cout <<"After assemble"<< std::endl;
   }
 
   if(h) {
@@ -575,7 +580,7 @@ bool GraspPlanner<T>::assemble(Vec x,bool update,T& e,Vec* g,SMat* h,Vec* c,SMat
   return true;
 }
 template <typename T>
-typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerParameter& ops)
+typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerParameter& ops,sizeType& it)
 {
   Vec d;
   T e,e2,m,m2;
@@ -586,7 +591,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
   _gl=_objs.gl(),_gu=_objs.gu();
   bool tmpUseGJK=ops._useGJK;
 
-  for(sizeType it=0; it<ops._maxIter; it++) {
+  for(it=0; it<ops._maxIter; it++) {
     if(ops._sparse) {
       if(!assemble(x,true,e,&g,&hS,&c,&cjacS)) {
         if(ops._callback) {
@@ -611,7 +616,6 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
         }
         return Vec::Zero(0);
       }
-      
       if(!solveDenseQP(d,x,g,hD,&c,&cjacD,0,0)) {
         if(ops._callback) {
           INFOV("Iter=%d failed(qp failed)",it)
@@ -664,7 +668,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
         xTmpTmp=xTmp;
         break;
       }
-      
+
     }
     ops._useGJK=tmpUseGJK;
     if(alpha<ops._alphaThres) {
@@ -673,60 +677,54 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimizeSQP(Vec x,GraspPlannerPar
       }
       break;
     }
-     if (!assemble(xTmpTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2))
-    {
+    if(!assemble(xTmpTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2)) {
       std::cout << "Cannot use GJK.\n Redoing the line search..." << std::endl;
-       while(alpha>ops._alphaThres) {
-      xTmp=x+d*alpha;
-      if(!assemble(xTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2)) {
-        alpha*=alphaDec;
-        continue;
-      }
+      while(alpha>ops._alphaThres) {
+        xTmp=x+d*alpha;
+        if(!assemble(xTmp,false,e2,(Vec*)NULL,(DMat*)NULL,&c2)) {
+          alpha*=alphaDec;
+          continue;
+        }
 
-      cNorm2=-c2.cwiseMin(0).sum();
-      m2=e2+cNorm2*rho;
-      if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
-        alpha*=alphaDec;
-        continue;
-      } else {
-        alpha=std::min<T>(alpha*alphaInc,1);
-        // alpha *= alphaInc;
-        x=xTmp;
-        break;
+        cNorm2=-c2.cwiseMin(0).sum();
+        m2=e2+cNorm2*rho;
+        if(m2>=m+g.dot(d.template cast<T>())*alpha*coefWolfe) {
+          alpha*=alphaDec;
+          continue;
+        } else {
+          alpha=std::min<T>(alpha*alphaInc,1);
+          // alpha *= alphaInc;
+          x=xTmp;
+          break;
+        }
+
       }
-      
-    }
     }
     else x=xTmpTmp;
-
-
     //update plane
     for(const std::pair<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>& p:_objs.components()) {
       std::shared_ptr<ConvexLogBarrierSelfEnergy<T>> ESelf=std::dynamic_pointer_cast<ConvexLogBarrierSelfEnergy<T>>(p.second);
-      if(ESelf){
+      if(ESelf) {
         ESelf->updatePlanes();
       }
     }
-    if (!assemble(x,false,e2,(Vec*)NULL,(DMat*)NULL,&c2))
-    {
+    if(!assemble(x,false,e2,(Vec*)NULL,(DMat*)NULL,&c2)) {
       std::cout << "after updating plane goes wrong" << std::endl;
     }
-    
   }
   return x;
 }
-
 template <typename T>
 void GraspPlanner<T>::evaluateQInf( Vec& x, PointCloudObject<T>& object,GraspPlannerParameter& ops)
 {
   _objs=DSSQPObjectiveCompound<T>();
   _info=PBDArticulatedGradientInfo<T>();
-   ParallelMatrix<T> E(0);
+  ParallelMatrix<T> E(0);
   _objs.addComponent(std::shared_ptr<ArticulatedObjective<T>>(new MetricEnergy<T>(_objs,_info,*this,object,ops._d0,ops._alpha,ops._coefM,(METRIC_TYPE)ops._metric,(METRIC_ACTIVATION)ops._activation,_rad*ops._normalExtrude)));
-   sizeType nAdd=_objs.inputs()-x.size();
+  sizeType nAdd=_objs.inputs()-x.size();
   if(nAdd>0) {
     x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
-     _b=concat<Vec,Vec>(_b,Vec::Zero(nAdd));
+    _b=concat<Vec,Vec>(_b,Vec::Zero(nAdd));
     _A=concatDiag<T,0,sizeType>(_A,MatT::Identity(nAdd,nAdd).eval().sparseView());
     _l=concat<Vec,Vec>(_l,Vec::Constant(nAdd,-DSSQPObjective<T>::infty()));
     _u=concat<Vec,Vec>(_u,Vec::Constant(nAdd, DSSQPObjective<T>::infty()));
@@ -734,14 +732,13 @@ void GraspPlanner<T>::evaluateQInf( Vec& x, PointCloudObject<T>& object,GraspPla
   x=_A*x+_b;
   for(typename std::unordered_map<std::string,std::shared_ptr<DSSQPObjectiveComponent<T>>>::const_iterator beg=_objs.components().begin(),end=_objs.components().end(); beg!=end; beg++) {
     beg->second->setUpdateCache(x,true);
-   std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL);
+    std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->operator()(x,E,NULL,NULL,(Vec*)NULL,(DMat*)NULL);
 
 //    std::cout << beg->second->_name << " " << std::dynamic_pointer_cast<ArticulatedObjective<T>>(beg->second)->Quality(x)<< std::endl;
   }
 
 
 }
-
 template <typename T>
 void GraspPlanner<T>::debugSystem(const Vec& x)
 {

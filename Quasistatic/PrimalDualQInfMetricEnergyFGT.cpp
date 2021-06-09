@@ -35,7 +35,8 @@ int PrimalDualQInfMetricEnergyFGT<T>::operator()(const Vec& x,Vec& fvec,STrips* 
     if(yl.cols()==0)
       continue;
     Mat3XT y=ROTI(_info._TM,i)*yl+CTRI(_info._TM,i)*Vec::Ones(yl.cols()).transpose();
-    _gripperFGT[i]->transform(ROTI(_info._TM,i),CTRI(_info._TM,i));
+    _gripperFGT[i]->transform(ROTI(_info._TM,i),CTRI(_info._TM,i),y,true);
+    //_gripperFGT[i]->transform(ROTI(_info._TM,i),CTRI(_info._TM,i));
     FGTTreeNode<T>::FGT(G,fjac?&DGDT[i]:NULL,NULL,y,&yl,_pss,*_gripperFGT[i],*_objectFGT,invHSqr,_FGTThres);
   }
 
