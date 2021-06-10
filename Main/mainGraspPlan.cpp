@@ -45,7 +45,7 @@ int main(int argn,char** argc)
   int useFGT = std::atoi(argc[6]);
   int max_iters = std::atoi(argc[7]);
   std::string initParamsPath;
-  // std::cout << "argn = " << argn << std::endl;
+  // std::cout << "argn=" << argn << std::endl;
   std::string savingDir;
   if(argn>=9) {
     std::string tmp(argc[8]);
@@ -53,11 +53,10 @@ int main(int argn,char** argc)
   } else {
     savingDir="./";
   }
-  if(argn==10) {
+  if(argn>=10) {
     std::string initParamPath(argc[9]);
     initParamsPath=initParamPath;
-  }
-  else initParamsPath="";
+  } else initParamsPath="";
   // std::cout << initParamsPath << std::endl;
 
   //load hand
@@ -86,6 +85,10 @@ int main(int argn,char** argc)
   Options ops;
   std::string type;
   GraspPlannerParameter param(ops);
+  if(argn>=11) {
+    param._FGTThres=std::atof(argc[10]);
+    std::cout << "setting FGTThres=" << param._FGTThres << std::endl;
+  }
   if(initParamsPath!="") {
     x0=initializeParams(initParamsPath, x0);
     if(pathIO.string().find("BarrettHand")!=std::string::npos) {
@@ -102,7 +105,7 @@ int main(int argn,char** argc)
       param._coefS=1;
     }
   } else if(pathIO.string().find("BarrettHand")!=std::string::npos) {
-    std::cout<< "find barretthand" << std::endl;
+    std::cout << "find barretthand" << std::endl;
     x0.template segment<3>(0)=Vec3T(0,-0.2f,-0.2f);
     x0[5]=M_PI/2;
     x0[6]=0.5f;
@@ -152,16 +155,20 @@ int main(int argn,char** argc)
     param._normalExtrude=2;
     planner.evaluateQInf(x0, obj, param);
   } else {
-    param._normalExtrude=10;
-    param._maxIter=max_iters;
-    x0=planner.optimize(false,x0,obj,param);
-    if(savingDir.empty() || savingDir=="profile") {
-      INFO("No savingDir specified, this is a performance profile, exiting!")
-      return 0;
+    if(max_iters<0) {
+      param._normalExtrude=10;
+      param._maxIter=std::abs(max_iters);
+      INFO("Optimizing using normalExtrude=10")
+      x0=planner.optimize(false,x0,obj,param);
+      if(savingDir.empty() || savingDir=="profile") {
+        INFO("No savingDir specified, this is a performance profile, exiting!")
+        return 0;
+      }
     }
 
     param._normalExtrude=2;
-    param._maxIter=max_iters;
+    param._maxIter=std::abs(max_iters);
+    INFO("Optimizing using normalExtrude=2")
     x0=planner.optimize(false,x0,obj,param);
 
     std::string afterOptimizeFileName=savingDir+"afterOptimize_"+handName+ "_" + objName+"_"+objScale;
@@ -173,5 +180,4 @@ int main(int argn,char** argc)
       afterOptimizeFile << x0[i] << " ";
   }
   return 0;
-
 }
