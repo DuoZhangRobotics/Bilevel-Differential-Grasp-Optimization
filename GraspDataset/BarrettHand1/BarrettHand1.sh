@@ -6,9 +6,9 @@ Help()
    echo "Syntax: scriptTemplate [-r|i|h|p]"
    echo "Options:"
    echo "-r, --rounds			Set max iterations"
-   echo "-h, --help				Print this Help."
+   echo "-h, --help			Print this Help."
    echo "-i, --initial-path		Path to the initial paramters of the hand"
-   echo "-p, --path				Path to the build folder"
+   echo "-p, --path			Path to the build folder"
    echo
 }
 
@@ -49,19 +49,19 @@ done
 echo "iteration = "$iteration
 echo "path = "$path
 echo "initial parameter path = "$initial
-echo "Generating object"
+echo "***************************************Generating object***************************************"
 $path/mainPointCloudObject BarrettHand1.obj 200 0.3
-echo "Generating gripper"
+echo "***************************************Generating gripper***************************************"
 $path/mainGripper ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat
-echo "Running our method"
+echo "***************************************Running our method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 1 $iteration ./ $initial
-echo "Running  Q1 method"
+echo "***************************************Running  Q1 method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 0 $iteration ./ $initial
-echo "Running Object closeness method"
+echo "***************************************Running Object closeness method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 3 $iteration ./ $initial
-echo "Testing our method"
+echo "***************************************Testing our method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 2 1 ./ ./afterOptimize_Q_INF_CONSTRAINT_FGT_BarrettHand_BarrettHand1_0.3/parameters.txt
-echo "Testing Q1 method"
+echo "***************************************Testing Q1 method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 2 1 ./ ./afterOptimize_Q_1_BarrettHand_BarrettHand1_0.3/parameters.txt
-echo "Testing OC method"
+echo "***************************************Testing OC method***************************************"
 $path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand1_200_0.300000.dat BarrettHand1 0.3 2 1 ./ ./afterOptimize_No_Metric_OC_BarrettHand_BarrettHand1_0.3/parameters.txt

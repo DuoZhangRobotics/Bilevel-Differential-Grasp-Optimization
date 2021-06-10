@@ -45,11 +45,27 @@ done
 
 [ -z $iteration ] && iteration=1000
 [ -z $path ] && path="../../.././build3"
-[ -z $initial ] && initial="/home/jiangtang/IRC/build3/beforeOptimize_Shadowhand_25_0.2/initialParameters.txt"
+[ -z $initial ] && initial="./initialParameters.txt"
 echo "iteration = "$iteration
 echo "path = "$path
 echo "initial parameter path = "$initial
 
-$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 1 $iteration $path/ $initial 
-$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 0 $iteration $path/ $initial 
-$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 3 $iteration $path/ $initial 
+
+echo "***************************************Generating object***************************************"
+$path/mainPointCloudObject ShadowHand5.obj 200 0.2
+echo "***************************************Generating gripper***************************************"
+$path/mainGripper ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat
+echo "***************************************Running our method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 1 $iteration ./ $initial
+echo "***************************************Running  Q1 method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 0 $iteration ./ $initial
+echo "***************************************Running Object closeness method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 3 $iteration ./ $initial
+echo "***************************************Testing our method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 2 1 ./ ./afterOptimize_Q_INF_CONSTRAINT_FGT_BarrettHand_ShadowHand5_0.2/parameters.txt
+echo "***************************************Testing Q1 method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 2 1 ./ ./afterOptimize_Q_1_BarrettHand_ShadowHand5_0.2/parameters.txt
+echo "***************************************Testing OC method***************************************"
+$path/mainGraspPlan ../.././data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 ShadowHand5_200_0.200000.dat ShadowHand5 0.2 2 1 ./ ./afterOptimize_No_Metric_OC_BarrettHand_ShadowHand5_0.2/parameters.txt
+
+

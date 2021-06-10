@@ -45,13 +45,28 @@ done
 
 [ -z $iteration ] && iteration=1000
 [ -z $path ] && path="../../.././build3"
-[ -z $initial ] && initial="/home/jiangtang/IRC/build3/beforeOptimize_Q_INF_CONSTRAINT_FGT_BarrettHand_glass_0.6_set/initialParameters.txt"
+[ -z $initial ] && initial="./initialParameters.txt"
 echo "iteration = "$iteration
 echo "path = "$path
 echo "initial parameter path = "$initial
 
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 1 $iteration  $path/ $initial
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 0 $iteration  $path/ $initial
-$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 3 $iteration  $path/ $initial
+echo "***************************************Generating object***************************************"
+$path/mainPointCloudObject BarrettHand9.obj 200 0.3
+echo "***************************************Generating gripper***************************************"
+$path/mainGripper ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat
+echo "***************************************Running our method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 1 $iteration ./ $initial
+echo "***************************************Running  Q1 method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 0 $iteration ./ $initial
+echo "***************************************Running Object closeness method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 3 $iteration ./ $initial
+echo "***************************************Testing our method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 2 1 ./ ./afterOptimize_Q_INF_CONSTRAINT_FGT_BarrettHand_BarrettHand9_0.3/parameters.txt
+echo "***************************************Testing Q1 method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 2 1 ./ ./afterOptimize_Q_1_BarrettHand_BarrettHand9_0.3/parameters.txt
+echo "***************************************Testing OC method***************************************"
+$path/mainGraspPlan ../.././data/BarrettHand/bh280.urdf 200 BarrettHand9_200_0.300000.dat BarrettHand9 0.3 2 1 ./ ./afterOptimize_No_Metric_OC_BarrettHand_BarrettHand9_0.3/parameters.txt
+
+
 
 
