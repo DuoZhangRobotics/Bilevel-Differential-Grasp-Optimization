@@ -75,7 +75,7 @@ public:
   bool solveSparseQP(Vec& d,const Vec& x,const Vec& g,SMat& h,const Vec* c,const SMat* cjac,T TR,T rho,T& reg);
   bool assemble(Vec x,bool update,T& e,Vec* g=NULL,MatT* h=NULL,Vec* c=NULL,MatT* cjac=NULL);
   bool assemble(Vec x,bool update,T& e,Vec* g=NULL,SMat* h=NULL,Vec* c=NULL,SMat* cjac=NULL);
-  Vec optimizeSQP(Vec x,GraspPlannerParameter& ops);
+  Vec optimizeSQP(Vec x,GraspPlannerParameter& ops,sizeType& it);
   void evaluateQInf( Vec& x,PointCloudObject<T>& object,GraspPlannerParameter& ops);
   void debugSystem(const Vec& x);
   const SMat& A() const;

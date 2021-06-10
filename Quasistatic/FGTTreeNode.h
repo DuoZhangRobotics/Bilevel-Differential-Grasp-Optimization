@@ -16,6 +16,7 @@ public:
   FGTTreeNode();
   FGTTreeNode(Vec* Sy,Mat3XT& xy,const Vec2i& range,sizeType leafThres,Mat3XT* xyn=NULL);
   void parityCheck(const Vec* Sy,const Mat3XT& xy,T thres=1e-6f) const;
+  void transform(const Mat3T& R,const Vec3T& t,const Mat3XT& xy,bool xyTransformed);
   void transform(const Mat3T& R,const Vec3T& t);
   Vec3T variance(Mat3XT& y) const;
   Sphere<T> computeSphere(const Mat3XT& y,const Vec3T& ctr) const;

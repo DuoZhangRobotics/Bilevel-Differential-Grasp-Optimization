@@ -95,6 +95,23 @@ void FGTTreeNode<T>::parityCheck(const Vec* Sy,const Mat3XT& xy,T thres) const
   }
 }
 template <typename T>
+void FGTTreeNode<T>::transform(const Mat3T& R,const Vec3T& t,const Mat3XT& xy,bool xyTransformed) {
+  _sphere._ctr=R*_spherel._ctr+t;
+  _bb.reset();
+  if(_l) {
+    _l->transform(R,t,xy,xyTransformed);
+    _r->transform(R,t,xy,xyTransformed);
+    _bb.setUnion(_l->_bb);
+    _bb.setUnion(_r->_bb);
+  } else if(xyTransformed) {
+    for(sizeType i=_range[0]; i<_range[1]; i++)
+      _bb.setUnion(xy.col(i));
+  } else {
+    for(sizeType i=_range[0]; i<_range[1]; i++)
+      _bb.setUnion(R*xy.col(i)+t);
+  }
+}
+template <typename T>
 void FGTTreeNode<T>::transform(const Mat3T& R,const Vec3T& t) {
   _sphere._ctr=R*_spherel._ctr+t;
   Vec3T c;

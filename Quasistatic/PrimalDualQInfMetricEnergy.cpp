@@ -48,14 +48,14 @@ int PrimalDualQInfMetricEnergy<T>::operator()(const Vec& x,Vec& fvec,STrips* fja
       }
     }
   } else {
-    OMP_PARALLEL_FOR_
+    //OMP_PARALLEL_FOR_
     for(sizeType oid=0; oid<_pss.cols(); oid++)
       for(sizeType linkId=0; linkId<_planner.body().nrJ(); linkId++) {
         Eigen::Map<Mat3X4T,0,Eigen::OuterStride<>> linkObjCoefGM(fjac?&(linkObjCoefG.coeffRef(oid*3,linkId*4)):NULL,3,4,linkObjCoefG.outerStride());
         linkObjCoef.getMatrixI()[oid]+=addTerm(area,linkId,oid,linkObjCoefGM);
       }
     if(fjac) {
-      OMP_PARALLEL_FOR_
+      //OMP_PARALLEL_FOR_
       for(sizeType i=0; i<nrC; i++) {
         Vec cjacRow=Vec::Zero(_planner.body().nrDOF());
         Mat3XT G=Mat3XT::Zero(3,_planner.body().nrJ()*4);

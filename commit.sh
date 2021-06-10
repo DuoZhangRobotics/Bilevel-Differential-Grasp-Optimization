@@ -1,4 +1,5 @@
 sudo rm *.user
+sudo rm CMakeLists.txt.user*
 sudo mv build dist pyDiffNE.egg-info ../
 git add --all
 git commit -m "$1"
