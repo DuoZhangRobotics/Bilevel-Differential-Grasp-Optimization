@@ -350,6 +350,7 @@ typename GraspPlanner<T>::Vec GraspPlanner<T>::optimize(bool debug,const Vec& in
 
   SolveNewton<T>::template solveNewton<Vec>(_A.transpose()*_A,_A.transpose()*(_b-init),x,true);
   sizeType nAdd=_objs.inputs()-init.size();
+  std::cout << "nAdd = " << nAdd << std::endl;
   if(nAdd>0) {
     x=concat<Vec,Vec>(x,Vec::Zero(nAdd));
     _b=concat<Vec,Vec>(_b,Vec::Zero(nAdd));

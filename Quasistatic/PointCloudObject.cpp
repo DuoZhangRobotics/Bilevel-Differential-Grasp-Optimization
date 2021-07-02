@@ -94,8 +94,11 @@ void PointCloudObject<T>::resetGraspable(ObjMesh& obj,T rad,sizeType dRes,const 
     obj.smooth();
   }
   //move to centroid
+  std::cout << "Before final x, y, z = "<< obj.getVolumeCentroid()[0] << " " << obj.getVolumeCentroid()[1]<< " "<< obj.getVolumeCentroid()[2]<< std::endl;
+
   obj.getPos()=-obj.getVolumeCentroid();
   obj.applyTrans();
+  std::cout << "Final x, y, z = "<< obj.getVolumeCentroid()[0] << " " << obj.getVolumeCentroid()[1]<< " "<< obj.getVolumeCentroid()[2]<< std::endl;
   obj.smooth();
   //distance
   _m=obj;

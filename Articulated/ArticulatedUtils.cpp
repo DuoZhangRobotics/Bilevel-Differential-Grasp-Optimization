@@ -683,6 +683,7 @@ scalarD ArticulatedUtils::totalMass() const
   scalarD M=0;
   for(sizeType j=0; j<_body.nrJ(); j++) {
     const Joint& J=_body.joint(j);
+    std::cout << J._name << " " << J._M << std::endl;
     M+=J._M;
   }
   return M;

@@ -14,7 +14,7 @@ typedef PointCloudObject<T>::Vec Vec;
 typedef PointCloudObject<T>::Vec3T Vec3T;
 Vec initializeParams(std::string path, Vec &x)
 {
-  // std::cout << "Input path is: " <<  path << std::endl;
+   std::cout << "Input path is: " <<  path << std::endl;
   std::string line;
   int i = 0;
   std::ifstream fin;
@@ -73,6 +73,7 @@ int main(int argn,char** argc)
   PointCloudObject<T> obj;
   obj.SerializableBase::read(pathObj);
   Vec x0=Vec::Zero(planner.body().nrDOF());
+  std::cout << "dofnum = " << planner.body().nrDOF() << std::endl;
   std::string handName=" ";
   if(useFGT==1)
     handName="Q_INF_CONSTRAINT_FGT";
@@ -106,8 +107,9 @@ int main(int argn,char** argc)
     }
   } else if(pathIO.string().find("BarrettHand")!=std::string::npos) {
     std::cout << "find barretthand" << std::endl;
-    x0.template segment<3>(0)=Vec3T(0,-0.2f,-0.2f);
-    x0[5]=M_PI/2;
+    x0.template segment<3>(0)=Vec3T(0,-0.0f,-0.2f);
+//    x0[5]=M_PI/2;
+//    x0[4]=M_PI/2;
     x0[6]=0.5f;
     x0[9]=0.5f;
     handName+="_BarrettHand";
