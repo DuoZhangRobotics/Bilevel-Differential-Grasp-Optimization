@@ -1,0 +1,8 @@
+1. install graspitmodified_lm: 
+   ./install_coin.sh
+   ./install_SoQt-1.5.0.sh
+   ./install_graspit.sh
+
+2. run python_batch.py to generate run.sh and submit jobs:
+   python python_batch.py
+

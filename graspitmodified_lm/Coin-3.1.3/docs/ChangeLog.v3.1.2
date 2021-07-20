@@ -1,0 +1,370 @@
+2009-10-27  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* Makefile.in:
+	Bootstrap.
+	[57167b6dfd43] [tip]
+
+	* Makefile.am:
+	Forgotten files.
+	[68c088d2e382]
+
+	* Makefile.in:
+	Bootstrap.
+	[5c4a89633f91]
+
+	* Makefile.am:
+	Forgotten \ at end of line, caused a lot of distfiles to not be
+	included.
+	[f61ac801bbc3]
+
+	* .hgtags:
+	Added tag Coin-3.1.2 for changeset 902bf6118fb9
+	[136c07941912]
+
+	* docs/ChangeLog.v3.1.2:
+	Update Changelog.
+	[902bf6118fb9] [Coin-3.1.2]
+
+	* packaging/macosx/makedmg.sh.in:
+	Layout adjustment.
+	[4c897522efea]
+
+	* packaging/macosx/makedmg.sh.in:
+	Layout icons correctly, and set some permissions.
+	[354cf098256e]
+
+	* packaging/macosx/CoinTools_Welcome.rtf:
+	Correct (c) symbol.
+	[aa1a1c925153]
+
+	* packaging/macosx/create-dmg:
+	Accept new option --owner. Sets the owner for a file or directory to
+	the specified user and group.
+	[c3de6ebc002d]
+
+2009-10-26  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* .hgtags:
+	Added tag Coin-3.1.2 for changeset 13a434415dca
+	[d9d5dfb1bcf4]
+
+	* docs/ChangeLog.v3.1.2:
+	Updated changelog.
+	[13a434415dca]
+
+2009-10-25  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* Makefile.in:
+	Bootstrap.
+	[5f3990f9fc91]
+
+	* Makefile.am:
+	Forgotten EXTRA_DIST files.
+	[d5e8b612cb37]
+
+	* Branch merge.
+	[005b8b38f577]
+
+	* docs/announcement-3_1_2.txt:
+	Correct source URL for Mercurial.
+	[99927ba21411]
+
+2009-10-20  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* packaging/macosx/create-dmg:
+	Set custom volume icon.
+	[fb4fe890dd1e]
+
+	* Branch merge.
+	[d900080115a0]
+
+	* packaging/macosx/create-dmg, packaging/macosx/makedmg.sh.in,
+	packaging/macosx/support/AdiumApplescriptRunner,
+	packaging/macosx/support/template.applescript:
+	Fully automate generation of .dmg. Regression volumeicon does not
+	work.
+	[9c0642c05853]
+
+2009-10-19  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* Branch merge.
+	[e0cd43ea409c]
+
+	* src/draggers/SoTranslate2Dragger.cpp:
+	Apply correction factor to get small offsets back into their plane.
+	[1818e71ade3e]
+
+	* src/shapenodes/SoText3.cpp:
+	Get a tighter bounding box for SoText3. Thanks to Sergey Bikulov.
+	[8f8d84b7c23f]
+
+	* docs/announcement-3_1_2.txt:
+	Updated announcement.
+	[ace5b78932b1]
+
+2009-10-16  Peder Blekken  <pederb@sim.no>
+
+	* src/geo/SoGeoOrigin.cpp:
+	Improve documentation for the SoGeo nodes.
+	[5eb1408ac92d]
+
+2009-10-15  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* .hgtags:
+	Added tag Coin-3.1.0 for changeset 4fcac12559f8
+	[c8a94e8ed3b6]
+
+	* .hgtags:
+	Added tag Coin-3.1.1 for changeset 1767c7655cd1
+	[7b0bf74ff839]
+
+	* .hgtags:
+	Added tag Coin-3.1.2 for changeset d61a1b24ba78
+	[277d959bc936]
+
+	* docs/ChangeLog.v3.1.2:
+	Full Changelog.
+	[d61a1b24ba78]
+
+2009-10-15  ToolsReleaseBot  <coin@sim.no>
+
+	* build/msvc6/coin3.dsp,
+	build/msvc6/data/shaders/lights/DirSpotLight.h,
+	build/msvc6/data/shaders/lights/DirectionalLight.h,
+	build/msvc6/data/shaders/lights/PointLight.h,
+	build/msvc6/data/shaders/lights/SpotLight.h,
+	build/msvc6/docs/coin3.doxygen,
+	build/msvc6/include/Inventor/C/basic.h, build/msvc6/src/config-
+	debug.h, build/msvc6/src/config-release.h, build/msvc7/coin3.vcproj,
+	build/msvc7/coin3_docs.vcproj, build/msvc7/coin3_install.vcproj,
+	build/msvc7/coin3_uninstall.vcproj,
+	build/msvc7/data/shaders/lights/DirSpotLight.h,
+	build/msvc7/data/shaders/lights/DirectionalLight.h,
+	build/msvc7/data/shaders/lights/PointLight.h,
+	build/msvc7/data/shaders/lights/SpotLight.h,
+	build/msvc7/docs/coin3.doxygen,
+	build/msvc7/include/Inventor/C/basic.h, build/msvc7/src/config-
+	debug.h, build/msvc7/src/config-release.h, build/msvc8/coin3.sln,
+	build/msvc8/coin3.vcproj, build/msvc8/coin3_docs.vcproj,
+	build/msvc8/coin3_install.vcproj,
+	build/msvc8/coin3_uninstall.vcproj,
+	build/msvc8/data/shaders/lights/DirSpotLight.h,
+	build/msvc8/data/shaders/lights/DirectionalLight.h,
+	build/msvc8/data/shaders/lights/PointLight.h,
+	build/msvc8/data/shaders/lights/SpotLight.h,
+	build/msvc8/docs/coin3.doxygen,
+	build/msvc8/include/Inventor/C/basic.h, build/msvc8/src/config-
+	debug.h, build/msvc8/src/config-release.h, build/msvc9/coin3.sln,
+	build/msvc9/coin3.vcproj, build/msvc9/coin3_docs.vcproj,
+	build/msvc9/coin3_install.vcproj,
+	build/msvc9/coin3_uninstall.vcproj,
+	build/msvc9/data/shaders/lights/DirSpotLight.h,
+	build/msvc9/data/shaders/lights/DirectionalLight.h,
+	build/msvc9/data/shaders/lights/PointLight.h,
+	build/msvc9/data/shaders/lights/SpotLight.h,
+	build/msvc9/docs/coin3.doxygen,
+	build/msvc9/include/Inventor/C/basic.h, build/msvc9/src/config-
+	debug.h, build/msvc9/src/config-release.h:
+	Updated build files.
+	[230c07f1e3b9]
+
+2009-10-15  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* build/misc/generate-all.sh, build/misc/install-headers.bat,
+	build/misc/uninstall-headers.bat:
+	Fixed solution for Coin3.
+	[8b8765caa11a]
+
+2009-10-14  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* configure:
+	bootstrap.
+	[7e8311c738fc]
+
+	* configure.ac:
+	Update revision number.
+	[7034bd16e6e7]
+
+	* Makefile.in:
+	bootstrap
+	[0e9295257556]
+
+	* Makefile.am, docs/ChangeLog.v3.1.2:
+	Update changelog for v3.1.2
+	[b280de283257]
+
+	* Makefile.in, bin/Makefile.in, data/Makefile.in,
+	data/draggerDefaults/Makefile.in, data/scxml/Makefile.in,
+	data/scxml/navigation/Makefile.in, data/shaders/Makefile.in,
+	data/shaders/lights/Makefile.in, data/shaders/vsm/Makefile.in,
+	html/Makefile.in, include/Inventor/C/Makefile.in,
+	include/Inventor/C/XML/Makefile.in,
+	include/Inventor/C/base/Makefile.in,
+	include/Inventor/C/errors/Makefile.in,
+	include/Inventor/C/glue/Makefile.in,
+	include/Inventor/C/threads/Makefile.in,
+	include/Inventor/Makefile.in,
+	include/Inventor/VRMLnodes/Makefile.in,
+	include/Inventor/XML/Makefile.in,
+	include/Inventor/actions/Makefile.in,
+	include/Inventor/annex/FXViz/Makefile.in,
+	include/Inventor/annex/FXViz/elements/Makefile.in,
+	include/Inventor/annex/FXViz/nodes/Makefile.in,
+	include/Inventor/annex/ForeignFiles/Makefile.in,
+	include/Inventor/annex/HardCopy/Makefile.in,
+	include/Inventor/annex/Makefile.in,
+	include/Inventor/annex/Profiler/Makefile.in,
+	include/Inventor/annex/Profiler/elements/Makefile.in,
+	include/Inventor/annex/Profiler/engines/Makefile.in,
+	include/Inventor/annex/Profiler/nodekits/Makefile.in,
+	include/Inventor/annex/Profiler/nodes/Makefile.in,
+	include/Inventor/annex/Profiler/utils/Makefile.in,
+	include/Inventor/bundles/Makefile.in,
+	include/Inventor/caches/Makefile.in,
+	include/Inventor/collision/Makefile.in,
+	include/Inventor/details/Makefile.in,
+	include/Inventor/draggers/Makefile.in,
+	include/Inventor/elements/Makefile.in,
+	include/Inventor/engines/Makefile.in,
+	include/Inventor/errors/Makefile.in,
+	include/Inventor/events/Makefile.in,
+	include/Inventor/fields/Makefile.in,
+	include/Inventor/lists/Makefile.in,
+	include/Inventor/lock/Makefile.in,
+	include/Inventor/manips/Makefile.in,
+	include/Inventor/misc/Makefile.in,
+	include/Inventor/nodekits/Makefile.in,
+	include/Inventor/nodes/Makefile.in,
+	include/Inventor/projectors/Makefile.in,
+	include/Inventor/scxml/Makefile.in,
+	include/Inventor/sensors/Makefile.in,
+	include/Inventor/system/Makefile.in,
+	include/Inventor/threads/Makefile.in,
+	include/Inventor/tools/Makefile.in, include/Makefile.in,
+	man/Makefile.in, man/man1/Makefile.in, man/man3/Makefile.in,
+	src/3ds/Makefile.in, src/Makefile.in, src/actions/Makefile.in,
+	src/base/Makefile.in, src/bundles/Makefile.in,
+	src/caches/Makefile.in, src/collision/Makefile.in,
+	src/details/Makefile.in, src/doc/Makefile.in,
+	src/draggers/Makefile.in, src/elements/GL/Makefile.in,
+	src/elements/Makefile.in, src/engines/Makefile.in,
+	src/errors/Makefile.in, src/events/Makefile.in,
+	src/extensions/Makefile.in, src/fields/Makefile.in,
+	src/fonts/Makefile.in, src/foreignfiles/Makefile.in,
+	src/geo/Makefile.in, src/glue/Makefile.in, src/hardcopy/Makefile.in,
+	src/io/Makefile.in, src/lists/Makefile.in, src/manips/Makefile.in,
+	src/misc/Makefile.in, src/navigation/Makefile.in,
+	src/nodekits/Makefile.in, src/nodes/Makefile.in,
+	src/profiler/Makefile.in, src/projectors/Makefile.in,
+	src/scxml/Makefile.in, src/sensors/Makefile.in,
+	src/shaders/Makefile.in, src/shadows/Makefile.in,
+	src/shapenodes/Makefile.in, src/threads/Makefile.in,
+	src/upgraders/Makefile.in, src/vrml97/Makefile.in,
+	src/xml/Makefile.in, src/xml/expat/Makefile.in:
+	Bootstrap.
+	[b60dad2e4523]
+
+	* INSTALL, NEWS, README, RELNOTES:
+	Updated release notes.
+	[540e91c68711]
+
+2009-10-13  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* Info.plist.in:
+	Update copyright year.
+	[a9004984c377]
+
+	* build/misc/generate-all.sh:
+	Correct solutionname.
+	[92a0fdf75b23]
+
+	* build/misc/generate-all.sh~, build/misc/generate-compiler.sh~,
+	build/misc/generate.bat~:
+	Unnecessary files.
+	[a326e37d6444]
+
+	* build/data/coin3.sln, build/misc/Convert.js, build/misc/generate-
+	all.sh, build/misc/generate-all.sh~, build/misc/generate-
+	compiler.sh, build/misc/generate-compiler.sh~,
+	build/misc/generate.bat, build/misc/generate.bat.orig,
+	build/misc/generate.bat~, build/misc/generate.sh, build/misc
+	/install-headers.bat, build/misc/uninstall-headers.bat:
+	Update to MSVC generation script for Coin-4.
+	[7a49a5709f31]
+
+2009-10-09  Peder Blekken  <pederb@sim.no>
+
+	* src/misc/SoGL.cpp, src/misc/SoVBO.cpp:
+	Increase upper limits for creating VBOs/caches.
+	[9884161c3537]
+
+	* src/caches/SoPrimitiveVertexCache.cpp:
+	Bugfix for using SoPrimitiveVertexCache for other actions than
+	SoGLRenderAction.
+	[fcd930990df4]
+
+2009-10-06  Peder Blekken  <pederb@sim.no>
+
+	* src/vrml97/Extrusion.cpp:
+	Bugfix for closed extrusions. Reported by Thorsten Schindler.
+	[4b0550986c7b]
+
+	* data/shaders/lights/DirSpotLight.glsl,
+	data/shaders/lights/DirectionalLight.glsl,
+	data/shaders/lights/PointLight.glsl,
+	data/shaders/lights/SpotLight.glsl, src/shadows/SoShadowGroup.cpp:
+	ShadowGroup fixes ported from trunk.
+	[a02f6b4c822e]
+
+2009-10-05  Peder Blekken  <pederb@sim.no>
+
+	* src/shapenodes/SoNurbsP.h:
+	Refix NURBS picking according to the GLU specification.
+	[2d5492591642]
+
+	* include/Inventor/caches/SoPrimitiveVertexCache.h,
+	src/caches/SoPrimitiveVertexCache.cpp, src/shapenodes/SoShape.cpp:
+	Fix SoLazyElement handling in SoPrimitiveVertexCache.
+	[237d2f251596]
+
+	* include/Inventor/caches/SoPrimitiveVertexCache.h,
+	src/caches/SoPrimitiveVertexCache.cpp, src/shapenodes/SoShape.cpp:
+	Fix SoLazyElement handling in SoPrimitiveVertexCache.
+	[5758bea09b79]
+
+2009-10-05  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* Closing branch 3.1.2
+	[d8a98260d5fa]
+
+	* Makefile.in, cfg/ltmain.sh, configure,
+	include/Inventor/C/XML/Makefile.in,
+	include/Inventor/XML/Makefile.in, src/xml/Makefile.in,
+	src/xml/expat/Makefile.in:
+	Bootstrap, changing coin-3.1.2 to default.
+	[914f8ed79624]
+
+2009-10-05  bfg  <bfg>
+
+	* configure.ac:
+	Updating to 3.1.2b as version string.
+	[14a0a35a157b]
+
+2009-09-25  Peder Blekken  <pederb@sim.no>
+
+	* src/shapenodes/SoNurbsP.h:
+	Merge in divide-by-zero fix from trunk.
+	[3e2aa03d1657]
+
+2009-09-24  Peder Blekken  <pederb@sim.no>
+
+	* src/base/SbBSPTree.cpp:
+	removePoint() bugfix from trunk.
+	[b5114054f331]
+
+2009-09-23  Tom Fredrik Blenning Klaussen  <bfg@sim.no>
+
+	* docs/announcement-3_1_1.txt:
+	Last minute change, not reflected in source files.
+	[1767c7655cd1] [Coin-3.1.1]
+

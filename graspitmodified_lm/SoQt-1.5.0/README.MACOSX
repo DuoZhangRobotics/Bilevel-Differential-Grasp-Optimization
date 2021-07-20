@@ -1,0 +1,132 @@
+This file contains information about building SoQt on Mac OS X.
+
+General information
+====================
+
+Building SoQt on Mac OS X should be straightforward. If it isn't, we
+consider this a bug, so please let us know and we'll be happy to fix it.
+
+If you install Coin from the binary SDK, please note that you also
+have to install the CoinTools.pkg, since the coin-config utility is
+needed by SoQt/configure.
+
+SoQt is installed as SoQt.framework by default. For more information
+about frameworks, please refer to the README.MACOSX file that comes 
+with Coin. 
+
+Note that we do not support Mac OS 10.0.x. It will probably work just
+fine if you compile SoQt yourself, but we don't guarantee that. Please
+upgrade at least to 10.1, you will be amazed by the increase in 
+performance and stability. 
+
+
+Qt/Mac vs. Qt/X11
+=================
+
+SoQt is dependent on Trolltech's Qt library. On Mac OS X, you have two options:
+
+1. Use the native Qt/Mac
+2. Use X11 and Qt/X11
+
+Qt/Mac is the Mac OS X native implementation of Qt. This will usually
+be your first choice, since it does not require any additional
+software to be installed, and provides the full Aqua look'n'feel.
+
+Alternatively, you can install Apple's X11 for Mac OS X, and use
+Qt/X11, the version of Qt used on all other UNIX systems. You will
+find instructions on how to do this below. 
+
+
+Using SoQt together with the X11 Window system
+==============================================
+
+To use SoQt with X11 and Qt/X11, follow these steps:
+
+
+1. Install X11 for Mac OS X.
+
+X11 for Mac OS X offers a complete X Window System implementation for
+running X11-based applications on Mac OS X. It includes the full
+X11R6.6 technology including an X11 window server, Quartz window
+manager, libraries, and basic utilities such as xterm, and is fully
+integrated with Mac OS X. 
+
+X11 is not installed by default, but in installer package should be
+included with your Mac OS X CDs. (If X11 is installed, you should be
+able to launch it via /Applications/Utilities/X11.app. If you do not
+have this application, you need to install X11.)
+
+Note that only Apple's X11 is supported. (XDarwin, the X installation
+through fink, or anything else will probably not work.)
+
+2. Build and install the X11 version of Coin.
+
+In order to use X11 instead of Quartz/Aqua, use the --enable-darwin-x11 
+configure option. You need to build both Coin and SoQt using this option.
+
+So:
+
+      $ /path/to/Coin/configure --enable-darwin-x11
+      $ make && sudo make install
+
+3. Install Qt/X11.
+
+SoQt depends on Qt/X11. It does not really matter how you install Qt,
+but I suggest you use fink or DarwinPorts. 
+
+4. Install SoQt.
+
+Again, use the --enable-darwin-x11 configure option like you did for Coin.
+
+      $ /path/to/SoQt/configure --enable-darwin-x11
+      $ make && sudo make install
+
+That should be all. 
+
+
+Common problems (and solutions)
+===============================
+
+Problems with older versions of Qt/Mac
+---------------------------------------
+
+The first Qt/Mac releases contained a number of serious bugs that also 
+affect SoQt. If you encounter strange behaviour, it might very well be
+that upgrading to the latest version of Qt/Mac will fix the problem. 
+
+
+Undefined QTDIR in bash
+-----------------------
+
+Note that if you use bash as your default shell, you must make it read
+your .bashrc file - it does not do that by default.
+
+So if you have defined QTDIR in your ~/.bashrc, and still configure
+fails with because it cannot find Qt, check if QTDIR is actually set:
+
+  % echo $QTDIR
+
+If this is empty, you have a problem. Make sure you are actually using
+bash -
+
+   % echo $SHELL
+
+... and that the content of your ~/.bashrc looks reasonable, something
+like this:
+
+  export QTDIR=/usr/local/qt
+  export PATH=$QTDIR/bin:$PATH
+  export MANPATH=$QTDIR/doc/man:$MANPATH
+  export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QTDIR/lib
+
+If you are using bash, and your .bashrc is correct, but QTDIR doesn't
+get set, you have to make bash read your .bashrc file. To do that,
+create a file called ~/.bash_profile with the following content:
+
+  if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+  fi
+
+Open a new Terminal window - things should work now. If you still have
+problems, something else is wrong. In that case, feel free to let us know.
+

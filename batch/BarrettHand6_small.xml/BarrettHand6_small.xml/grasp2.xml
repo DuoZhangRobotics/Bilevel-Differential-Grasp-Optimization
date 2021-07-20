@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<world>
+	<graspableBody>
+		<filename>/home/jiangtang/IRC/EBM_Hand/grasp_generation/GraspDataset/BarrettHand6_small.xml</filename>
+		<transform>
+			<fullTransform>(+1 +0 +0 +0)[+0 +0 +0]</fullTransform>
+		</transform>
+	</graspableBody>
+	<robot>
+		<filename>/home/jiangtang/IRC/EBM_Hand/grasp_generation/graspitmodified_lm/graspit/models/robots/BarrettBH8_280/BarrettBH8_280.xml</filename>
+		<dofValues>+0 +2.44346 +0 +0 +2.44346 +0 +0 +0.47 +1 +0.36 +0 </dofValues>
+		<transform>
+			<fullTransform>(-0.592064 -0.593153 -0.543629 +0.0457904)[-60.8941 +72.5458 +42.449]</fullTransform>
+		</transform>
+	</robot>
+	<camera>
+		<position>-38.3429 +12.7619 +479.233</position>
+		<orientation>+0 +0 +0 +1</orientation>
+		<focalDistance>+340.19</focalDistance>
+	</camera>
+</world>

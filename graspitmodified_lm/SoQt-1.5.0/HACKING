@@ -1,0 +1,8 @@
+This file describes some hacking techniques that are particular
+for the Open Inventor GUI toolkit family.
+
+Be sure to check Coin/HACKING for Coin-specific tricks and more
+generic information, plus the src/Inventor/Qt/common/HACKING file for
+some hints common to all GUI interface toolkits.
+
+[There is no specific information for SoQt available yet.]

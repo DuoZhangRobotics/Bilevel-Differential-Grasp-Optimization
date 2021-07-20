@@ -1,0 +1,918 @@
+=====================================================================
+NOTE: see also src/Inventor/Qt/common/BUGS.txt.
+=====================================================================
+
+000 Adding an app-specific pushbutton to the SoQtExaminerViewer will
+    make the left border too thin. Reproduce with this code:
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+    #include <Inventor/Qt/SoQt.h>
+    #include <Inventor/Qt/viewers/SoQtExaminerViewer.h>
+    #include <Inventor/nodes/SoCone.h>
+    #include <qpushbutton.h>
+
+
+    int
+    main(int argc,  char ** argv)
+    {
+      QWidget * window = SoQt::init("");
+
+      SoQtExaminerViewer * examinerviewer = new SoQtExaminerViewer(window);
+      examinerviewer->setSceneGraph(new SoCone);
+
+      QWidget * parent = examinerviewer->getAppPushButtonParent();
+      QPushButton * button = new QPushButton(parent);
+      examinerviewer->addAppPushButton(button);
+
+      examinerviewer->show();
+      SoQt::show(window);
+      SoQt::mainLoop();
+
+      delete examinerviewer;
+      return 0;
+    }
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    I see at least two problems in the SoQtFullViewer::buildLeftTrim()
+    code: 1) it is always set to a fixed width of 30 pixels, 2) it is
+    not size-updated when buttons are added.
+
+=====================================================================
+
+002 The following example demonstrates a bug with how the Qt widgets
+    seems to be stacked when we call SoQtComponent::show():
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+    #include <Inventor/Qt/SoQt.h>
+    #include <Inventor/Qt/viewers/SoQtViewer.h>
+    #include <Inventor/nodes/SoCone.h>
+    #include <Inventor/nodes/SoSeparator.h>
+    #include <qapplication.h>
+    #include <qwidget.h>
+
+
+    class NewViewer : public SoQtViewer {
+    public:
+      NewViewer(QWidget * parent)
+        : SoQtViewer(parent, "buh", FALSE, SoQtViewer::BROWSER, FALSE)
+      {
+        QWidget * widget = this->buildWidget(parent);
+        this->setBaseWidget(widget);
+
+        SoSeparator * root = new SoSeparator;
+        root->addChild(new SoCone);
+        this->setSceneGraph(root);
+
+        // FIXME: this causes the bug, remove the next line and all is
+        // well. 20020619 mortene.
+        this->show();
+      }
+    };
+
+    int
+    main(int argc, char ** argv)
+    {
+      QWidget * qw = SoQt::init(argv[0]);
+      NewViewer * svapp = new NewViewer(qw);
+      SoQt::show(qw);
+      SoQt::mainLoop();
+      return 0;
+    }
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    20020619 mortene.
+
+    UPDATE: Not seeing the scene-graph displayed in the main window in
+    the above example is actually correct behavior: Note the FALSE
+    flag passed on for 'embed'. The fact that the scene-graph is
+    displayed when removing 'this->show()' is the actual bug... :-) A
+    quick check (SoQT/test_code/renderarea.cpp) shows that
+    SoQtRenderArea does the correct thing when passed a FALSE: It is
+    built outside of the application window. On the other hand, when
+    the widget is passed 'TRUE' for 'embed', in the code displayed
+    above, it works as expected. 20021023 rolvs
+
+=====================================================================
+
+003 Animations that are continually triggered by timer-sensors are not
+    running as smooth in Coin's viewers as with SGI Inventor. This
+    makes it looks like Coin has worse rendering performance than SGI
+    Inventor.
+
+    It also looks like we have the same problem in SoXt.
+
+    Part of the problem, at least, seems to be that it is possible to
+    get several actualRedraw() calls in-between the handling of native
+    Qt events. That causes for instance SoQtExaminerViewer's
+    invocations of spin() to happen more seldom than actualRedraw(),
+    which again causes bad responsiveness.
+
+    This is not a trivial task.
+
+    mortene 20020702.
+
+=====================================================================
+
+004 When turning on decorations (use the RMB popup-menu to do this)
+    with a small viewer window, the decorations layout will initially
+    be erroneous. Just a small interactive resize in any direction
+    will automatically correct the layout again.
+
+    Found by kintel. Looks like a Qt bug. Very low priority on fixing
+    this one, as it's just a very small blemish in a boundary-kind-of
+    condition anyway.
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+    #include <Inventor/Qt/SoQt.h>
+    #include <Inventor/Qt/viewers/SoQtExaminerViewer.h>
+    #include <Inventor/nodes/SoCone.h>
+    #include <qwidget.h>
+
+    int
+    main(int argc, char ** argv)
+    {
+      QWidget * window = SoQt::init(argv[0]);
+
+      SoQtExaminerViewer * viewer = new SoQtExaminerViewer(window);
+      viewer->setSceneGraph(new SoCone);
+      viewer->setDecoration(FALSE);
+
+      viewer->show();
+      SoQt::show(window);
+
+      window->resize(100, 100);
+
+      SoQt::mainLoop();
+
+      delete viewer;
+      return 0;
+    }
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    mortene 20020703.
+
+=====================================================================
+
+005 Using SoQtComponent::setSize() to set a smaller size than the
+    default _after_ doing either SoQtExaminerViewer::show() or
+    SoQt::show(SoQtExaminerViewer*) fails, at least for an
+    SoQtExaminerViewer embedded in a top-level shell (like in the
+    SoGuiExamples/components/examinerviewer example.
+
+    The interior resizes correctly (?), but the exterior does not
+    shrink to fit.
+
+    See also the FIXME above SoQtComponent::setSize() in
+    SoQtComponent.cpp.
+
+    mortene 20020808.
+
+=====================================================================
+
+009 Michael Wimmer reported that using SoQt on top of SGI Inventor
+    causes one particular scene he had to run veeeeeery slow, both
+    compared to SoQt-on-Coin and InventorXt-on-Inventor.
+
+    The scene consists of some very simple geometry and 11
+    textures. The textures are in total shared > 1000 times in the
+    scene, though.
+
+    (I could reproduce the problem with Wimmer's example model file,
+    but it was too large (lots if inlined textures) to cut down on and
+    include here.)
+
+    It seems likely that the bad rendering performance is caused by
+    continuous re-construction and re-destruction of GL texture
+    objects. According to pederb, SGI Inventor has a bug here which
+    has since been fixed by TGS.
+
+    Should a) construct a scene which reproduces the problem, b)
+    investigate how we set up cache context IDs for the
+    SoGLRenderAction instance in SoQt and determine what causes SGI
+    Inventor to completely flip out, c) try to find a work-around.
+
+    20021002 mortene.
+
+=====================================================================
+
+012 Error with SoQtExaminerViewer::getViewerTitle().
+
+    A bug-report from Paul van Santen of Hitec-O:
+
+         It seems that this method now returns an empty string, even
+         though we have set the title in the class' constructor. Is
+         this a bug or an intended code change?
+
+    Not yet investigated, but sounds very likely to be a bug.
+
+    After fixing, make sure the different possible "configurations" of
+    an SoQtExaminerViewer component in a Qt component-ownership tree
+    is tested to work: both SoQtExaminerViewer as a top-level window,
+    and embedded in an application Qt widget.
+
+    20021018 mortene.
+
+    UPDATE: I've tried to recreate this bug by creating QMainWindow
+    with an embedded ExaminerViewer, and fetching the title of the
+    viewer after initialization. This does not demonstrate the
+    erroneous behaviour, and the demo application is sent to Paul van
+    Santen. Awaiting reply from him. 20021022 rolvs.
+
+=====================================================================
+
+013 Minor user-interaction bug with the SoQtExaminerViewer.
+
+    The camera-interaction mode can "get stuck" in this manner: click
+    and drag the model. While still holding the LMB, hit 'ESC' to
+    switch to scenegraph-interaction mode. Let go of LMB. Hit 'ESC'
+    again. You're now in "drag/examine"-mode even though you're not
+    holding down the LMB.
+
+    (Simple to work around for the user -- just hit 'ESC' twice -- but
+    it's still an irritating bug.)
+
+    This bug is very likely common for all the So@Gui@ toolkits.
+
+    20021022 mortene.
+
+=====================================================================
+
+014 Win32-specific build problem: if Qt or Coin is a static library,
+    SoQt must also be built static and *without* including the static
+    libraries we depend on.
+
+    If built as a DLL under those circumstances, the static libraries
+    we depend on will be linked into the DLL -- but without them being
+    accessible from the application code. Then an app programmer is
+    likely to include several instances of either Qt or Coin, which
+    results in various sorts of difficult to understand problems.
+
+    (Can typically be detected through a warning message from Qt,
+    something like this: "you must set up a QApplication before
+    calling QPaintDevice".)
+
+    20021118 mortene.
+
+=====================================================================
+
+015 Can't change viewer embedded within a Qt widget on-the-fly.
+
+    The following code shows how to reproduce the problem, and was
+    written by Gatien Mellion and posted to coin-discuss:
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    #include "config.h"
+    #include <qapplication.h>
+    #include "SoQt.h"
+    #include "SoQtExaminerViewer.h"
+    #include "SoQtPlaneViewer.h"
+    #include <Inventor/nodes/SoBaseColor.h>
+    #include <Inventor/nodes/SoCone.h>
+    #include <Inventor/nodes/SoSeparator.h>
+
+    int main(int argc, char ** argv)
+    {
+       QApplication app(argc, argv);
+       SoQt::init("");
+
+       QWidget * parent = new QWidget;
+       app.setMainWidget(parent);
+
+        SoSeparator * root = new SoSphere;
+        root->ref();
+        root->addChild(new SoCone());
+
+        SoQtExaminerViewer * viewer = new SoQtExaminerViewer(parent);
+        viewer->setSceneGraph(root);
+        viewer->show();
+        delete viewer;
+
+        SoQtPlaneViewer* planeviewer = new SoQtPlaneViewer(parent);
+        planeviewer->setSceneGraph(root);
+        planeviewer->show();
+
+        app.exec();
+
+        return 0;
+    }
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    20021122 mortene.
+
+=====================================================================
+
+016 SoQtExaminerViewer pref menu needs two RMB presses to pop up.
+
+    This problem was reported by Scott Toelly. Happens both when the
+    SoQtExaminerViewer is embedded within a QMainWindow, aswell as
+    from the SoGuiExample/components/examinerviewer example.
+
+    Scott is seeing this on Windows 2000 Pro + Visual C++ .NET Pro +
+    Qt 3.0.6. I am not able to reproduce it with SoQt-1 on NT 4 + MSVC
+    v6 + Qt 3.0.1, nor on Linux.
+
+    Should try more local MSWin platform configurations to see if we
+    can reproduce it locally.
+
+    A generally nice thing to do for debugging event-handling problems
+    would be to insert tracing code in the processEvent() /
+    processSoEvent() methods that could be turned on at run-time with
+    an environment variable. This could even help us debug remote
+    problems.
+
+    20021219 mortene.
+
+=====================================================================
+
+017 Tooltips on viewer buttons.
+
+    The functionality of the different viewer pushbuttons is not
+    entirely obvious, so we should add tooltips on the buttons.
+
+    20030114 mortene.
+
+=====================================================================
+
+018 Problems with multi-threading Coin applications.
+
+    larsa and pederb found a problematic case, leading to obscure
+    bugs, when using SoQt in a multi-threading application: if a
+    different thread than the SoQt-init thread causes a notification
+    chain from the Coin scene graph, which again leads to the
+    scheduling a sensor for the SoSensorManager, the callback
+    invocation of the SoSensorManager runs into SoQt code to set up a
+    Qt timersensor. This seems to not be mt-safe in Qt.
+
+    20030204 mortene.
+
+    UPDATE 20050621 mortene: some additional information from pederb,
+    in a support reply:
+
+        You might run into problems if you're using SoQt, since Qt's
+        QTimer isn't (or at least wasn't) thread safe. If you change
+        something in a thread that causes some sensor to trigger,
+        SoSensorManager will make a callback into SoQt, which will set
+        up timers (QTimer) to process the sensor queues. Creating
+        QTimers in some other thread than the main thread isn't
+        possible in Qt.
+
+=====================================================================
+
+019 Incompatibilities with TGS Inventor v3.1.
+
+    HitecO reports misc problems running SoQt on top of TGS Inventor
+    3.1, especially when initializing multiple threads through the
+    Inventor library.
+
+    This problem could be related to item #018.
+
+    20030204 mortene.
+
+=====================================================================
+
+020 Likely memory leaks in SoQtExaminerViewer.
+
+    thammer reports that this app apparently shows ~60KB leaks under
+    MSWin for each SoQtExaminerViewer allocated and deallocated (while
+    apparently only 1-2KB for the SoQtRenderArea):
+
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+    #include <stdio.h>
+    #include <conio.h>
+
+    #include <qapplication.h>
+    #include <qwidget.h>
+
+    #include <Inventor/Qt/SoQt.h>
+    #include <Inventor/Qt/viewers/SoQtExaminerViewer.h>
+
+    int main()
+    {
+      QWidget *unusedwidget = SoQt::init("memtest");
+
+      QWidget *widget;
+      SoQtExaminerViewer *viewer;
+      // SoQtRenderArea *viewer;
+
+      char c = 0;
+
+      while (c != 'q') {
+        printf("Creating widget... ");
+        getch();
+        widget = new QWidget();
+        printf("OK.   ");
+        printf("Creating viewer... ");
+        getch();
+        viewer = new SoQtExaminerViewer(widget);
+        // viewer = new SoQtRenderArea(widget);
+        printf("OK.   ");
+        printf("Deleting viewer... ");
+        c = getch();
+        delete viewer;
+        printf("OK.   ");
+        printf("Deleting widget... ");
+        c = getch();
+        delete widget;
+        printf("OK.\n");
+      }
+      return 0;
+    }
+    ----8<--- [snip] ---------8<--- [snip] ---------8<--- [snip] ---
+
+    More investigation needed to confirm the leak.
+
+    20030214 mortene.
+
+=====================================================================
+
+021 Boundary cases not handled when zooming too much either way in
+    SoQtExaminerViewer.
+
+    Reproduce by loading any model into an examinerviewer, switch to
+    using orthographic camera, then just zoom either into or out from
+    the model until the system starts spewing messages about
+
+        Coin warning in SbVec3f::normalize(): The length of the vector
+        should be > 0.0f to be able to normalize.
+
+    Investigate and fix.
+
+    This is very likely a problem with all So* toolkits.
+
+    20030630 mortene.
+
+=====================================================================
+
+022 The X11 error message warning seems to come up too often.
+
+    pederb is seeing it on QMessageBox'es, we're both seeing it on
+    QColorDialog.
+
+    Investigate and check whether or not it's a _real_ Qt-on-X11 bug
+    here, or if our technique for hooking up with the X11 error msg
+    handler is giving false negatives.
+
+    This is an ugly problem, as it probably causes external users to
+    be nervous that there is something wrong with SoQt, when it most
+    likely isn't. So; it's a high priority problem.
+
+    20031022 mortene.
+
+=====================================================================
+
+023 Fullscreen mode buggy for ATI (?) graphics on WinXP.
+
+    SoQtComponent::setFullScreen() sends the window with the OpenGL
+    canvas to the bottom of the window stack. Reproducible at least
+    with our Geo2k application (which uses the SoQtRenderArea).
+
+    Only happens with ATI cards/drivers, I believe, but I haven't
+    confirmed this.
+
+    Seems likely to be a Qt bug.
+
+    Should a) reproduce problem with a Geo2k-less test app, e.g. just
+    a SoQtRenderArea, b) test with the latest version of Qt, c) if the
+    problem is still present, make a test-case for submitting to Troll
+    Tech.
+
+    Nasty problem, this, and one which looks very bad for end-users,
+    likely to cause many support inquiries.
+
+    20031202 mortene, reported by pederb.
+
+=====================================================================
+
+025 Need more 'ivinfo' information
+
+    We should be able to see which version of simage and freetype
+    and similar libraries has been detected by Coin.  The simage
+    information should also list supported file types / plugin APIs
+    in use.  The full path to the actual libraries would also be
+    nice to see.  Too often people wonder why textures don't load -
+    this would give that answer right away.
+
+    Note: Duplicate bug entry (103) in Coin/BUGS.txt because this
+    must be implemented in cooperation between both libraries.
+
+    20040218 larsa
+
+=====================================================================
+
+027 Zooming can cause internal errors.
+
+    Reproduce by doing the following in the standard examinerviewer,
+    with e.g. just a cone in it: first zoom in very close, then switch
+    camera type from perspective to orthographic, zoom even closer in,
+    switch camera type again, zoom closer again, repeat until Coin
+    starts spewing out warnings about coplanar points given to the
+    SbPlane constructor.
+
+    20040708 mortene
+
+=====================================================================
+
+028 Could improve check to pick up Qt libraries needed for linking.
+
+    An idea from kintel: use ''qmake'' to generate a Makefile from a
+    simplest possible .pro-file, and grep for link libraries (and
+    other compiler and/or linker option?) in the generated Makefile.
+
+    (I.e. modify simacros/cfg/m4/qt.m4 to use this strategy instead of
+    running through a list of known library names, like we do now.)
+
+    20040805 mortene.
+
+=====================================================================
+
+029 Window id element is missing
+
+    Make SoHandleEventAction, SoGLRenderAction et al set the a window-
+    specific window id element before traversing the scene graph.
+
+    20040831 larsa.
+
+=====================================================================
+
+030 SoQtRenderArea::setRedrawPriority(0) bug
+
+    Does not work as expected.
+
+    20040831 larsa.
+
+=====================================================================
+
+031 Generated .DSP/.DSW files for MSVC IDE-based build have
+    dependencies on the Qt version number they were made with.
+
+    This is a fairly large generator of support requests and
+    frustration among external users and first-time testers of Coin,
+    so consider this a high priority item.
+
+    20040901 mortene.
+
+=====================================================================
+
+032 SoQt-based applications will crash on exit with recent Qt-version.
+
+    With at least Qt 3.3.1, this will now crash under Windows:
+
+----8<------ [snip] ------------------8<------ [snip] ---------
+#include <Inventor/Qt/SoQt.h>
+
+int
+main(int argc, char ** argv)
+{
+  SoQt::init(argc, argv, "hepp");
+  return 0;
+}
+----8<------ [snip] ------------------8<------ [snip] ---------
+
+    The crash happens on exit, somewhere within the Qt DLL.
+
+    I've tracked the problem down to this: if a QApplication instance
+    is made within SoQt (as it will be whenever a QApplication has not
+    explicitly been made from the application code), the crash will
+    happen -- otherwise not.
+
+    My first guess at a cause would be that something goes very wrong
+    when memory (for the QApplication) is allocated in one DLL (SoQt)
+    and deallocated in another DLL (Qt). So this is most likely our
+    old foe "separate C Run-Time heaps" causing confusion and mayhem
+    yet again.
+
+    According to thammer, the bug does not show up on his dev-system,
+    using the same CRT for everything. Anyway, we should handle the
+    case of different CRTs for different libs.
+
+    Unsure how to solve this yet. One option to check is whether it is
+    possible to call some function in Qt which will implicitly make
+    the QApplication instance for us (within the Qt DLL). Not a
+    perfect solution, though, as that makes it impossible to inherit
+    and override QApplication, as we do now, to install an event
+    handler for e.g. spaceball devices. That could however perhaps be
+    solved in some other manner.
+
+    This should be considered high priority, close to critical,
+    something which should trigger a new SoQt-release (patch/micro
+    level) when solved.
+
+    20040921 mortene.
+
+    UPDATE 20040921 mortene: note that the bug in question should be
+    considered a bug in *Qt*, BTW: they are deallocating an instance
+    which they don't know for sure that they allocated -- which spells
+    b-a-d. This problem could easily be fixed by Troll Tech by using a
+    flag to remember whether or not the global QApplication was
+    instantiated inside of Qt or not, then only deallocate it on exit
+    if this flag was "true".
+
+    UPDATE 20040922 mortene: as noted by pederb, this may not be the
+    cause. It seems like memory allocated through the C++ "new"
+    operator for new class instances is done within the DLL of the
+    class's implementation. I.e. when calling "new QApplication", the
+    memory allocation actually happens within the Qt DLL's heap, and
+    not the one in SoQt.
+
+    (If it were not like this, we would run into trouble with
+    e.g. SoQt or application code new'ing a Coin node -- as Coin nodes
+    are always deallocated from within the Coin DLL by "delete this".)
+
+    So I'm a bit baffled about what the exact reason for this bug is.
+
+    UPDATE 20041003 mortene: investigated more. The crash happens
+    before the QApplication instance is deallocated, actually, so
+    something else is going on.
+
+    I tried to reproduce with an SoQt- and Coin-free stand-alone test.
+    The DLL + EXE below crashes when the DLL is built with a different
+    CRT than the Qt DLL we're linking against. Here are the source
+    code parts of the test system:
+
+    Header-file for DLL, "dll.h":
+
+--------8<------------ [snip] -------------------------------------------
+class QApplication;
+
+#ifdef MAKE_DLL
+#define MYDLL_API __declspec(dllexport)
+#else
+#define MYDLL_API __declspec(dllimport)
+#endif
+
+class MYDLL_API MyDLLClass {
+public:
+  static QApplication * my_dll_function(void);
+};
+--------8<------------ [snip] -------------------------------------------
+
+    Implementation of DLL, "dll.cpp":
+
+--------8<------------ [snip] -------------------------------------------
+/*
+  Build with e.g.:
+
+  $ cl.exe /DMAKE_DLL /I$QTDIR/include /LD dll.cpp $QTDIR/lib/qt-mt331.lib
+ */
+
+#include "dll.h"
+#include <qapplication.h>
+
+QApplication *
+MyDLLClass::my_dll_function(void)
+{
+  int argc = 0;
+  return new QApplication(argc, NULL);
+}
+--------8<------------ [snip] -------------------------------------------
+
+    Application-code, "app.cpp":
+
+--------8<------------ [snip] -------------------------------------------
+/*
+  Build with e.g.:
+
+  $ cl.exe app.cpp /I$QTDIR/include dll.lib $QTDIR/lib/qt-mt331.lib
+ */
+
+#include <stdio.h>
+#include <qapplication.h>
+#include "dll.h"
+
+int
+main(void)
+{
+  printf("qApp==%p\n", qApp);
+  QApplication * a = MyDLLClass::my_dll_function();
+  printf("a==%p, qApp==%p\n", a, qApp);
+  return 0;
+}
+--------8<------------ [snip] -------------------------------------------
+
+    This should probably be reported to Troll Tech -- after first
+    checking that the problem is still present with the latest
+    Qt release.
+
+    I then built Qt in its debug configuration, to get something
+    sensible out of the call stack. Here are the results when running
+    inside MSDEV V7's debugger (this is with Qt 3.3.1):
+
+    0  QObject::~QObject()
+                => crashes in "if ( parentObj )\n parentObj->removeChild( this ) "
+    1  QFontCache::~QFontCache()
+                => runs through to end of destructor
+    2  QFontCache::`scalar deleting destructor`()
+    3  QSingleCleanupHandler<QFontCache>::~QSingleCleanupHandler<QFontCache>()
+                => from "delete *object"-line
+    4  [CRT iterating over _onexit() / atexit() functions]
+
+
+
+    UPDATE 20041027 mortene: according to kintel, Qt has a global
+    function qAddPostRoutine(), which is called when QApplication
+    dies. I mention it since it may be possible to utilize that for a
+    work-around in some way.
+
+=====================================================================
+
+033 Sensor handling incorrect
+
+    This SoGui library has its own delayqueue timeout timer.
+    This will cause delayqueue timeouts to trigger twice since Coin
+    handles this internally as well.
+
+    In addition, the code should be reviewed for bugs related to
+    assumptions on when the global field is updated in Coin
+    (the global field is updated after SoSceneManager::render(),
+    not after SoSceneManager::redraw() as was the case earlier.
+
+    I suspect further bugs to surface when the issues above are fixed,
+    so a thorough code review should be performed.
+
+    See the Sc21 source code for en example of how this should be done.
+
+    20040921 kintel.
+
+=====================================================================
+
+034 setSize() for anything inheriting SoQtViewer doesn't work as
+    expected.
+
+    For the stand-alone example below, *none* of the 3 "#if 0 // BUG"
+    have the desired effect when enabled -- the window size defaults
+    to ~ 640x400 no matter what:
+
+--------8<------------ [snip] -------------------------------------------
+#include <Inventor/Qt/SoQt.h>
+#include <Inventor/Qt/viewers/SoQtViewer.h>
+#include <Inventor/nodes/SoCone.h>
+
+// *************************************************************************
+
+class MyViewer : public SoQtViewer {
+public:
+  MyViewer(QWidget * parent);
+};
+
+MyViewer::MyViewer(QWidget * parent)
+  : SoQtViewer(parent, NULL, TRUE, SoQtViewer::BROWSER, FALSE)
+{
+#if 0 // BUG
+  this->setSize(SbVec2s(1024, 800));
+#endif
+
+  this->setClassName("MyViewer");
+  QWidget * viewer = this->buildWidget(this->getParentWidget());
+  this->setBaseWidget(viewer);
+}
+
+// *************************************************************************
+
+int
+main(int argc, char ** argv)
+{
+  QWidget * window = SoQt::init(argv[0]);
+
+  MyViewer * viewer = new MyViewer(window);
+  viewer->setSceneGraph(new SoCone);
+
+#if 0 // BUG
+  viewer->setSize(SbVec2s(1024, 800));
+#endif
+
+  viewer->show();
+  SoQt::show(window);
+
+#if 0 // BUG
+  viewer->setSize(SbVec2s(1024, 800));
+#endif
+
+  SoQt::mainLoop();
+
+  delete viewer;
+
+#ifdef __COIN__
+  SoDB::cleanup();
+#endif // __COIN__
+
+  return 0;
+}
+
+// *************************************************************************
+--------8<------------ [snip] -------------------------------------------
+
+    20041130 mortene.
+
+=====================================================================
+
+035 "Animating Drawstyle" == "no texture" has no effect.
+
+    ...when "Still Drawstyle" == "as is".
+
+    This is probably an error common over all So* toolkits.
+
+    Low priority item.
+
+    20041207 mortene.
+
+=====================================================================
+
+036 Simple timers in Qt will be taken out for Qt 4.
+
+    ..so we shouldn't use them any more, as we now do in
+    SoQt/src/Inventor/Qt/SoQt.cpp, ~line 300.
+
+    I think the best thing to do would be to work around the Qt timer
+    issues by using Win32 timers directly if feasible.
+
+    High priority item.
+
+    20041213 mortene.
+
+    UPDATE 20051110 mortene: the timers seems to work just fine in Qt
+    4, without any need for the internal Qt flag for simple timers to
+    be set to ''false''. So this bug ticket can probably be killed.
+
+=====================================================================
+
+037 Qt 4 support has various problems.
+
+    This is the current list of issues to fix or look into before we
+    can reasonably say that Qt 4 is properly supported:
+
+    - Get rid of Q3PopupMenu-use in QtNativePopupMenu, since it's the
+      sole reason that we still have to link against the Qt3Support
+      library.
+
+        => frodo & mortene believes this is best done by splitting the
+           QtNativePopupMenu class into both a Qt-3 and a Qt-4 version
+
+           (and before doing that, audit the code in
+           QtNativePopupMenu.cpp to see if some of that can be moved
+           up into the toolkit-neutral superclass first)
+
+    - In the RMB popup-menu, clicking on already selected sub-menu
+      does not bring up its sub-sub-menu.
+
+    - SoQt/configure Qt 4 detection and setup on MS Windows. (Fix in
+      simacros/cfg/m4/qt.m4.)
+
+    - The SoQtFullViewer-derived viewers' thumbwheels are thicker (at
+      least when horizontal).
+
+    - The SoGuiExamples/component/simpleexviewer comes up with a
+      different default size than with Qt 3. (Note that it may be Qt 3
+      which we're buggy with -- sizing and resizing has been a
+      long-standing problem in various ways.)
+
+    - Have a look at bug issue #036. Only relevant for MS Windows.
+
+    - Needs more testing! Check SoQtRenderArea, the other
+      SoQtFullViewer-derived viewer classes apart from the
+      SoQtExaminerViewer, and any features we can think of.
+
+    20050630 mortene, updated 20050802 kyrah.
+
+=====================================================================
+
+038 configure Qt-check doesn't find 64-bit libraries.
+
+    We only look in $QTDIR/lib, but 64-bit libraries are typically
+    found under $QTDIR/lib64, and we don't handle the case where these
+    are the ones wanted for the build.
+
+    Not sure how this should be handled properly.
+
+    20060307 mortene.
+
+=====================================================================
+
+039 Render Buffer Type ignored on Mac OS X
+
+    Reported by kintel on 20060404:
+
+      Switching between single, double, interactive buffer doesn't
+      seem to work under Mac OS X (see context menu: Draw Styles ->
+      Render Buffer Type).
+
+    Since with early versions of Qt/Mac, it was hard to get _any_
+    kind of correct OpenGL rendering working at all, there might
+    be some hacks in SoQt that need to be cleaned up. Need to
+    investigate this further.
+
+    20060405 kyrah.
+
+=====================================================================
+
+040 soqt-config weaknesses under Mac OS X
+
+    soqt-config --build-app:
+    o Missing documentation
+    o Not possible to specify multiple source files
+      (e.g. soqt-config --build-app executable source1.cpp source2.cpp)
+
+    20070123 kintel.
+
+=====================================================================

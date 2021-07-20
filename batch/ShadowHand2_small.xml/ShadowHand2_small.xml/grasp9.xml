@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<world>
+	<graspableBody>
+		<filename>/home/jiangtang/IRC/EBM_Hand/grasp_generation/GraspDataset/ShadowHand2_small.xml</filename>
+		<transform>
+			<fullTransform>(+1 +0 +0 +0)[+0 +0 +0]</fullTransform>
+		</transform>
+	</graspableBody>
+	<robot>
+		<filename>/home/jiangtang/IRC/EBM_Hand/grasp_generation/graspitmodified_lm/graspit/models/robots/ShadowHand/ShadowHandSimple.xml</filename>
+		<dofValues>+0.335839 +0.261799 +0.863201 +1.125 +0.144375 +0.523201 +1.125 -0.261799 +1.09945 +1.36125 -0.261799 +1.31945 +1.5708 -0.918182 +1.22173 +0.20944 +0.261401 +0.785 </dofValues>
+		<transform>
+			<fullTransform>(+0.355132 -0.00395793 +0.626926 +0.693418)[+64.5242 +4.87281 +249.279]</fullTransform>
+		</transform>
+	</robot>
+	<camera>
+		<position>-23.3354 -34.0378 +706.535</position>
+		<orientation>+0 +0 +0 +1</orientation>
+		<focalDistance>+411.751</focalDistance>
+	</camera>
+</world>

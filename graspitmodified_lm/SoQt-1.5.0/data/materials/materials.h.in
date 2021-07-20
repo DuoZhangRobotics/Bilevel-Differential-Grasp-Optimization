@@ -1,0 +1,65 @@
+/**************************************************************************\
+ *
+ *  This file is part of the Coin 3D visualization library.
+ *  Copyright (C) by Kongsberg Oil & Gas Technologies.
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  ("GPL") version 2 as published by the Free Software Foundation.
+ *  See the file LICENSE.GPL at the root directory of this source
+ *  distribution for additional information about the GNU GPL.
+ *
+ *  For using Coin with software that can not be combined with the GNU
+ *  GPL, and for taking advantage of the additional benefits of our
+ *  support services, please contact Kongsberg Oil & Gas Technologies
+ *  about acquiring a Coin Professional Edition License.
+ *
+ *  See http://www.coin3d.org/ for more information.
+ *
+ *  Kongsberg Oil & Gas Technologies, Bygdoy Alle 5, 0257 Oslo, NORWAY.
+ *  http://www.sim.no/  sales@sim.no  coin-support@coin3d.org
+ *
+\**************************************************************************/
+
+/*  $Id$  */
+/*  @configure_input@  */
+
+#ifndef SO@GUI@_MATERIALS_IV_H
+#define SO@GUI@_MATERIALS_IV_H
+
+/* ********************************************************************** */
+
+#include <materials/artdeco/artdeco.h>
+#include <materials/autumn/autumn.h>
+#include <materials/glass/glass.h>
+#include <materials/metal/metal.h>
+#include <materials/neon/neon.h>
+#include <materials/rococo/rococo.h>
+#include <materials/santafe/santafe.h>
+#include <materials/sheen/sheen.h>
+#include <materials/silky/silky.h>
+#include <materials/spring/spring.h>
+#include <materials/summer/summer.h>
+#include <materials/tropical/tropical.h>
+#include <materials/winter/winter.h>
+
+enum So@Gui@MaterialStyle {
+  ARTDECO,
+  AUTUMN,
+  GLASS,
+  METAL,
+  NEON,
+  ROCOCO,
+  SANTAFE,
+  SHEEN,
+  SILKY,
+  SPRING,
+  SUMMER,
+  TROPICAL,
+  WINTER,
+  NO_MATERIAL
+};
+
+/* ********************************************************************** */
+
+#endif /* ! SO@GUI@_MATERIALS_IV_H */

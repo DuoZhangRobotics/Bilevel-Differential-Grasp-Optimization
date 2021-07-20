@@ -1,0 +1,5 @@
+repo: 08431c9bf84c1b6636596d3ca56da13d779085d3
+node: 1ee8a44e4c3dcec347cca7a47093c5ea9b470735
+branch: default
+latesttag: Coin-3.1.3
+latesttagdistance: 1

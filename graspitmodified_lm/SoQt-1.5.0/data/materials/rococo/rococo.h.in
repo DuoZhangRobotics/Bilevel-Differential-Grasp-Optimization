@@ -1,0 +1,70 @@
+/**************************************************************************\
+ *
+ *  This file is part of the Coin 3D visualization library.
+ *  Copyright (C) by Kongsberg Oil & Gas Technologies.
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  ("GPL") version 2 as published by the Free Software Foundation.
+ *  See the file LICENSE.GPL at the root directory of this source
+ *  distribution for additional information about the GNU GPL.
+ *
+ *  For using Coin with software that can not be combined with the GNU
+ *  GPL, and for taking advantage of the additional benefits of our
+ *  support services, please contact Kongsberg Oil & Gas Technologies
+ *  about acquiring a Coin Professional Edition License.
+ *
+ *  See http://www.coin3d.org/ for more information.
+ *
+ *  Kongsberg Oil & Gas Technologies, Bygdoy Alle 5, 0257 Oslo, NORWAY.
+ *  http://www.sim.no/  sales@sim.no  coin-support@coin3d.org
+ *
+\**************************************************************************/
+
+/*  $Id$  */
+/*  @configure_input@  */
+
+#ifndef SO@GUI@_ROCOCOMATERIALS_IV_H
+#define SO@GUI@_ROCOCOMATERIALS_IV_H
+
+/* ********************************************************************** */
+
+#include <materials/rococo/rococo_0.h>
+#include <materials/rococo/rococo_1.h>
+#include <materials/rococo/rococo_2.h>
+#include <materials/rococo/rococo_3.h>
+#include <materials/rococo/rococo_4.h>
+#include <materials/rococo/rococo_5.h>
+#include <materials/rococo/rococo_6.h>
+#include <materials/rococo/rococo_7.h>
+#include <materials/rococo/rococo_8.h>
+#include <materials/rococo/rococo_9.h>
+#include <materials/rococo/rococo_10.h>
+#include <materials/rococo/rococo_11.h>
+#include <materials/rococo/rococo_12.h>
+#include <materials/rococo/rococo_13.h>
+#include <materials/rococo/rococo_14.h>
+#include <materials/rococo/rococo_15.h>
+#include <materials/rococo/rococo_16.h>
+#include <materials/rococo/rococo_17.h>
+#include <materials/rococo/rococo_18.h>
+#include <materials/rococo/rococo_19.h>
+#include <materials/rococo/rococo_20.h>
+#include <materials/rococo/rococo_21.h>
+#include <materials/rococo/rococo_22.h>
+#include <materials/rococo/rococo_23.h>
+#include <materials/rococo/rococo_24.h>
+#include <materials/rococo/rococo_25.h>
+#include <materials/rococo/rococo_26.h>
+#include <materials/rococo/rococo_27.h>
+#include <materials/rococo/rococo_28.h>
+#include <materials/rococo/rococo_29.h>
+#include <materials/rococo/rococo_30.h>
+#include <materials/rococo/rococo_31.h>
+#include <materials/rococo/rococo_32.h>
+#include <materials/rococo/rococo_33.h>
+#include <materials/rococo/rococo_34.h>
+
+/* ********************************************************************** */
+
+#endif /* SO@GUI@_ROCOCOMATERIALS_IV_H */

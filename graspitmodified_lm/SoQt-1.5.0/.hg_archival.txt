@@ -1,0 +1,5 @@
+repo: 43e965c8fa03b7dd8e85c6ba442af1271dd5244c
+node: ce167ab164a56f26f42256ee6579e59a2d16377c
+branch: default
+latesttag: SoQt-1.5.0
+latesttagdistance: 1

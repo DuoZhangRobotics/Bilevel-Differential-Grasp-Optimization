@@ -1,0 +1,4 @@
+#!/bin/bash
+/home/jiangtang/graspitmodified-build/graspit/graspit_cmdline --bodyFile=/home/jiangtang/IRC/EBM_Hand/grasp_generation/GraspDataset/ShadowHand7_small.xml --bodyRot=1,0,0,0 --bodyTrans=0,0,0 --robotFile=/home/jiangtang/IRC/EBM_Hand/grasp_generation/graspitmodified_lm/graspit/models/robots/ShadowHand/ShadowHandSimple.xml --robotRot=0.5000000000000001,-0.5000018365991786,-0.5,0.49999816339407527 --robotTrans=99.08552499382279,-2.7779999999999974,3.5842518736813322 --robotDOF=-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, --resultFile=/home/jiangtang/IRC/EBM_Hand/grasp_generation/batch/ShadowHand7_small.xml/ShadowHand7_small.xml/
+cp -r /home/jiangtang/IRC/EBM_Hand/grasp_generation/batch/ShadowHand7_small.xml/ShadowHand7_small.xml /home/jiangtang/IRC/EBM_Hand/grasp_generation/output
+

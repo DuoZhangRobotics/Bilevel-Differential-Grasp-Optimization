@@ -1,0 +1,70 @@
+/**************************************************************************\
+ *
+ *  This file is part of the Coin 3D visualization library.
+ *  Copyright (C) by Kongsberg Oil & Gas Technologies.
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  ("GPL") version 2 as published by the Free Software Foundation.
+ *  See the file LICENSE.GPL at the root directory of this source
+ *  distribution for additional information about the GNU GPL.
+ *
+ *  For using Coin with software that can not be combined with the GNU
+ *  GPL, and for taking advantage of the additional benefits of our
+ *  support services, please contact Kongsberg Oil & Gas Technologies
+ *  about acquiring a Coin Professional Edition License.
+ *
+ *  See http://www.coin3d.org/ for more information.
+ *
+ *  Kongsberg Oil & Gas Technologies, Bygdoy Alle 5, 0257 Oslo, NORWAY.
+ *  http://www.sim.no/  sales@sim.no  coin-support@coin3d.org
+ *
+\**************************************************************************/
+
+/*  $Id$  */
+/*  @configure_input@  */
+
+#ifndef SO@GUI@_GLASSMATERIALS_IV_H
+#define SO@GUI@_GLASSMATERIALS_IV_H
+
+/* ********************************************************************** */
+
+#include <materials/glass/glass_0.h>
+#include <materials/glass/glass_1.h>
+#include <materials/glass/glass_2.h>
+#include <materials/glass/glass_3.h>
+#include <materials/glass/glass_4.h>
+#include <materials/glass/glass_5.h>
+#include <materials/glass/glass_6.h>
+#include <materials/glass/glass_7.h>
+#include <materials/glass/glass_8.h>
+#include <materials/glass/glass_9.h>
+#include <materials/glass/glass_10.h>
+#include <materials/glass/glass_11.h>
+#include <materials/glass/glass_12.h>
+#include <materials/glass/glass_13.h>
+#include <materials/glass/glass_14.h>
+#include <materials/glass/glass_15.h>
+#include <materials/glass/glass_16.h>
+#include <materials/glass/glass_17.h>
+#include <materials/glass/glass_18.h>
+#include <materials/glass/glass_19.h>
+#include <materials/glass/glass_20.h>
+#include <materials/glass/glass_21.h>
+#include <materials/glass/glass_22.h>
+#include <materials/glass/glass_23.h>
+#include <materials/glass/glass_24.h>
+#include <materials/glass/glass_25.h>
+#include <materials/glass/glass_26.h>
+#include <materials/glass/glass_27.h>
+#include <materials/glass/glass_28.h>
+#include <materials/glass/glass_29.h>
+#include <materials/glass/glass_30.h>
+#include <materials/glass/glass_31.h>
+#include <materials/glass/glass_32.h>
+#include <materials/glass/glass_33.h>
+#include <materials/glass/glass_34.h>
+
+/* ********************************************************************** */
+
+#endif /* SO@GUI@_GLASSMATERIALS_IV_H */

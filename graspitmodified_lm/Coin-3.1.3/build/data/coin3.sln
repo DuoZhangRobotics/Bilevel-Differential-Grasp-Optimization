@@ -1,0 +1,66 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coin3", "coin3.vcproj", "{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coin3_install", "coin3_install.vcproj", "{C2983960-5E74-4CBC-8816-F7EFBB052701}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60} = {3FACC8B4-83CA-47E7-9A6B-0C179012DE60}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coin3_uninstall", "coin3_uninstall.vcproj", "{D7690531-18BF-4396-A7F9-26D7AAF56140}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coin3_docs", "coin3_docs.vcproj", "{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		DLL (Debug) = DLL (Debug)
+		DLL (Release) = DLL (Release)
+		LIB (Debug) = LIB (Debug)
+		LIB (Release) = LIB (Release)
+	EndGlobalSection
+	GlobalSection(ProjectDependencies) = postSolution
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.DLL (Debug).ActiveCfg = DLL (Debug)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.DLL (Debug).Build.0 = DLL (Debug)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.DLL (Release).ActiveCfg = DLL (Release)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.DLL (Release).Build.0 = DLL (Release)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.LIB (Debug).ActiveCfg = LIB (Debug)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.LIB (Debug).Build.0 = LIB (Debug)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.LIB (Release).ActiveCfg = LIB (Release)|Win32
+		{3FACC8B4-83CA-47E7-9A6B-0C179012DE60}.LIB (Release).Build.0 = LIB (Release)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.DLL (Debug).ActiveCfg = DLL (Debug)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.DLL (Debug).Build.0 = DLL (Debug)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.DLL (Release).ActiveCfg = DLL (Release)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.DLL (Release).Build.0 = DLL (Release)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.LIB (Debug).ActiveCfg = LIB (Debug)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.LIB (Debug).Build.0 = LIB (Debug)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.LIB (Release).ActiveCfg = LIB (Release)|Win32
+		{C2983960-5E74-4CBC-8816-F7EFBB052701}.LIB (Release).Build.0 = LIB (Release)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.DLL (Debug).ActiveCfg = DLL (Debug)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.DLL (Debug).Build.0 = DLL (Debug)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.DLL (Release).ActiveCfg = DLL (Release)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.DLL (Release).Build.0 = DLL (Release)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.LIB (Debug).ActiveCfg = LIB (Debug)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.LIB (Debug).Build.0 = LIB (Debug)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.LIB (Release).ActiveCfg = LIB (Release)|Win32
+		{D7690531-18BF-4396-A7F9-26D7AAF56140}.LIB (Release).Build.0 = LIB (Release)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.DLL (Debug).ActiveCfg = DLL (Debug)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.DLL (Debug).Build.0 = DLL (Debug)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.DLL (Release).ActiveCfg = DLL (Release)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.DLL (Release).Build.0 = DLL (Release)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.LIB (Debug).ActiveCfg = LIB (Debug)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.LIB (Debug).Build.0 = LIB (Debug)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.LIB (Release).ActiveCfg = LIB (Release)|Win32
+		{DCDEB8E8-4B5A-41A5-9FD0-82BC6D3E5508}.LIB (Release).Build.0 = LIB (Release)|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal
