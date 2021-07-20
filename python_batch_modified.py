@@ -215,7 +215,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=os.path.basename(__file__))
     parser.add_argument('--testRun', default=False,action='store_true')
     parser.add_argument('--root_path',default=os.path.dirname(os.path.realpath(__file__)))
-    parser.add_argument('--object_xml_path',default='GraspDataset')
+    parser.add_argument('--object_xml_path',default='GraspItDataset')
     parser.add_argument('--robot_xml_path',default='graspitmodified_lm/graspit/models/robots/BarrettBH8_280/BarrettBH8_280.xml')
     parser.add_argument('--built_binary_path',default='/home/jiangtang/graspitmodified-build/graspit/graspit_cmdline')
     parser.add_argument('--gen_scripts_path',default='batch')
