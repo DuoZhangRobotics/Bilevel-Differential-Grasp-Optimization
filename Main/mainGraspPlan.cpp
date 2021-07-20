@@ -110,25 +110,26 @@ int main(int argn,char** argc)
     x0.template segment<3>(0)=Vec3T(0,-0.0f,-0.2f);
 //    x0[5]=M_PI/2;
 //    x0[4]=M_PI/2;
-    x0[6]=0.5f;
-    x0[9]=0.5f;
+//    x0[6]=0.5f;
+//    x0[9]=0.5f;
     handName+="_BarrettHand";
   } else if(pathIO.string().find("ShadowHand")!=std::string::npos) {
-    x0.template segment<3>(0)=Vec3T(-0.1f,0.02f,-0.1f);
-    x0[5]=-M_PI/2;
+    x0.template segment<3>(0)=Vec3T(-0.0f,0.2f,-0.0f);
+//    x0[5]=-M_PI/2;
 
-    // x0[3]=-M_PI/2;
+     x0[3]=-M_PI/2;
+     x0[5]=-M_PI/2;
     // x0[4]=-M_PI/2;
     handName += "_Shadowhand";
   } else {
     std::cout<< "wrong" << std::endl;
   }
-  // pathIO=path;
-  // pathIO.replace_extension("");
-  // recreate(pathIO.filename().string());
-  // planner.writeVTK(x0,pathIO.filename().string(),1);
-  // planner.writeLocalVTK(pathIO.filename().string(),1);
-  // planner.writeLimitsVTK("limits");
+   pathIO=path;
+   pathIO.replace_extension("");
+   recreate(pathIO.filename().string());
+//   planner.writeVTK(x0,pathIO.filename().string(),1);
+//   planner.writeLocalVTK(pathIO.filename().string(),1);
+//  // planner.writeLimitsVTK("limits");
   std::string beforeOptimizeFileName=savingDir+"beforeOptimize_"+handName+ "_"+ objName+"_"+objScale;
   // std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
   planner.writeVTK(x0, beforeOptimizeFileName,1);

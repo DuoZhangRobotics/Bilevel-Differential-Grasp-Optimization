@@ -92,6 +92,10 @@ int main(int argn,char** argc)
   }
   if(initParamsPath!="") {
     x0=initializeParams(initParamsPath, x0);
+    for (double i = 0; i < x0.size(); i++){
+        std::cout << x0[i]<< " ";
+    }
+    std::cout << std::endl;
     if(pathIO.string().find("BarrettHand")!=std::string::npos) {
       handName+="_BarrettHand";
       type = "BarrettHand";
@@ -115,7 +119,7 @@ int main(int argn,char** argc)
     handName+="_BarrettHand";
   } else if(pathIO.string().find("ShadowHand")!=std::string::npos) {
     x0.template segment<3>(0)=Vec3T(-0.1f,0.02f,-0.1f);
-    x0[5]=-M_PI/2;
+//    x0[5]=-M_PI/2;
 
     // x0[3]=-M_PI/2;
     // x0[4]=-M_PI/2;
@@ -130,16 +134,28 @@ int main(int argn,char** argc)
   // planner.writeVTK(x0,pathIO.filename().string(),1);
   // planner.writeLocalVTK(pathIO.filename().string(),1);
   // planner.writeLimitsVTK("limits");
-  
   // std::cout << "Initial parameters saved at: "<< beforeOptimizeFileName<< std::endl;
-  for (double i = 0; i < 20; i++)
+  for (double i = 6; i < 28; i++)
   {
-    std::string beforeOptimizeFileName=savingDir+"TestRange"+std::to_string(i);
-    x0[12] = i/10;
-    planner.writeVTK(x0, beforeOptimizeFileName,1);
+//    std::string beforeOptimizeFileName=savingDir+"TestRange"+std::to_string(i);
+    x0[i] = 0;
+//    planner.writeVTK(x0, beforeOptimizeFileName,1);
   }
-  
-  // planner.writeVTK(x0, beforeOptimizeFileName,1);
+  for (double i = 0; i < x0.size(); i++){
+      std::cout << x0[i]<< " ";
+  }
+  std::cout << std::endl;
+  std::string beforeOptimizeFileName=savingDir+"PositionTest";
+   planner.writeVTK(x0, beforeOptimizeFileName,1);
+
+   x0=Vec::Zero(planner.body().nrDOF());
+   beforeOptimizeFileName=savingDir+"PositionTest2";
+   planner.writeVTK(x0, beforeOptimizeFileName,1);
+   x0[3]=-M_PI/3;
+//   x0[4] = M_PI/2;
+   x0[5] = M_PI/2;
+  beforeOptimizeFileName=savingDir+"PositionTest1";
+    planner.writeVTK(x0, beforeOptimizeFileName,1);
   // std::ofstream initialParameters(beforeOptimizeFileName+"/initialParameters.txt");
   // for(sizeType i=0; i<x0.size(); i++)
   //   initialParameters << x0[i] << " ";

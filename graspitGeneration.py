@@ -29,6 +29,8 @@ try:
     with open(maxRange_scale_path, 'r') as f:
         content = f.readlines()
         scale = float(content[1])
+        if path_elements[-2] == 'ShadowHand10' or path_elements[-2]== 'BarrettHand10':
+            scale=1.0
         maxRange = np.array([*map(lambda x: -1 * float(x[1:]) if x[0]=="-" else float(x), content[0].split(" ")[:-1])])
         # print(scale)
         # print(maxRange)
@@ -49,7 +51,25 @@ v += movement
 # print(f'movement = {movement}')
 # print(np.max(v[:,0]), np.min(v[:,0]))
 # print(np.max(v[:,1]), np.min(v[:,1]))
-# print(np.max(v[:,2]), np.min(v[:,2]))
+# print(np.max(v[:,2]), np.min(v[:,2]))  
+
+path_elements[-1] = path_elements[-2] + '_small_tmp.obj'
+if path_elements[-2] == 'ShadowHand2':
+    # print(np.array([np.max(v[:,0]), np.max(v[:,1]), np.max(v[:,2])]))
+    v -= np.array([np.max(v[:,0]), np.max(v[:,1]), np.max(v[:,2])])
+# print(f'movement = {movement}')
+# print(np.max(v[:,0]), np.min(v[:,0]))
+# print(np.max(v[:,1]), np.min(v[:,1]))
+# print(np.max(v[:,2]), np.min(v[:,2]))    
+
+obj_output_path = '/'.join(path_elements)
+with open(obj_output_path, 'w') as fout:
+    for i in range(v.shape[0]):
+        line = f'v {v[i, 0]} {v[i, 1]} {v[i, 2]}\n'
+        fout.write(line)
+    fout.write(faces)
+v *= 1000
+
 path_elements[-1] = path_elements[-2] + '_small.obj'
 obj_output_path = '/'.join(path_elements)
 with open(obj_output_path, 'w') as fout:

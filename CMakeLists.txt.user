@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.1.0, 2021-07-02T05:47:10. -->
+<!-- Written by QtCreator 4.1.0, 2021-07-19T05:04:09. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -64,7 +64,7 @@
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{e4701a8c-0489-4978-a7d2-9404d8de8378}</value>
    <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">2</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
-   <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">6</value>
+   <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">5</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
     <valuelist type="QVariantList" key="CMake.Configuration"/>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/jiangtang/IRC/build</value>
@@ -509,10 +509,8 @@
      <value type="int">14</value>
     </valuelist>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguation.Title">mainEvaluate</value>
-    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments">/home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/data/BarrettHand/bh280.urdf
-200 /home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/GraspDataset/BarrettHand3/BarrettHand3_200_0.100000.dat
- BarrettHand3 0.1 1 3 ./ 
-</value>
+    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments">/home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/data/ShadowHand/shadowhand_noarm_noknuckle.urdf
+200 /home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/GraspDataset/ShadowHand1/ShadowHand1_200_0.500000.dat ShadowHand1 0.5 2 1 ./ /home/jiangtang/IRC/EBM_Hand/grasp_generation/output/ShadowHand1_small.xml/grasp0.txt</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory"></value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory.default">/home/jiangtang/IRC/build3</value>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
@@ -736,9 +734,7 @@
      <value type="int">14</value>
     </valuelist>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguation.Title">mainGraspPlan</value>
-    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments">/home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/data/BarrettHand/bh280.urdf
-200 /home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/GraspDataset/BarrettHand2/BarrettHand2_200_0.500000.dat
- BarrettHand2 0.5 2 1 ./ /home/jiangtang/IRC/EBM_Hand/grasp_generation/batch/BarrettHand2_small.xml/BarrettHand2_small.xml/grasp3.txt</value>
+    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments">/home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/data/ShadowHand/shadowhand_noarm_noknuckle.urdf 200 /home/jiangtang/IRC/Bilevel-Differential-Grasp-Optimization/GraspDataset/ShadowHand2/ShadowHand2_200_0.200000.dat ShadowHand2 0.200000 2 1 ./ /home/jiangtang/IRC/EBM_Hand/grasp_generation/output/ShadowHand2_small.xml/grasp1.txt</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory"></value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory.default">/home/jiangtang/IRC/build3</value>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
