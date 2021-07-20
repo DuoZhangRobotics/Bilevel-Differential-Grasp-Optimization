@@ -6,22 +6,20 @@ USE_PRJ_NAMESPACE
 
 typedef double T;
 typedef PointCloudObject<T>::Vec Vec;
-DECL_MAP_TYPES_T
-Vec maxRange(PointCloudObject<T> q){
-    Mat3XT vertices = q.pss();
-    Vec x_ax = vertices.row(0);
-    Vec y_ax = vertices.row(1);
-    Vec z_ax = vertices.row(2);
-    Vec x = Vec::Zero(3);
-    x[0] = x_ax.maxCoeff();
-    x[1] = y_ax.maxCoeff();
-    x[2] = z_ax.maxCoeff();
-//    std::cout << x<< std::endl;
-    return x;
+Vec maxRange(const PointCloudObject<T>& q) {
+  DECL_MAP_TYPES_T
+  Mat3XT vertices = q.pss();
+  Vec x_ax = vertices.row(0);
+  Vec y_ax = vertices.row(1);
+  Vec z_ax = vertices.row(2);
+  Vec x = Vec::Zero(3);
+  x[0] = x_ax.maxCoeff();
+  x[1] = y_ax.maxCoeff();
+  x[2] = z_ax.maxCoeff();
+  //std::cout << x<< std::endl;
+  return x;
 }
-
-int main(int argn,char** argc)
-{
+int main(int argn,char** argc) {
   ASSERT_MSG(argn>=4,"mainPointCloudObject: [ObjMesh path] [radius of disk] [scale] [scaleY]")
   std::string path(argc[1]);
   sizeType density=std::atoi(argc[2]);
@@ -53,12 +51,12 @@ int main(int argn,char** argc)
     m.getScale()=scale;
     std::cout << "x, y, z = "<< m.getVolumeCentroid()[0] << " " << m.getVolumeCentroid()[1]<< " "<< m.getVolumeCentroid()[2]<< std::endl;
     std::cout << "x, y, z = "<< m.getPos()[0] << " " << m.getPos()[1]<< " "<< m.getPos()[2]<< std::endl;
-//    m.getPos()-= m.getVolumeCentroid();
+    //m.getPos()-= m.getVolumeCentroid();
     m.applyTrans();
     std::cout << "scale2 = " << m.getScale() << std::endl;
-     std::cout << "x, y, z = "<< m.getVolumeCentroid()[0] << " " << m.getVolumeCentroid()[1]<< " "<< m.getVolumeCentroid()[2]<< std::endl;
-     std::cout << "x, y, z = "<< m.getPos()[0] << " " << m.getPos()[1]<< " "<< m.getPos()[2]<< std::endl;
-     std::cout << "scale = " << scale << std::endl;
+    std::cout << "x, y, z = "<< m.getVolumeCentroid()[0] << " " << m.getVolumeCentroid()[1]<< " "<< m.getVolumeCentroid()[2]<< std::endl;
+    std::cout << "x, y, z = "<< m.getPos()[0] << " " << m.getPos()[1]<< " "<< m.getPos()[2]<< std::endl;
+    std::cout << "scale = " << scale << std::endl;
 
   }
 
@@ -80,9 +78,9 @@ int main(int argn,char** argc)
   Vec max = maxRange(q);
   std::cout << max[0] <<" "<< max[1]<<" "<<max[2]<<std::endl;
   std::ofstream file("maxRange_Scale.txt");
-  for(sizeType i=0; i<max.size(); i++){
+  for(sizeType i=0; i<max.size(); i++) {
     file << max[i] << " ";
-}
+  }
   file << "\n";
   file<<scale;
   q.debug(10);

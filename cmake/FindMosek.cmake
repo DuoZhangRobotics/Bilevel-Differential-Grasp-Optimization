@@ -1,6 +1,10 @@
 #MOSEK
 SET(SUPPORT_MOSEK ON)
-IF(EXISTS "/home/$ENV{USER}/mosek/9.1/tools/platform/linux64x86")
+IF(EXISTS "/home/$ENV{USER}/mosek/9.2/tools/platform/linux64x86")
+  SET(MOSEK_ROOT "/home/$ENV{USER}/mosek/9.2/tools/platform/linux64x86")
+  MESSAGE(STATUS "Using mosek 9.2!")
+  ADD_DEFINITIONS(-DUSE_MOSEK_9)
+ELSEIF(EXISTS "/home/$ENV{USER}/mosek/9.1/tools/platform/linux64x86")
   SET(MOSEK_ROOT "/home/$ENV{USER}/mosek/9.1/tools/platform/linux64x86")
   MESSAGE(STATUS "Using mosek 9.1!")
   ADD_DEFINITIONS(-DUSE_MOSEK_9)

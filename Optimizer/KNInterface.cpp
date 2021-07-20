@@ -132,11 +132,11 @@ void KNInterface<T>::setVariableProperties() {
 template <typename T>
 void KNInterface<T>::setConstraintProperties() {
   Vec GL=_obj.gl(), GU=_obj.gu();
-  getConTypes().clear();
+  //getConTypes().clear();
   getConLoBnds().clear();
   getConUpBnds().clear();
   for (sizeType i=0; i<GL.size(); i++) {
-    getConTypes().add(i,KN_CONTYPE_GENERAL);
+    //getConTypes().add(i,KN_CONTYPE_GENERAL);
     getConLoBnds().add(i,std::to_double(GL[i]));
     getConUpBnds().add(i,std::to_double(GU[i]));
   }
