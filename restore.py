@@ -1,12 +1,15 @@
+from trimesh.transformations import rotation_matrix
 from transforms3d.quaternions import rotate_vector
 import xml.etree.ElementTree as ET
 import argparse 
 import transforms3d
 import os
+import numpy as np
+import math
 
 scale = 0.001
 parser = argparse.ArgumentParser(description='Grasp World Files.')
-parser.add_argument('--path', type=str, help='Path to the grasp file', default='/home/jiangtang/IRC/EBM_Hand/grasp_generation/output/ShadowHand2_small.xml/grasp2.xml')
+parser.add_argument('--path', type=str, help='Path to the grasp file', default='/home/jiangtang/IRC/EBM_Hand/grasp_generation/output/ShadowHand2_small.xml/grasp0.xml')
 parser.add_argument('--hand_type', type = str, help='Type of the hand', default='ShadowHand')
 args = parser.parse_args()
 path =  args.path
@@ -34,7 +37,21 @@ else:
     robot_trans[2] -= error_in_z_axis
 robot_rots_quat = [*map(lambda x: float(x[1:]) if x[0]=="+" else -1 * float(x[1:]), robot_position[robot_position.find("(")+1: robot_position.find(")")].split(" "))]
 print(robot_rots_quat)
-robot_rots_ax = transforms3d.euler.quat2euler(robot_rots_quat, 'sxzy')
+robot_rots_mat = transforms3d.quaternions.quat2mat(robot_rots_quat)
+x_rot = -math.pi/2
+y_rot = 0
+z_rot = -math.pi / 2
+R1 = transforms3d.taitbryan.euler2mat(0, 0 ,x_rot)
+R2 = transforms3d.taitbryan.euler2mat(z_rot, 0, 0)
+R = R2@R1
+R[np.abs(R)<0.1]=0
+print('R = ', R)
+tmp = transforms3d.euler.mat2euler(R,'sxyz')
+print("tmp = ", tmp)
+
+robot_rots_mat = robot_rots_mat @ R
+x,z,y = transforms3d.euler.mat2euler(robot_rots_mat,'sxzy')
+robot_rots_ax = [x, y, z]
 print(robot_rots_ax)
 dofs = [*map(lambda x: float(x[1:]) if x[0]=="+" else -1 * float(x[1:]), [*filter(None, [*root.iter("dofValues")][0].text.split(" "))])]
 print(dofs)
