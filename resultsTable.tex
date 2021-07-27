@@ -1,0 +1,127 @@
+\begin{figure*}[t]
+\centering
+\begin{tabular}{cc}
+\includegraphics[width=\columnwidth]{figs/Barretthand.pdf}
+\includegraphics[width=\columnwidth]{figs/Shadowhand.pdf}
+\end{tabular}
+\caption{\label{fig:data}We apply our method to grasp 10 complex objects using Barrett Hand (left) and Shadow Hand (right).}
+\end{figure*}
+
+\setlength{\tabcolsep}{1pt}
+\begin{table*}[tbp]
+\centering
+\begin{tabular}
+{l>{\columncolor[gray]{0.8}}
+cc>{\columncolor[gray]{0.8}}
+cc>{\columncolor[gray]{0.8}}
+cc>{\columncolor[gray]{0.8}}
+cc>{\columncolor[gray]{0.8}}
+cc}
+\toprule
+\rowcolor{gray!50}
+Barrett Hand
+%\diagbox[width=10em]{Algorithm}{Model} 
+& 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10  \\
+\midrule
+Ours                        & 
+\convert{1.89942e-06}       & 
+\convert{2.29199e-06}       & 
+\convert{1.25874e-05}       & 
+\convert{2.42596e-06}       & 
+\convert{7.04648e-06}       & 
+\convert{2.31098e-05}       & 
+\convert{2.17305e-05}       & 
+\convert{5.29022e-06}       & 
+\convert{2.1363e-06}        & 
+\convert{1.68546e-05}       \\
+$Q_1$-\cite{Liu2020DeepDG}  & 
+\convert{2.14656e-07}       & 
+\convert{1.33578e-14}       & 
+\convert{2.45433e-06}       & 
+\convert{1.78334e-06}       & 
+\convert{1.50974e-06}       & 
+\convert{1.40752e-05}       & 
+\convert{7.95582e-06}       & 
+\convert{1.87743e-06}       & 
+\convert{1.97438e-06}       & 
+\convert{3.22105e-06}       \\
+Closeness                   &
+\convert{1.90409e-06}       &
+\convert{6.75748e-07}       &
+\convert{1.04532e-05}       &
+\convert{2.22011e-06}       &
+\convert{7.61138e-06}       &
+\convert{1.63571e-05}       &
+\convert{2.11329e-05}       &
+\convert{1.67361e-06}       &
+\convert{2.95927e-06}       &
+\convert{3.42978e-06}       \\
+% Closeness-\cite{GraspIt} & & & & & & & & & &  \\
+$Q_1$-\cite{GraspIt}        &
+\convert{1.61077e-06}       &
+\convert{2.18296e-06}       &
+\convert{9.39794e-08}       &
+\convert{3.12716e-06}       &	
+\convert{3.37161e-06}       &
+\convert{1.4781e-05}        &
+\convert{1.94229e-07}       &
+\convert{1.10931e-08}       &
+\convert{2.38429e-06}       &
+\convert{5.11875e-09}       \\
+\bottomrule
+\toprule
+\rowcolor{gray!50}
+Shadow Hand
+%\diagbox[width=10em]{Algorithm}{Model} 
+& 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10  \\
+\midrule
+Ours                        & 
+\convert{5.32004e-06}       &
+\convert{6.46704e-06}       &
+\convert{1.16872e-05}       &
+\convert{7.71481e-06}       &
+\convert{1.4801e-05}        &
+\convert{1.77503e-05}       &
+\convert{1.15681e-05}       &
+\convert{1.14212e-05}       &
+\convert{1.01062e-05}       &
+\convert{8.95518e-06}       \\
+$Q_1$-\cite{Liu2020DeepDG}  & 
+\convert{3.76495e-06}       &	
+\convert{1.13016e-06}       &	
+\convert{4.94282e-19}       &	
+\convert{2.19937e-06}       & 	
+\convert{2.6131e-06}        &	
+\convert{4.339e-06}         &  
+\convert{8.10799e-06}       &	
+\convert{9.66135e-06}       &	
+\convert{7.04694e-06}       &	
+\convert{2.8047e-06}	    \\
+Closeness                   &
+\convert{3.997e-06}         &
+\convert{7.40967e-06}       &
+\convert{2.93737e-06}       &
+\convert{4.4322e-06}        &
+\convert{6.34187e-06}       &
+\convert{ 8.29841e-06}      &
+\convert{5.1788e-06}        &
+\convert{5.76866e-06}       &
+\convert{3.54187e-06}       &
+\convert{2.70617e-06}       \\
+% Closeness-\cite{GraspIt} & & & & & & & & & &  \\
+$Q_1$-\cite{GraspIt}&
+\convert{7.94267e-07}&
+\convert{3.99198e-06}&
+\convert{8.02763e-06}&
+\convert{4.90842e-06}&
+\convert{4.30632e-07}&
+\convert{2.99829e-06}&
+\convert{4.15036e-06}&
+\convert{7.45751e-06}&
+\convert{7.61735e-06}&
+\convert{2.67667e-07}\\
+\bottomrule
+\end{tabular}
+\caption{\small{\label{table:quality} A comparison of grasp quality ($Q_\infty$) using different algorithms on Barrett Hand (top row) and Shadow Hand (bottom row). From top to bottom: our method, differentiable grasp planner \cite{Liu2020DeepDG} guided by sub-gradients, our method with objective replaced by closeness measure, and EigenGrasp \cite{GraspIt} using $Q_1$ objective function.}}
+\vspace{-5px}
+\end{table*}
